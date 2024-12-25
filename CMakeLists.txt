@@ -51,39 +51,6 @@ message("Creating ${BINARY_OUTPUT_PATH} build directory.")
 file(MAKE_DIRECTORY ${BINARY_OUTPUT_PATH})
 
 #
-# Define compilation settings.
-#
-if(NOT DEFINED IS_COMPILING_STATIC AND NOT DEFINED IS_COMPILING_SHARED)
-    set(IS_COMPILING_STATIC false)
-    set(IS_COMPILING_SHARED true)
-endif()
-
-#
-# Add dependencies.
-# Create list of built dependencies and their include directories.
-#
-if(IS_COMPILING_STATIC)
-    set(COMPILATION_TYPE "static")
-
-    #
-    # Injecting IS_COMPILING_STATIC into build definitions to disable __delcspec() exports under Windows.
-    #
-    add_definitions(-DIS_COMPILING_STATIC)
-else()
-    set(COMPILATION_TYPE "shared")
-endif()
-
-if(PLATFORM_OS_MACOS)
-    if(IS_COMPILING_SHARED)
-        set(MACOSX_RPATH false)
-        set(CMAKE_MACOSX_RPATH false)
-        set(CMAKE_SKIP_RPATH false)
-    endif()
-endif()
-
-message("")
-
-#
 # State global include libraries.
 #
 include_directories(${PROJECT_ROOT_PATH})
@@ -92,3 +59,4 @@ include_directories(${PROJECT_ROOT_PATH})
 # Add projects.
 #
 add_subdirectory(libsokketter)
+add_subdirectory(libsokketter-test-app)

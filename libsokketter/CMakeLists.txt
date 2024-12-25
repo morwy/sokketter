@@ -19,11 +19,65 @@ foreach(FILE_EXTENSION IN LISTS FILE_EXTENSIONS)
     set(PROJECT_FOLDER_FILES ${PROJECT_FOLDER_FILES} ${FOUND_FILES})
 endforeach()
 
-if(IS_COMPILING_SHARED)
-    set(LIBRARY_TYPE SHARED)
-else()
-    set(LIBRARY_TYPE STATIC)
+#
+# Add dependencies.
+# Create list of built dependencies and their include directories.
+#
+if(NOT DEFINED IS_COMPILING_STATIC AND NOT DEFINED IS_COMPILING_SHARED)
+    set(IS_COMPILING_STATIC false)
+    set(IS_COMPILING_SHARED true)
 endif()
+
+if(IS_COMPILING_STATIC)
+    set(LIBRARY_TYPE STATIC)
+
+    #
+    # Injecting IS_COMPILING_STATIC into build definitions to disable __delcspec() exports under Windows.
+    #
+    add_definitions(-DIS_COMPILING_STATIC)
+else()
+    set(LIBRARY_TYPE SHARED)
+endif()
+
+if(PLATFORM_OS_MACOS)
+    if(IS_COMPILING_SHARED)
+        set(MACOSX_RPATH false)
+        set(CMAKE_MACOSX_RPATH false)
+        set(CMAKE_SKIP_RPATH false)
+    endif()
+endif()
+
+set(SOKKETTER_LIBRARIES "")
+set(SOKKETTER_DEPENDENCIES sokketter)
+
+if(IS_COMPILING_SHARED)
+    if(PLATFORM_OS_LINUX)
+        set(SOKKETTER_LIBRARIES ${SOKKETTER_LIBRARIES} ${BINARY_OUTPUT_PATH}/libsokketter.so)
+    elseif(PLATFORM_OS_MACOS)
+        set(SOKKETTER_LIBRARIES ${SOKKETTER_LIBRARIES} ${BINARY_OUTPUT_PATH}/libsokketter.dylib)
+    elseif(PLATFORM_OS_WINDOWS)
+        set(SOKKETTER_LIBRARIES ${SOKKETTER_LIBRARIES} ${BINARY_OUTPUT_PATH}/sokketter.lib)
+    endif()
+else()
+    if(PLATFORM_OS_LINUX)
+        set(SOKKETTER_LIBRARIES ${SOKKETTER_LIBRARIES} ${BINARY_OUTPUT_PATH}/libsokketter.a)
+    elseif(PLATFORM_OS_MACOS)
+        set(SOKKETTER_LIBRARIES ${SOKKETTER_LIBRARIES} ${BINARY_OUTPUT_PATH}/libsokketter.a)
+    elseif(PLATFORM_OS_WINDOWS)
+        set(SOKKETTER_LIBRARIES ${SOKKETTER_LIBRARIES} ${BINARY_OUTPUT_PATH}/sokketter.lib)
+    endif()
+endif()
+
+#
+# Push variables that are local to this file into parent scope.
+#
+set(SOKKETTER_DEPENDENCIES ${SOKKETTER_DEPENDENCIES} PARENT_SCOPE)
+set(SOKKETTER_LIBRARIES ${SOKKETTER_LIBRARIES} PARENT_SCOPE)
+
+message("SOKKETTER_DEPENDENCIES: ${SOKKETTER_DEPENDENCIES}")
+message("SOKKETTER_LIBRARIES: ${SOKKETTER_LIBRARIES}")
+
+message("")
 
 add_library(${PROJECT_NAME} ${LIBRARY_TYPE} ${PROJECT_FOLDER_FILES})
 

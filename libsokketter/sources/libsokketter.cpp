@@ -4,11 +4,14 @@
 #include <string>
 #include <utility>
 
-sokketter::version_information::version_information(const uint8_t major, const uint8_t minor, const uint8_t micro,
-                            const uint8_t nano, std::string git_hash)
-    : m_major(major), m_minor(minor), m_micro(micro), m_nano(nano), m_git_hash(std::move(git_hash))
-{
-}
+sokketter::version_information::version_information(const uint8_t major, const uint8_t minor,
+    const uint8_t micro, const uint8_t nano, std::string git_hash)
+    : m_major(major)
+    , m_minor(minor)
+    , m_micro(micro)
+    , m_nano(nano)
+    , m_git_hash(std::move(git_hash))
+{}
 
 auto sokketter::version_information::major() const noexcept -> uint8_t
 {
@@ -44,5 +47,12 @@ auto sokketter::version_information::to_string() const noexcept -> std::string
 auto sokketter::version() noexcept -> sokketter::version_information
 {
     return {PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_MICRO,
-            PROJECT_VERSION_NANO, PROJECT_VERSION_SHA};
+        PROJECT_VERSION_NANO, PROJECT_VERSION_SHA};
+}
+
+const std::vector<sokketter::power_strip> sokketter::devices(const device_filter &filter)
+{
+    std::vector<sokketter::power_strip> devices;
+
+    return devices;
 }
