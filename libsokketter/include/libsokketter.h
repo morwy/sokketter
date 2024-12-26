@@ -128,10 +128,10 @@ namespace sokketter {
     /**
      * @brief returns the list of power strip devices built depending on the provided filtering
      * settings.
-     * @param filter
-     * @return vector of power_strip objects
+     * @param filter setting stating which devices to list.
+     * @return vector of power_strip objects.
      */
-    const std::vector<power_strip> EXPORTED devices(const device_filter &filter = {});
+    auto EXPORTED devices(const device_filter &filter = {}) -> const std::vector<power_strip>;
 } // namespace sokketter
 
 #endif // LIBSOKKETTER_H

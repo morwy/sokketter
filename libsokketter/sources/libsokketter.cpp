@@ -50,7 +50,7 @@ auto sokketter::version() noexcept -> sokketter::version_information
         PROJECT_VERSION_NANO, PROJECT_VERSION_SHA};
 }
 
-const std::vector<sokketter::power_strip> sokketter::devices(const device_filter &filter)
+auto sokketter::devices(const device_filter &filter) -> const std::vector<sokketter::power_strip>
 {
     std::vector<sokketter::power_strip> devices;
 
