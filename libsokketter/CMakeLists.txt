@@ -90,3 +90,15 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
         target_compile_options(${PROJECT_NAME} PRIVATE /MD)
     endif()
 endif()
+
+#
+# Link with kommpot dependencies.
+#
+set(KOMMPOT_INCLUDE_OUTPUT_PATH ${INCLUDE_OUTPUT_PATH})
+set(KOMMPOT_BINARY_OUTPUT_PATH ${BINARY_OUTPUT_PATH})
+add_subdirectory(${PROJECT_ROOT_PATH}/third-party/kommpot ${PROJECT_ROOT_PATH}/third-party/kommpot)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE ${KOMMPOT_LIBRARIES})
+foreach (KOMMPOT_DEPENDENCY IN LISTS KOMMPOT_DEPENDENCIES)
+    add_dependencies(${PROJECT_NAME} ${KOMMPOT_DEPENDENCY})
+endforeach()
