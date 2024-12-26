@@ -1,0 +1,4 @@
+[submodule "third-party/kommpot"]
+	path = third-party/kommpot
+	url = https://github.com/morwy/kommpot.git
+	branch = main
