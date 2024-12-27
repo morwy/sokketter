@@ -95,6 +95,7 @@ namespace sokketter {
     struct EXPORTED power_strip_configuration
     {
         power_strip_type type = power_strip_type::UNKNOWN;
+        std::string id = "";
         std::string name = "";
         std::string description = "";
         std::string address = "";
@@ -107,13 +108,29 @@ namespace sokketter {
     {
     public:
         power_strip() = default;
+        virtual ~power_strip() = default;
 
-        // const power_strip_configuration &configuration();
-        // void configure(const power_strip_configuration &configuration);
+        /**
+         * @warning states class is non-copyable.
+         */
+        power_strip(const power_strip &obj) = delete;
+        auto operator=(const power_strip &obj) -> power_strip & = delete;
+
+        /**
+         * @warning states class is non-movable.
+         */
+        power_strip(power_strip &&obj) = delete;
+        auto operator=(power_strip &&obj) -> power_strip & = delete;
+
+        auto configuration() -> const power_strip_configuration &;
+        auto configure(const power_strip_configuration &configuration) -> void;
 
         // bool is_connected() const;
 
         // const std::vector<socket> &sockets();
+
+    private:
+        power_strip_configuration m_configuration;
     };
 
     /**
@@ -131,7 +148,8 @@ namespace sokketter {
      * @param filter setting stating which devices to list.
      * @return vector of power_strip objects.
      */
-    auto EXPORTED devices(const device_filter &filter = {}) -> const std::vector<power_strip>;
+    auto EXPORTED devices(const device_filter &filter = {})
+        -> const std::vector<std::unique_ptr<sokketter::power_strip>>;
 } // namespace sokketter
 
 #endif // LIBSOKKETTER_H
