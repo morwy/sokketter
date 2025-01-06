@@ -1,10 +1,10 @@
 #include "libsokketter.h"
-#include "devices/power_strip_base.h"
 
 #include <cstdint>
 #include <string>
 #include <utility>
 
+#include <devices/power_strip_factory.h>
 #include <third-party/kommpot/libkommpot/include/libkommpot.h>
 
 sokketter::version_information::version_information(const uint8_t major, const uint8_t minor,
@@ -53,7 +53,7 @@ auto sokketter::version() noexcept -> sokketter::version_information
         PROJECT_VERSION_NANO, PROJECT_VERSION_SHA};
 }
 
-auto sokketter::power_strip::configuration() -> const power_strip_configuration &
+auto sokketter::power_strip::configuration() const noexcept -> const power_strip_configuration &
 {
     return m_configuration;
 }
@@ -63,22 +63,23 @@ auto sokketter::power_strip::configure(const power_strip_configuration &configur
     m_configuration = configuration;
 }
 
+auto sokketter::power_strip::to_string() const noexcept -> std::string
+{
+    return this->configuration().name + " (" +
+           power_strip_type_to_string(this->configuration().type) + ", " +
+           this->configuration().id + ", located at " + this->configuration().address + ")";
+}
+
 auto sokketter::devices(const device_filter &filter)
     -> const std::vector<std::unique_ptr<sokketter::power_strip>>
 {
     std::vector<std::unique_ptr<sokketter::power_strip>> devices;
 
-    std::vector<kommpot::device_identification> identifications;
-
-    kommpot::device_identification energenie_identification;
-    energenie_identification.vendor_id = 0x04b4;
-    energenie_identification.product_id = 0xfd15;
-    identifications.push_back(energenie_identification);
-
-    const auto kommpot_devices = kommpot::devices(identifications);
-    for (const auto &communication : kommpot_devices)
+    const auto supported_devices = power_strip_factory::supported_devices();
+    const auto communications = kommpot::devices(supported_devices);
+    for (auto &communication : communications)
     {
-        auto device = std::make_unique<power_strip_base>(communication);
+        auto device = power_strip_factory::create(communication);
         if (!device)
         {
             // spdlog::error("std::make_unique() failed creating the device!");
@@ -89,4 +90,17 @@ auto sokketter::devices(const device_filter &filter)
     }
 
     return devices;
+}
+
+std::string sokketter::power_strip_type_to_string(const power_strip_type &type)
+{
+    switch (type)
+    {
+    case power_strip_type::ENERGENIE_PMx_x: {
+        return "Energenie EG-PMS2";
+    }
+    default: {
+        return "Unknown";
+    }
+    }
 }

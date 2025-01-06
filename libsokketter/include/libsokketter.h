@@ -89,6 +89,8 @@ namespace sokketter {
         ENERGENIE_PMx_x = 1
     };
 
+    static auto power_strip_type_to_string(const power_strip_type &type) -> std::string;
+
     /**
      * @brief The device_filter class
      */
@@ -122,12 +124,18 @@ namespace sokketter {
         power_strip(power_strip &&obj) = delete;
         auto operator=(power_strip &&obj) -> power_strip & = delete;
 
-        auto configuration() -> const power_strip_configuration &;
+        auto configuration() const noexcept -> const power_strip_configuration &;
         auto configure(const power_strip_configuration &configuration) -> void;
 
         // bool is_connected() const;
 
         // const std::vector<socket> &sockets();
+
+        /**
+         * @brief creates string based on power strip parameters
+         * @return string in format "".
+         */
+        [[nodiscard]] auto to_string() const noexcept -> std::string;
 
     private:
         power_strip_configuration m_configuration;
