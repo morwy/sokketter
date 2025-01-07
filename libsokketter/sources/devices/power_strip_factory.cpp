@@ -9,8 +9,8 @@ auto power_strip_factory::create(
     /**
      * Gembird / Energenie EG-PMS2.
      */
-    if (communication->information().vendor_id == 0x04b4 &&
-        communication->information().product_id == 0xfd15)
+    if (communication->information().vendor_id == energenie_eg_pmx_x::identification().vendor_id &&
+        communication->information().product_id == energenie_eg_pmx_x::identification().product_id)
     {
         return std::make_unique<energenie_eg_pmx_x>(communication);
     }
