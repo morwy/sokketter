@@ -78,7 +78,7 @@ namespace sokketter {
     struct EXPORTED socket_configuration
     {
         std::string id = "";
-        std::string name = "";
+        std::string name = "Unnamed socket";
         std::string description = "";
     };
 
@@ -136,7 +136,11 @@ namespace sokketter {
     enum class power_strip_type
     {
         UNKNOWN = 0,
-        ENERGENIE_PMx_x = 1
+        GEMBIRD_MSIS_PM = 1,
+        GEMBIRD_SIS_PM = 2,
+        GEMBIRD_MSIS_PM_2 = 3,
+        ENERGENIE_EG_PMS = 4,
+        ENERGENIE_EG_PMS2 = 5,
     };
 
     /**
@@ -153,7 +157,7 @@ namespace sokketter {
     {
         power_strip_type type = power_strip_type::UNKNOWN;
         std::string id = "";
-        std::string name = "";
+        std::string name = "Unnamed power strip";
         std::string description = "";
         std::string address = "";
     };
@@ -219,7 +223,7 @@ namespace sokketter {
     struct EXPORTED device_filter
     {
         bool allow_disconnected_devices = true;
-        std::vector<power_strip_type> allowed_types = {power_strip_type::ENERGENIE_PMx_x};
+        std::vector<power_strip_type> allowed_types = {};
     };
 
     /**

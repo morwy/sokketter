@@ -11,12 +11,12 @@ class energenie_eg_base : public power_strip_base
 public:
     explicit energenie_eg_base(std::unique_ptr<kommpot::device_communication> communication);
 
-    static auto identification() -> const kommpot::device_identification;
-
     [[nodiscard]] auto sockets() -> const std::vector<sokketter::socket> & override;
 
-private:
+protected:
     std::vector<sokketter::socket> m_sockets;
+    std::string m_serial_number = "";
+    size_t m_socket_number = 0;
 
     auto power_socket(size_t index, bool is_toggled) -> bool;
     auto socket_status(size_t index) -> bool;

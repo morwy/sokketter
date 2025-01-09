@@ -39,36 +39,7 @@ energenie_eg_base::energenie_eg_base(std::unique_ptr<kommpot::device_communicati
         }
     }
 
-    sokketter::power_strip_configuration configuration;
-    configuration.name = "Unnamed power strip";
-    configuration.description = "";
-    configuration.type = sokketter::power_strip_type::ENERGENIE_PMx_x;
-    configuration.id = serial_number.str();
-    configuration.address = std::string("USB:") + m_communication->information().port;
-
-    this->configure(configuration);
-
-    /**
-     * Configure sockets.
-     */
-    for (size_t socket_index = 1; socket_index < 5; socket_index++)
-    {
-        sokketter::socket socket(socket_index,
-            std::bind(&energenie_eg_base::power_socket, this, std::placeholders::_1,
-                std::placeholders::_2),
-            std::bind(&energenie_eg_base::socket_status, this, std::placeholders::_1));
-        m_sockets.push_back(socket);
-    }
-}
-
-auto energenie_eg_base::identification() -> const kommpot::device_identification
-{
-    kommpot::device_identification identitication;
-
-    identitication.vendor_id = 0x04b4;
-    identitication.product_id = 0xfd15;
-
-    return identitication;
+    m_serial_number = serial_number.str();
 }
 
 auto energenie_eg_base::sockets() -> const std::vector<sokketter::socket> &

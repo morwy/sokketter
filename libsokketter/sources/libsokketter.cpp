@@ -100,7 +100,19 @@ std::string sokketter::power_strip_type_to_string(const power_strip_type &type)
 {
     switch (type)
     {
-    case power_strip_type::ENERGENIE_PMx_x: {
+    case power_strip_type::GEMBIRD_MSIS_PM: {
+        return "Gembird MSIS-PM";
+    }
+    case power_strip_type::GEMBIRD_SIS_PM: {
+        return "Gembird SIS-PM";
+    }
+    case power_strip_type::GEMBIRD_MSIS_PM_2: {
+        return "Gembird MSIS-PM (2)";
+    }
+    case power_strip_type::ENERGENIE_EG_PMS: {
+        return "Energenie EG-PMS";
+    }
+    case power_strip_type::ENERGENIE_EG_PMS2: {
         return "Energenie EG-PMS2";
     }
     default: {
