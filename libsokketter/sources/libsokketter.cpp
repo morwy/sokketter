@@ -53,6 +53,62 @@ auto sokketter::version() noexcept -> sokketter::version_information
         PROJECT_VERSION_NANO, PROJECT_VERSION_SHA};
 }
 
+sokketter::socket::socket(const size_t index, std::function<bool(size_t, bool)> toggle_cb,
+    std::function<bool(size_t)> status_cb)
+    : m_index(index)
+    , m_toggle_cb(toggle_cb)
+    , m_status_cb(status_cb)
+{}
+
+auto sokketter::socket::configuration() const noexcept -> const socket_configuration &
+{
+    return m_configuration;
+}
+
+auto sokketter::socket::configure(const socket_configuration &configuration) -> void
+{
+    m_configuration = configuration;
+}
+
+bool sokketter::socket::power(const bool &on) const noexcept
+{
+    if (m_toggle_cb == nullptr)
+    {
+        return false;
+    }
+
+    return m_toggle_cb(m_index, on);
+}
+
+auto sokketter::socket::is_powered_on() const noexcept -> bool
+{
+    if (m_status_cb == nullptr)
+    {
+        return false;
+    }
+
+    return m_status_cb(m_index);
+}
+
+auto sokketter::socket::to_string() const noexcept -> std::string
+{
+    return this->configuration().name + std::string(", status: ") +
+           std::string(is_powered_on() ? "on" : "off");
+}
+
+std::string sokketter::power_strip_type_to_string(const power_strip_type &type)
+{
+    switch (type)
+    {
+    case power_strip_type::ENERGENIE_PMx_x: {
+        return "Energenie EG-PMS2";
+    }
+    default: {
+        return "Unknown";
+    }
+    }
+}
+
 auto sokketter::power_strip::configuration() const noexcept -> const power_strip_configuration &
 {
     return m_configuration;
@@ -76,10 +132,10 @@ auto sokketter::devices(const device_filter &filter)
     std::vector<std::unique_ptr<sokketter::power_strip>> devices;
 
     const auto supported_devices = power_strip_factory::supported_devices();
-    const auto communications = kommpot::devices(supported_devices);
+    auto communications = kommpot::devices(supported_devices);
     for (auto &communication : communications)
     {
-        auto device = power_strip_factory::create(communication);
+        auto device = power_strip_factory::create(std::move(communication));
         if (!device)
         {
             // spdlog::error("std::make_unique() failed creating the device!");
@@ -90,17 +146,4 @@ auto sokketter::devices(const device_filter &filter)
     }
 
     return devices;
-}
-
-std::string sokketter::power_strip_type_to_string(const power_strip_type &type)
-{
-    switch (type)
-    {
-    case power_strip_type::ENERGENIE_PMx_x: {
-        return "Energenie EG-PMS2";
-    }
-    default: {
-        return "Unknown";
-    }
-    }
 }

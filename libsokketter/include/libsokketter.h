@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -57,7 +58,7 @@ namespace sokketter {
     auto EXPORTED version() noexcept -> version_information;
 
     /**
-     * @brief The settings_information class
+     * @brief structure containing settings of sokketter library.
      */
     struct EXPORTED settings_information
     {
@@ -66,33 +67,87 @@ namespace sokketter {
     };
 
     /**
-     * @brief settings
-     * @return
+     * @brief gets current settings of sokketter library.
+     * @return settings structure.
      */
     auto EXPORTED settings() noexcept -> settings_information;
 
     /**
-     * @brief The socket class
+     * @brief structure containing configuration parameters of the specific socket.
+     */
+    struct EXPORTED socket_configuration
+    {
+        std::string id = "";
+        std::string name = "";
+        std::string description = "";
+    };
+
+    /**
+     * @brief The class for controlling and configuring the socket.
      */
     class EXPORTED socket
     {
-        const std::string name();
-        const std::string description();
+    public:
+        socket(const size_t index, std::function<bool(size_t, bool)> toggle_cb,
+            std::function<bool(size_t)> status_cb);
 
-        bool toggle(const bool &is_enabled);
-        bool status();
+        /**
+         * @brief gets current configuration of the socket.
+         * @return socket configuration structure.
+         */
+        [[nodiscard]] auto configuration() const noexcept -> const socket_configuration &;
+
+        /**
+         * @brief sets a new configuration of the socket.
+         * @param configuration of the socket.
+         */
+        auto configure(const socket_configuration &configuration) -> void;
+
+        /**
+         * @brief powers on or off the socket based on the provided parameter.
+         * @param on specifies to which state socket should be switched.
+         * @return true in case of success, false in case of any failure.
+         */
+        auto power(const bool &on) const noexcept -> bool;
+
+        /**
+         * @brief gets current socket state.
+         * @return true if powered on, false if powered off.
+         */
+        [[nodiscard]] auto is_powered_on() const noexcept -> bool;
+
+        /**
+         * @brief creates string based on socket status and its parameters.
+         * @return string in format "SOCKET_NAME, status: STATUS".
+         */
+        [[nodiscard]] auto to_string() const noexcept -> std::string;
+
+    private:
+        socket_configuration m_configuration;
+
+        size_t m_index = 0;
+        std::function<bool(size_t, bool)> m_toggle_cb;
+        std::function<bool(size_t)> m_status_cb;
     };
 
+    /**
+     * @brief The enum specifying supported devices.
+     */
     enum class power_strip_type
     {
         UNKNOWN = 0,
         ENERGENIE_PMx_x = 1
     };
 
+    /**
+     * @brief converts power_strip_type to a readable string value.
+     * @param type of power strip.
+     * @return string.
+     */
     static auto power_strip_type_to_string(const power_strip_type &type) -> std::string;
 
     /**
-     * @brief The device_filter class
+     * @brief structure containing configuration parameters of the specific power strip.
      */
     struct EXPORTED power_strip_configuration
     {
@@ -104,7 +159,7 @@ namespace sokketter {
     };
 
     /**
-     * @brief The power_strip class
+     * @brief The class for controlling and configuring the power strip.
      */
     class EXPORTED power_strip
     {
@@ -124,16 +179,33 @@ namespace sokketter {
         power_strip(power_strip &&obj) = delete;
         auto operator=(power_strip &&obj) -> power_strip & = delete;
 
-        auto configuration() const noexcept -> const power_strip_configuration &;
+        /**
+         * @brief gets current configuration of the power strip.
+         * @return power strip configuration structure.
+         */
+        [[nodiscard]] auto configuration() const noexcept -> const power_strip_configuration &;
+
+        /**
+         * @brief sets a new configuration of the power strip.
+         * @param configuration of the power strip.
+         */
         auto configure(const power_strip_configuration &configuration) -> void;
 
-        // bool is_connected() const;
+        /**
+         * @brief gets connection stateo of the power strip.
+         * @return bool if device is connected, false if device is not connected.
+         */
+        [[nodiscard]] virtual auto is_connected() const -> bool = 0;
 
-        // const std::vector<socket> &sockets();
+        /**
+         * @brief gets list of sockets controlled by the power strip.
+         * @return vector of socket objects.
+         */
+        [[nodiscard]] virtual auto sockets() -> const std::vector<socket> & = 0;
 
         /**
          * @brief creates string based on power strip parameters
-         * @return string in format "".
+         * @return string in format "POWER_STRIP_NAME (TYPE, ID, located at ADDRESS)".
          */
         [[nodiscard]] auto to_string() const noexcept -> std::string;
 
@@ -142,7 +214,7 @@ namespace sokketter {
     };
 
     /**
-     * @brief The device_filter class
+     * @brief structure containing filtering settings for device gathering.
      */
     struct EXPORTED device_filter
     {
@@ -151,9 +223,8 @@ namespace sokketter {
     };
 
     /**
-     * @brief returns the list of power strip devices built depending on the provided filtering
-     * settings.
-     * @param filter setting stating which devices to list.
+     * @brief returns the list of power strip devices built upon provided filtering settings.
+     * @param filter settings stating which devices to list.
      * @return vector of power_strip objects.
      */
     auto EXPORTED devices(const device_filter &filter = {})

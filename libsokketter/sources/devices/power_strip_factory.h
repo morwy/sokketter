@@ -8,7 +8,7 @@
 
 namespace power_strip_factory {
     auto supported_devices() -> const std::vector<kommpot::device_identification>;
-    auto create(const std::unique_ptr<kommpot::device_communication> &communication)
+    auto create(std::unique_ptr<kommpot::device_communication> communication)
         -> std::unique_ptr<sokketter::power_strip>;
 }; // namespace power_strip_factory
 

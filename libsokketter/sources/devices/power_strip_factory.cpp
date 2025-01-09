@@ -2,8 +2,7 @@
 
 #include <devices/energenie_eg_pmx_x.h>
 
-auto power_strip_factory::create(
-    const std::unique_ptr<kommpot::device_communication> &communication)
+auto power_strip_factory::create(std::unique_ptr<kommpot::device_communication> communication)
     -> std::unique_ptr<sokketter::power_strip>
 {
     /**
@@ -12,7 +11,7 @@ auto power_strip_factory::create(
     if (communication->information().vendor_id == energenie_eg_pmx_x::identification().vendor_id &&
         communication->information().product_id == energenie_eg_pmx_x::identification().product_id)
     {
-        return std::make_unique<energenie_eg_pmx_x>(communication);
+        return std::make_unique<energenie_eg_pmx_x>(std::move(communication));
     }
 
     return nullptr;
