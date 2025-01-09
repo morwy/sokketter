@@ -18,7 +18,7 @@ public:
 private:
     std::vector<sokketter::socket> m_sockets;
 
-    auto toggle_socket(size_t index, bool is_toggled) -> bool;
+    auto power_socket(size_t index, bool is_toggled) -> bool;
     auto socket_status(size_t index) -> bool;
 };
 

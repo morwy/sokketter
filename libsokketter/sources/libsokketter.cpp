@@ -53,10 +53,10 @@ auto sokketter::version() noexcept -> sokketter::version_information
         PROJECT_VERSION_NANO, PROJECT_VERSION_SHA};
 }
 
-sokketter::socket::socket(const size_t index, std::function<bool(size_t, bool)> toggle_cb,
+sokketter::socket::socket(const size_t index, std::function<bool(size_t, bool)> power_cb,
     std::function<bool(size_t)> status_cb)
     : m_index(index)
-    , m_toggle_cb(toggle_cb)
+    , m_power_cb(power_cb)
     , m_status_cb(status_cb)
 {}
 
@@ -72,12 +72,12 @@ auto sokketter::socket::configure(const socket_configuration &configuration) -> 
 
 bool sokketter::socket::power(const bool &on) const noexcept
 {
-    if (m_toggle_cb == nullptr)
+    if (m_power_cb == nullptr)
     {
         return false;
     }
 
-    return m_toggle_cb(m_index, on);
+    return m_power_cb(m_index, on);
 }
 
 auto sokketter::socket::is_powered_on() const noexcept -> bool

@@ -54,7 +54,7 @@ energenie_eg_pmx_x::energenie_eg_pmx_x(std::unique_ptr<kommpot::device_communica
     for (size_t socket_index = 1; socket_index < 5; socket_index++)
     {
         sokketter::socket socket(socket_index,
-            std::bind(&energenie_eg_pmx_x::toggle_socket, this, std::placeholders::_1,
+            std::bind(&energenie_eg_pmx_x::power_socket, this, std::placeholders::_1,
                 std::placeholders::_2),
             std::bind(&energenie_eg_pmx_x::socket_status, this, std::placeholders::_1));
         m_sockets.push_back(socket);
@@ -76,7 +76,7 @@ auto energenie_eg_pmx_x::sockets() -> const std::vector<sokketter::socket> &
     return m_sockets;
 }
 
-auto energenie_eg_pmx_x::toggle_socket(size_t index, bool is_toggled) -> bool
+auto energenie_eg_pmx_x::power_socket(size_t index, bool is_toggled) -> bool
 {
     kommpot::endpoint_information endpoint;
     endpoint.parameters.set<std::string>("libusb_transfer_type", "control");

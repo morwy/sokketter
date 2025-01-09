@@ -88,7 +88,7 @@ namespace sokketter {
     class EXPORTED socket
     {
     public:
-        socket(const size_t index, std::function<bool(size_t, bool)> toggle_cb,
+        socket(const size_t index, std::function<bool(size_t, bool)> power_cb,
             std::function<bool(size_t)> status_cb);
 
         /**
@@ -126,7 +126,7 @@ namespace sokketter {
         socket_configuration m_configuration;
 
         size_t m_index = 0;
-        std::function<bool(size_t, bool)> m_toggle_cb;
+        std::function<bool(size_t, bool)> m_power_cb;
         std::function<bool(size_t)> m_status_cb;
     };
 
