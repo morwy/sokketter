@@ -54,6 +54,7 @@ file(MAKE_DIRECTORY ${BINARY_OUTPUT_PATH})
 # State global include libraries.
 #
 include_directories(${PROJECT_ROOT_PATH})
+include_directories(${PROJECT_ROOT_PATH}/third-party/)
 
 #
 # Add projects.
