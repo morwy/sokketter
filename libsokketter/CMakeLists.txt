@@ -23,18 +23,8 @@ endforeach()
 # Add dependencies.
 # Create list of built dependencies and their include directories.
 #
-if(NOT DEFINED IS_COMPILING_STATIC AND NOT DEFINED IS_COMPILING_SHARED)
-    set(IS_COMPILING_STATIC true)
-    set(IS_COMPILING_SHARED false)
-endif()
-
 if(IS_COMPILING_STATIC)
     set(LIBRARY_TYPE STATIC)
-
-    #
-    # Injecting IS_COMPILING_STATIC into build definitions to disable __delcspec() exports under Windows.
-    #
-    add_definitions(-DIS_COMPILING_STATIC)
 else()
     set(LIBRARY_TYPE SHARED)
 endif()
