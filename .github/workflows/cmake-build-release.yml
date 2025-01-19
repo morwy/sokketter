@@ -35,15 +35,20 @@ jobs:
       
     - name: Increase package version
       id: version
+      run: |
+        python -m IncrementProjectVersion INCREMENT_VERSION ${{ inputs.version_part }}
+        NEW_VERSION=$(python -m IncrementProjectVersion GET_VERSION)
+        echo "NEW_TAG_NAME=$NEW_VERSION" >> $GITHUB_OUTPUT
+      
+    - name: Commit update version file
+      if: ${{ inputs.version_part != 'NONE' }}
+      id: commit-version-file
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         FILE_TO_COMMIT: ProjectVersion.cmake
         DESTINATION_BRANCH: ${{ steps.read_branch.outputs.branch_name }}
         MESSAGE: "chore(release): prepare for upcoming release (ProjectVersion.cmake)"
       run: |
-        python -m IncrementProjectVersion INCREMENT_VERSION ${{ inputs.version_part }}
-        NEW_VERSION=$(python -m IncrementProjectVersion GET_VERSION)
-        echo "NEW_TAG_NAME=$NEW_VERSION" >> $GITHUB_OUTPUT
         export SHA=$( git rev-parse $DESTINATION_BRANCH:$FILE_TO_COMMIT )
         export CONTENT=$( base64 -i $FILE_TO_COMMIT )
         gh api --method PUT /repos/:owner/:repo/contents/$FILE_TO_COMMIT \
