@@ -24,8 +24,8 @@ endforeach()
 # Create list of built dependencies and their include directories.
 #
 if(NOT DEFINED IS_COMPILING_STATIC AND NOT DEFINED IS_COMPILING_SHARED)
-    set(IS_COMPILING_STATIC false)
-    set(IS_COMPILING_SHARED true)
+    set(IS_COMPILING_STATIC true)
+    set(IS_COMPILING_SHARED false)
 endif()
 
 if(IS_COMPILING_STATIC)
