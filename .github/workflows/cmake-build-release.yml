@@ -1,0 +1,211 @@
+name: CMake (release)
+
+on: 
+  workflow_dispatch:
+    inputs:
+        version_part:
+          type: choice
+          required: true
+          description: Increment version
+          options: 
+          - NONE
+          - MAJOR
+          - MINOR
+          - MICRO
+          - NANO
+
+jobs:
+  increment-version:
+    runs-on: ubuntu-20.04
+    permissions:
+        contents: write
+    outputs:
+      NEW_TAG_NAME: ${{ steps.version.outputs.NEW_TAG_NAME }}
+      RELEASE_ENTRY_TEXT: ${{ steps.git-cliff-release-entry.outputs.content }}
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Read branch name
+      id: read_branch
+      shell: bash
+      run: echo "branch_name=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+      
+    - name: Increase package version
+      id: version
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        FILE_TO_COMMIT: ProjectVersion.cmake
+        DESTINATION_BRANCH: ${{ steps.read_branch.outputs.branch_name }}
+        MESSAGE: "chore(release): prepare for upcoming release (ProjectVersion.cmake)"
+      run: |
+        python -m IncrementProjectVersion INCREMENT_VERSION ${{ inputs.version_part }}
+        NEW_VERSION=$(python -m IncrementProjectVersion GET_VERSION)
+        echo "NEW_TAG_NAME=$NEW_VERSION" >> $GITHUB_OUTPUT
+        export SHA=$( git rev-parse $DESTINATION_BRANCH:$FILE_TO_COMMIT )
+        export CONTENT=$( base64 -i $FILE_TO_COMMIT )
+        gh api --method PUT /repos/:owner/:repo/contents/$FILE_TO_COMMIT \
+          --field message="$MESSAGE" \
+          --field content="$CONTENT" \
+          --field encoding="base64" \
+          --field branch="$DESTINATION_BRANCH" \
+          --field sha="$SHA"
+
+    - name: Generate a changelog
+      uses: orhun/git-cliff-action@v4
+      id: git-cliff-release-entry
+      with:
+        config: cliff.toml
+        args: --verbose --strip all --tag v${{ steps.version.outputs.NEW_TAG_NAME }} --unreleased
+      env:
+        OUTPUT: CHANGES.md
+
+    - name: Get changelog since last release
+      uses: orhun/git-cliff-action@v4
+      id: git-cliff-file
+      with:
+        config: cliff.toml
+        args: --verbose --tag v${{ steps.version.outputs.NEW_TAG_NAME }}
+      env:
+        OUTPUT: CHANGELOG.md
+  
+    - name: Commit CHANGELOG.md
+      id: change-log-commit
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        FILE_TO_COMMIT: CHANGELOG.md
+        DESTINATION_BRANCH: ${{ steps.read_branch.outputs.branch_name }}
+        MESSAGE: "chore(release): prepare for upcoming release (CHANGELOG.md)"
+      run: |
+        export SHA=$( git rev-parse $DESTINATION_BRANCH:$FILE_TO_COMMIT )
+        export CONTENT=$( base64 -i $FILE_TO_COMMIT )
+        gh api --method PUT /repos/:owner/:repo/contents/$FILE_TO_COMMIT \
+          --field message="$MESSAGE" \
+          --field content="$CONTENT" \
+          --field encoding="base64" \
+          --field branch="$DESTINATION_BRANCH" \
+          --field sha="$SHA"
+
+  build-binaries:
+    runs-on: ${{ matrix.os }}
+    permissions:
+        contents: write
+    needs: increment-version
+    env:
+      path-separator: ${{ (startsWith(matrix.os, 'windows') && '\') || '/' }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-20.04, windows-2019, macos-13, macos-14]
+        build_type: [Release]
+        c_compiler: [gcc, clang, cl]
+        library_type: [static]
+        include:
+          - os: windows-2019
+            c_compiler: cl
+            cpp_compiler: cl
+          - os: macos-13
+            c_compiler: clang
+            cpp_compiler: clang++
+          - os: macos-14
+            c_compiler: clang
+            cpp_compiler: clang++
+          - os: ubuntu-20.04
+            c_compiler: gcc
+            cpp_compiler: g++
+        exclude:
+          - os: windows-2019
+            c_compiler: gcc
+          - os: windows-2019
+            c_compiler: clang
+          - os: macos-13
+            c_compiler: cl
+          - os: macos-13
+            c_compiler: gcc
+          - os: macos-14
+            c_compiler: cl
+          - os: macos-14
+            c_compiler: gcc
+          - os: ubuntu-20.04
+            c_compiler: cl
+          - os: ubuntu-20.04
+            c_compiler: clang
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set reusable strings
+      id: strings
+      shell: bash
+      run: |
+        echo "archive-name=kommpot-${{ needs.increment-version.outputs.NEW_TAG_NAME }}-${{ matrix.os }}-${{ matrix.library_type }}-${{ matrix.c_compiler }}-${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86-64' }}.zip" >> "$GITHUB_OUTPUT"
+        echo "build-output-dir=${{ github.workspace }}${{ env.path-separator }}build" >> "$GITHUB_OUTPUT"
+        echo "binary-output-dir=${{ github.workspace }}${{ env.path-separator }}bin${{ env.path-separator }}${{ (startsWith(matrix.os, 'ubuntu') && 'linux') || (startsWith(matrix.os, 'windows') && 'windows') || (startsWith(matrix.os, 'macos') && 'macos') || '' }}_${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86_64' }}${{ env.path-separator }}${{ matrix.build_type }}" >> "$GITHUB_OUTPUT"
+
+    - name: Install dependencies (Ubuntu-only)
+      run: |
+        sudo apt update
+        sudo apt install libudev-dev ninja-build
+      if: ${{ startsWith(matrix.os, 'ubuntu') }}
+
+    - name: Configure CMake for static libraries
+      run: |
+        cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=true -DIS_COMPILING_SHARED=false 
+      if: matrix.library_type == 'static'
+
+    - name: Configure CMake for shared libraries
+      run: |
+        cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=false -DIS_COMPILING_SHARED=true 
+      if: matrix.library_type == 'shared'
+
+    - name: Build libraries
+      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
+
+      # Ignore Windows OS because this actions has bug with wildcards there.
+    - name: Check binaries (non-Windows)
+      uses: andstor/file-existence-action@v3
+      if: ${{ !startsWith(matrix.os, 'windows') }}
+      with:
+        files: "${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}includes${{ env.path-separator }}*, ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}libs${{ env.path-separator }}*"
+        ignore_case: true
+        fail: true
+
+    - name: Archive built binaries (Windows-only)
+      if: ${{ startsWith(matrix.os, 'windows') }}
+      run: Compress-Archive -Path ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}libs${{ env.path-separator }}* -Destination ${{ steps.strings.outputs.archive-name }}
+
+    - name: Archive built binaries (non-Windows)
+      if: ${{ !startsWith(matrix.os, 'windows') }}
+      run: cd ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}libs && zip -r ${{ github.workspace }}${{ env.path-separator }}${{ steps.strings.outputs.archive-name }} .${{ env.path-separator }}*
+
+    - name: Upload built binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.strings.outputs.archive-name }}
+        path: ${{ steps.strings.outputs.archive-name }}
+
+  create-release-entry:
+    runs-on: ubuntu-20.04
+    permissions:
+        contents: write
+    needs: [increment-version, build-binaries]
+
+    steps:
+    - name: Downloading all built binaries
+      uses: actions/download-artifact@v4
+      with:
+        path: ${{ github.workspace }}
+        merge-multiple: true
+
+    - name: List all built binaries
+      run: ls -R
+
+    - name: Create release entry
+      uses: ncipollo/release-action@v1
+      with:
+        body: "${{ needs.increment-version.outputs.RELEASE_ENTRY_TEXT }}"
+        tag: "v${{ needs.increment-version.outputs.NEW_TAG_NAME }}"
+        artifacts: "*.zip"

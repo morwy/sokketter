@@ -1,7 +1,12 @@
+.DS_Store
+CMakeLists.txt.user
+
 # Prerequisites
 *.d
 
 # Compiled Object files
+bin/
+build/
 *.slo
 *.lo
 *.o
