@@ -1,5 +1,6 @@
 #include "energenie_eg_base.h"
 
+#include <array>
 #include <sstream>
 
 /**
