@@ -175,11 +175,11 @@ jobs:
 
     - name: Archive built binaries (Windows-only)
       if: ${{ startsWith(matrix.os, 'windows') }}
-      run: Compress-Archive -Path ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}* -Destination ${{ steps.strings.outputs.archive-name }}
+      run: Compress-Archive -Path ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}libs${{ env.path-separator }}* -Destination ${{ steps.strings.outputs.archive-name }}
 
     - name: Archive built binaries (non-Windows)
       if: ${{ !startsWith(matrix.os, 'windows') }}
-      run: cd ${{ steps.strings.outputs.binary-output-dir }} && zip -r ${{ github.workspace }}${{ env.path-separator }}${{ steps.strings.outputs.archive-name }} .${{ env.path-separator }}*
+      run: cd ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}libs && zip -r ${{ github.workspace }}${{ env.path-separator }}${{ steps.strings.outputs.archive-name }} .${{ env.path-separator }}*
 
     - name: Upload built binaries
       uses: actions/upload-artifact@v4
