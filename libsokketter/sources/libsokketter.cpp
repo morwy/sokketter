@@ -5,6 +5,7 @@
 #include <utility>
 
 #include <devices/power_strip_factory.h>
+#include <spdlog/spdlog.h>
 #include <third-party/kommpot/libkommpot/include/libkommpot.h>
 
 sokketter::version_information::version_information(const uint8_t major, const uint8_t minor,
@@ -141,6 +142,12 @@ auto sokketter::power_strip::to_string() const noexcept -> std::string
 auto sokketter::devices(const device_filter &filter)
     -> const std::vector<std::unique_ptr<sokketter::power_strip>>
 {
+    auto logger = spdlog::get("libkommpot");
+    if (logger != nullptr)
+    {
+        logger->set_level(spdlog::level::err);
+    }
+
     std::vector<std::unique_ptr<sokketter::power_strip>> devices;
 
     const auto supported_devices = power_strip_factory::supported_devices();
