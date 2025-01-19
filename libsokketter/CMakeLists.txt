@@ -47,6 +47,10 @@ if(PLATFORM_OS_MACOS)
     endif()
 endif()
 
+if (MSVC)
+    add_compile_options("/utf-8")
+endif()
+
 set(SOKKETTER_LIBRARIES "")
 set(SOKKETTER_DEPENDENCIES sokketter)
 
