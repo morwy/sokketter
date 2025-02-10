@@ -22,6 +22,12 @@ auto main(int argc, char *argv[]) -> int
         "A command-line interface for controlling attached power strips and sockets.");
 
     /**
+     * @brief add version flag.
+     */
+    auto flag_version =
+        application.add_flag("--version,-v", "States the version of sokketter-cli.");
+
+    /**
      * @brief states short hash of last Git commit
      */
     auto subcommand_list = application.add_subcommand("list", "lists all available devices");
@@ -50,19 +56,18 @@ auto main(int argc, char *argv[]) -> int
     auto sockets_argument = subcommand_power->add_option(
         "--sockets,-s", socket_indices, "states one or multiple socket(s) index");
 
-    auto device_group = subcommand_power->add_option_group(
-        "Device access", "contains flags that specify the way to access the device");
+    auto device_group = subcommand_power->add_option_group("Device selection");
 
     size_t device_index = 0;
-    auto flag_device_index = device_group->add_option(
+    auto option_device_index = device_group->add_option(
         "--device-by-index,-i", device_index, "states which power strip to use by its index");
 
     std::string device_serial = "";
-    auto flag_device_serial = device_group->add_option("--device-by-serial,-n", device_serial,
+    auto option_device_serial = device_group->add_option("--device-by-serial,-n", device_serial,
         "states which power strip to use by its serial number");
 
-    flag_device_index->excludes(flag_device_serial);
-    flag_device_serial->excludes(flag_device_index);
+    option_device_index->excludes(option_device_serial);
+    option_device_serial->excludes(option_device_index);
 
     /**
      * @brief states short hash of last Git commit
@@ -81,6 +86,17 @@ auto main(int argc, char *argv[]) -> int
     catch (const CLI::ParseError &e)
     {
         return application.exit(e);
+    }
+
+    /** ************************************************************************
+     *
+     * @brief version section.
+     *
+     ** ***********************************************************************/
+    if (flag_version->count() > 0)
+    {
+        std::cout << "sokketter-cli version: " << sokketter::version().to_string() << std::endl;
+        return EXIT_SUCCESS;
     }
 
     /** ************************************************************************
@@ -119,19 +135,19 @@ auto main(int argc, char *argv[]) -> int
         /**
          * @attention ensure at least one option is provided
          */
-        if (flag_device_index->count() == 0 && flag_device_serial->count() == 0)
+        if (option_device_index->count() == 0 && option_device_serial->count() == 0)
         {
             std::cerr << "Error: You must provide either --device-by-index or --device-by-serial.";
             std::cout << application.help() << std::endl;
             return EXIT_FAILURE;
         }
 
-        if (flag_device_index->count() > 0)
+        if (option_device_index->count() > 0)
         {
             auto tmp_device = sokketter::device(device_index);
             device = std::move(tmp_device);
         }
-        else if (flag_device_serial->count() > 0)
+        else if (option_device_serial->count() > 0)
         {
             auto tmp_device = sokketter::device(device_serial);
             device = std::move(tmp_device);
