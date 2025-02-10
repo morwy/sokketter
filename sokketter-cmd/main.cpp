@@ -35,7 +35,7 @@ auto main(int argc, char *argv[]) -> int
     /**
      * @brief adding a version flag.
      */
-    auto flag_version = application.add_flag("--version,-v", "States the version of sokketter-cli");
+    auto flag_version = application.add_flag("--version,-v", "Prints the version of sokketter-cli");
 
     /**
      * @attention overriding default help flags to show help with subcommands.
