@@ -26,9 +26,12 @@ auto main(int argc, char *argv[]) -> int
      * @brief adding a version flag.
      */
     auto flag_version = application.add_flag("--version,-v", "States the version of sokketter-cli");
+
+    /**
+     * @attention overriding default help flags to show help with subcommands.
      */
-    auto flag_version =
-        application.add_flag("--version,-v", "States the version of sokketter-cli.");
+    application.set_help_flag("");
+    application.set_help_all_flag("--help,-h", "Prints descriptive help message and exits");
 
     /**
      * @brief states short hash of last Git commit
