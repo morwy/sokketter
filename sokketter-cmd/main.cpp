@@ -4,6 +4,15 @@
 
 #include <cli11/CLI11.hpp>
 
+class CustomFormatter : public CLI::Formatter
+{
+public:
+    std::string make_description(const CLI::App *app) const override
+    {
+        return CLI::Formatter::make_description(app) + "\n";
+    }
+};
+
 auto main(int argc, char *argv[]) -> int
 {
     /** ************************************************************************
@@ -21,6 +30,7 @@ auto main(int argc, char *argv[]) -> int
     application.description(
         "A command-line interface for controlling attached power strips and sockets");
     application.require_subcommand();
+    application.formatter(std::make_shared<CustomFormatter>());
 
     /**
      * @brief adding a version flag.
