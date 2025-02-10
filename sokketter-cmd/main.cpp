@@ -13,16 +13,19 @@ auto main(int argc, char *argv[]) -> int
      ** ***********************************************************************/
 
     /**
-     * @brief states short hash of last Git commit
+     * @brief basic CLI11 application configuration.
      */
     CLI::App application;
 
     application.name("sokketter-cli");
     application.description(
-        "A command-line interface for controlling attached power strips and sockets.");
+        "A command-line interface for controlling attached power strips and sockets");
+    application.require_subcommand();
 
     /**
-     * @brief add version flag.
+     * @brief adding a version flag.
+     */
+    auto flag_version = application.add_flag("--version,-v", "States the version of sokketter-cli");
      */
     auto flag_version =
         application.add_flag("--version,-v", "States the version of sokketter-cli.");
@@ -30,23 +33,23 @@ auto main(int argc, char *argv[]) -> int
     /**
      * @brief states short hash of last Git commit
      */
-    auto subcommand_list = application.add_subcommand("list", "lists all available devices");
+    auto subcommand_list = application.add_subcommand("list", "Lists all available devices");
 
     /**
      * @brief states short hash of last Git commit
      */
     auto subcommand_power = application.add_subcommand(
-        "power", "contains actions related to power control of the socket(s)");
+        "power", "Contains actions related to power control of the socket(s)");
 
     auto subcommand_power_status =
-        subcommand_power->add_subcommand("status", "states current power state of the socket(s)")
+        subcommand_power->add_subcommand("status", "States current power state of the socket(s)")
             ->fallthrough();
     auto subcommand_power_on =
-        subcommand_power->add_subcommand("on", "turns power on the socket(s)")->fallthrough();
+        subcommand_power->add_subcommand("on", "Turns power on the socket(s)")->fallthrough();
     auto subcommand_power_off =
-        subcommand_power->add_subcommand("off", "turns power off the socket(s)")->fallthrough();
+        subcommand_power->add_subcommand("off", "Turns power off the socket(s)")->fallthrough();
     auto subcommand_power_toggle =
-        subcommand_power->add_subcommand("toggle", "toggles power state of the socket(s)")
+        subcommand_power->add_subcommand("toggle", "Toggles power state of the socket(s)")
             ->fallthrough();
 
     /**
@@ -54,17 +57,17 @@ auto main(int argc, char *argv[]) -> int
      */
     std::vector<size_t> socket_indices;
     auto sockets_argument = subcommand_power->add_option(
-        "--sockets,-s", socket_indices, "states one or multiple socket(s) index");
+        "--sockets,-s", socket_indices, "States one or multiple socket(s) index");
 
     auto device_group = subcommand_power->add_option_group("Device selection");
 
     size_t device_index = 0;
     auto option_device_index = device_group->add_option(
-        "--device-by-index,-i", device_index, "states which power strip to use by its index");
+        "--device-by-index,-i", device_index, "States which power strip to use by its index");
 
     std::string device_serial = "";
     auto option_device_serial = device_group->add_option("--device-by-serial,-n", device_serial,
-        "states which power strip to use by its serial number");
+        "States which power strip to use by its serial number");
 
     option_device_index->excludes(option_device_serial);
     option_device_serial->excludes(option_device_index);
