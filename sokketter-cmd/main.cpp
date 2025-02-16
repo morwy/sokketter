@@ -129,6 +129,8 @@ auto main(int argc, char *argv[]) -> int
             return EXIT_FAILURE;
         }
 
+        std::cout << "Available devices:" << std::endl;
+
         size_t counter = 1;
         for (const auto &device : devices)
         {
