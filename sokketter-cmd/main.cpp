@@ -180,31 +180,33 @@ auto main(int argc, char *argv[]) -> int
          */
         if (socket_indices.empty())
         {
+            std::cout << device->to_string() << std::endl;
+
             size_t socket_index = 1;
             for (const auto &socket : device->sockets())
             {
                 if (subcommand_power_status->parsed())
                 {
-                    std::cout << "Socket " << socket_index << ": " << socket.to_string()
+                    std::cout << "  Socket " << socket_index << ": " << socket.to_string()
                               << std::endl;
                 }
 
                 if (subcommand_power_on->parsed())
                 {
                     socket.power(true);
-                    std::cout << "Socket " << socket_index << ": turned on." << std::endl;
+                    std::cout << "  Socket " << socket_index << ": turned on." << std::endl;
                 }
 
                 if (subcommand_power_off->parsed())
                 {
                     socket.power(false);
-                    std::cout << "Socket " << socket_index << ": turned off." << std::endl;
+                    std::cout << "  Socket " << socket_index << ": turned off." << std::endl;
                 }
 
                 if (subcommand_power_toggle->parsed())
                 {
                     socket.power(!socket.is_powered_on());
-                    std::cout << "Socket " << socket_index << ": toggled." << std::endl;
+                    std::cout << "  Socket " << socket_index << ": toggled." << std::endl;
                 }
 
                 ++socket_index;
@@ -219,29 +221,31 @@ auto main(int argc, char *argv[]) -> int
                 return EXIT_FAILURE;
             }
 
+            std::cout << device->to_string() << std::endl;
+
             const auto &socket = device->sockets().at(socket_index);
 
             if (subcommand_power_status->parsed())
             {
-                std::cout << "Socket " << socket_index << ": " << socket.to_string() << std::endl;
+                std::cout << "  Socket " << socket_index << ": " << socket.to_string() << std::endl;
             }
 
             if (subcommand_power_on->parsed())
             {
                 socket.power(true);
-                std::cout << "Socket " << socket_index << ": turned on." << std::endl;
+                std::cout << "  Socket " << socket_index << ": turned on." << std::endl;
             }
 
             if (subcommand_power_off->parsed())
             {
                 socket.power(false);
-                std::cout << "Socket " << socket_index << ": turned off." << std::endl;
+                std::cout << "  Socket " << socket_index << ": turned off." << std::endl;
             }
 
             if (subcommand_power_toggle->parsed())
             {
                 socket.power(!socket.is_powered_on());
-                std::cout << "Socket " << socket_index << ": toggled." << std::endl;
+                std::cout << "  Socket " << socket_index << ": toggled." << std::endl;
             }
         }
 
