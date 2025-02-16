@@ -35,35 +35,41 @@ auto main(int argc, char *argv[]) -> int
     /**
      * @attention overriding default help flags to show help with subcommands.
      */
-    auto flag_version = application.add_flag("--version,-v", "Prints the version of sokketter-cli");
+    application.set_help_flag();
+    application.set_help_all_flag("--help,-h", "Prints descriptive help message and exits");
 
     /**
      * @brief adding a version flag.
      */
-    application.set_help_flag("");
-    application.set_help_all_flag("--help,-h", "Prints descriptive help message and exits");
+    auto flag_version = application.add_flag("--version,-v", "Prints the version of sokketter-cli");
 
     /**
      * @brief adding a list subcommand.
      */
     auto subcommand_list = application.add_subcommand("list", "Lists all available devices");
+    subcommand_list->formatter(std::make_shared<CustomFormatter>());
 
     /**
      * @brief adding a power subcommand.
      */
     auto subcommand_power = application.add_subcommand(
         "power", "Contains actions related to power control of the socket(s)");
+    subcommand_power->formatter(std::make_shared<CustomFormatter>());
 
     auto subcommand_power_status =
-        subcommand_power->add_subcommand("status", "States current power state of the socket(s)")
-            ->fallthrough();
+        subcommand_power->add_subcommand("status", "States current power state of the socket(s)");
+    subcommand_power_status->fallthrough();
     auto subcommand_power_on =
-        subcommand_power->add_subcommand("on", "Turns power on the socket(s)")->fallthrough();
+        subcommand_power->add_subcommand("on", "Turns power on the socket(s)");
+    subcommand_power_on->fallthrough();
+
     auto subcommand_power_off =
-        subcommand_power->add_subcommand("off", "Turns power off the socket(s)")->fallthrough();
+        subcommand_power->add_subcommand("off", "Turns power off the socket(s)");
+    subcommand_power_off->fallthrough();
+
     auto subcommand_power_toggle =
-        subcommand_power->add_subcommand("toggle", "Toggles power state of the socket(s)")
-            ->fallthrough();
+        subcommand_power->add_subcommand("toggle", "Toggles power state of the socket(s)");
+    subcommand_power_toggle->fallthrough();
 
     /**
      * @brief adding device and socket access options.
