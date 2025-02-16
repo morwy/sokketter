@@ -33,23 +33,23 @@ auto main(int argc, char *argv[]) -> int
     application.formatter(std::make_shared<CustomFormatter>());
 
     /**
-     * @brief adding a version flag.
+     * @attention overriding default help flags to show help with subcommands.
      */
     auto flag_version = application.add_flag("--version,-v", "Prints the version of sokketter-cli");
 
     /**
-     * @attention overriding default help flags to show help with subcommands.
+     * @brief adding a version flag.
      */
     application.set_help_flag("");
     application.set_help_all_flag("--help,-h", "Prints descriptive help message and exits");
 
     /**
-     * @brief states short hash of last Git commit
+     * @brief adding a list subcommand.
      */
     auto subcommand_list = application.add_subcommand("list", "Lists all available devices");
 
     /**
-     * @brief states short hash of last Git commit
+     * @brief adding a power subcommand.
      */
     auto subcommand_power = application.add_subcommand(
         "power", "Contains actions related to power control of the socket(s)");
@@ -66,7 +66,7 @@ auto main(int argc, char *argv[]) -> int
             ->fallthrough();
 
     /**
-     * @brief states short hash of last Git commit
+     * @brief adding device and socket access options.
      */
     std::vector<size_t> socket_indices;
     auto sockets_argument = subcommand_power->add_option(
@@ -106,7 +106,7 @@ auto main(int argc, char *argv[]) -> int
 
     /** ************************************************************************
      *
-     * @brief version section.
+     * @brief version processing section.
      *
      ** ***********************************************************************/
     if (flag_version->count() > 0)
@@ -117,7 +117,7 @@ auto main(int argc, char *argv[]) -> int
 
     /** ************************************************************************
      *
-     * @brief list section.
+     * @brief list processing section.
      *
      ** ***********************************************************************/
     if (subcommand_list->parsed())
@@ -143,7 +143,7 @@ auto main(int argc, char *argv[]) -> int
 
     /** ************************************************************************
      *
-     * @brief power section.
+     * @brief power processing section.
      *
      ** ***********************************************************************/
     if (subcommand_power->parsed())
