@@ -77,13 +77,6 @@ auto main(int argc, char *argv[]) -> int
     application.formatter(std::make_shared<OverriddenHelpFormatter>());
 
     /**
-     * @attention overriding default help flag for easier control.
-     */
-    application.set_help_flag();
-    application.set_help_all_flag();
-    auto flag_help = application.add_flag("--help,-h");
-
-    /**
      * @brief adding a version flag.
      */
     auto flag_version = application.set_version_flag(
@@ -145,17 +138,6 @@ auto main(int argc, char *argv[]) -> int
     catch (const CLI::ParseError &e)
     {
         return application.exit(e);
-    }
-
-    /** ************************************************************************
-     *
-     * @brief help processing section.
-     *
-     ** ***********************************************************************/
-    if (flag_help->count() > 0)
-    {
-        std::cout << application.help() << std::endl;
-        return EXIT_SUCCESS;
     }
 
     /** ************************************************************************
