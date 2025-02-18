@@ -52,6 +52,7 @@ public:
         help << std::endl;
 
         help << "Examples:" << std::endl;
+        help << "  sokketter-cli list" << std::endl;
         help << "  sokketter-cli power on --sockets 1 --device-at-index 0" << std::endl;
         help << "  sokketter-cli power status --device-with-serial 01:01:60:35:c6" << std::endl;
         help << std::endl;
