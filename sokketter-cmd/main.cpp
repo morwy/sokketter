@@ -103,7 +103,9 @@ auto main(int argc, char *argv[]) -> int
     std::vector<size_t> socket_indices;
     auto sockets_argument = subcommand_power->add_option("--sockets,-s", socket_indices);
 
-    auto device_group = subcommand_power->add_option_group("Device selection");
+    auto device_group =
+        subcommand_power->add_option_group("--device-at-index or --device-with-serial");
+    device_group->required();
 
     size_t device_index = 0;
     auto option_device_index = device_group->add_option("--device-at-index,-i", device_index);
@@ -174,16 +176,6 @@ auto main(int argc, char *argv[]) -> int
     else if (subcommand_power->parsed())
     {
         std::unique_ptr<sokketter::power_strip> device;
-
-        /**
-         * @attention ensure at least one option is provided
-         */
-        if (option_device_index->count() == 0 && option_device_serial->count() == 0)
-        {
-            std::cerr << "Error: You must provide either --device-by-index or --device-by-serial.";
-            std::cout << application.help() << std::endl;
-            return EXIT_FAILURE;
-        }
 
         if (option_device_index->count() > 0)
         {
