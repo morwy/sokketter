@@ -79,7 +79,7 @@ auto main(int argc, char *argv[]) -> int
     /**
      * @brief adding a version flag.
      */
-    auto flag_version = application.set_version_flag(
+    application.set_version_flag(
         "--version,-v", std::string("sokketter-cli version ") + sokketter::version().to_string());
 
     /**
@@ -205,7 +205,7 @@ auto main(int argc, char *argv[]) -> int
         /**
          * @attention use all sockets if no indices were specified.
          */
-        if (socket_indices.empty())
+        if (sockets_argument->count() == 0 || socket_indices.empty())
         {
             std::cout << device->to_string() << std::endl;
 
