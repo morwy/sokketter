@@ -75,6 +75,7 @@ auto main(int argc, char *argv[]) -> int
 
     application.name("sokketter-cli");
     application.formatter(std::make_shared<OverriddenHelpFormatter>());
+    application.require_subcommand(1, 1);
 
     /**
      * @brief adding a version flag.
@@ -96,6 +97,11 @@ auto main(int argc, char *argv[]) -> int
     auto subcommand_power_on = subcommand_power->add_subcommand("on");
     auto subcommand_power_off = subcommand_power->add_subcommand("off");
     auto subcommand_power_toggle = subcommand_power->add_subcommand("toggle");
+
+    subcommand_list->excludes(subcommand_power);
+
+    subcommand_power->excludes(subcommand_list);
+    subcommand_power->require_subcommand(1, 1);
 
     /**
      * @brief adding device and socket access options.
@@ -270,15 +276,6 @@ auto main(int argc, char *argv[]) -> int
 
         return EXIT_SUCCESS;
     }
-
-    /** ************************************************************************
-     *
-     * @brief no CLI parameters section.
-     *
-     ** ***********************************************************************/
-    std::cerr << "Error: list or power subcommand is required!" << std::endl << std::endl;
-
-    std::cerr << application.help() << std::endl;
 
     return EXIT_FAILURE;
 }
