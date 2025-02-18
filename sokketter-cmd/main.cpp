@@ -74,6 +74,7 @@ auto main(int argc, char *argv[]) -> int
     CLI::App application;
 
     application.name("sokketter-cli");
+    application.ignore_case();
     application.formatter(std::make_shared<OverriddenHelpFormatter>());
     application.require_subcommand(1, 1);
 
