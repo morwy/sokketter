@@ -86,7 +86,8 @@ auto main(int argc, char *argv[]) -> int
     /**
      * @brief adding a version flag.
      */
-    auto flag_version = application.add_flag("--version,-v");
+    auto flag_version = application.set_version_flag(
+        "--version,-v", std::string("sokketter-cli version ") + sokketter::version().to_string());
 
     /**
      * @brief adding a list subcommand.
@@ -154,17 +155,6 @@ auto main(int argc, char *argv[]) -> int
     if (flag_help->count() > 0)
     {
         std::cout << application.help() << std::endl;
-        return EXIT_SUCCESS;
-    }
-
-    /** ************************************************************************
-     *
-     * @brief version processing section.
-     *
-     ** ***********************************************************************/
-    if (flag_version->count() > 0)
-    {
-        std::cout << "sokketter-cli version: " << sokketter::version().to_string() << std::endl;
         return EXIT_SUCCESS;
     }
 
