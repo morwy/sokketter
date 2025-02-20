@@ -1,4 +1,4 @@
-name: CMake (build dry run)
+name: CMake (build artifacts)
 
 on: workflow_dispatch
 
