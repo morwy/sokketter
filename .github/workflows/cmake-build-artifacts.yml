@@ -56,6 +56,8 @@ jobs:
       id: strings
       shell: bash
       run: |
+        CURRENT_VERSION=$(python -m ProjectVersion GET_VERSION)
+        echo "archive-name=sokketter-$CURRENT_VERSION-${{ matrix.os }}-${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86-64' }}.zip" >> "$GITHUB_OUTPUT"
         echo "build-output-dir=${{ github.workspace }}${{ env.path-separator }}build" >> "$GITHUB_OUTPUT"
         echo "binary-output-dir=${{ github.workspace }}${{ env.path-separator }}bin${{ env.path-separator }}${{ (startsWith(matrix.os, 'ubuntu') && 'linux') || (startsWith(matrix.os, 'windows') && 'windows') || (startsWith(matrix.os, 'macos') && 'macos') || '' }}_${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86_64' }}${{ env.path-separator }}${{ matrix.build_type }}" >> "$GITHUB_OUTPUT"
 
@@ -87,6 +89,14 @@ jobs:
         ignore_case: true
         fail: true
 
+    - name: Archive built binaries (Windows-only)
+      if: ${{ startsWith(matrix.os, 'windows') }}
+      run: Compress-Archive -Path ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}libs${{ env.path-separator }}* -Destination ${{ steps.strings.outputs.archive-name }}
+
+    - name: Archive built binaries (non-Windows)
+      if: ${{ !startsWith(matrix.os, 'windows') }}
+      run: cd ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}libs && zip -r ${{ github.workspace }}${{ env.path-separator }}${{ steps.strings.outputs.archive-name }} .${{ env.path-separator }}*
+  
     - name: Upload built binaries
       uses: actions/upload-artifact@v4
       with:
