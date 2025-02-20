@@ -166,3 +166,61 @@ auto sokketter::devices(const device_filter &filter)
 
     return devices;
 }
+
+auto sokketter::device(const size_t &index) -> const std::unique_ptr<sokketter::power_strip>
+{
+    auto logger = spdlog::get("libkommpot");
+    if (logger != nullptr)
+    {
+        logger->set_level(spdlog::level::err);
+    }
+
+    const auto supported_devices = power_strip_factory::supported_devices();
+
+    auto communications = kommpot::devices(supported_devices);
+    if (index >= communications.size())
+    {
+        return nullptr;
+    }
+
+    auto &communication = communications[index];
+    auto device = power_strip_factory::create(std::move(communication));
+    if (!device)
+    {
+        // spdlog::error("std::make_unique() failed creating the device!");
+        return nullptr;
+    }
+
+    return device;
+}
+
+auto sokketter::device(const std::string &serial_number)
+    -> const std::unique_ptr<sokketter::power_strip>
+{
+    auto logger = spdlog::get("libkommpot");
+    if (logger != nullptr)
+    {
+        logger->set_level(spdlog::level::err);
+    }
+
+    const auto supported_devices = power_strip_factory::supported_devices();
+    auto communications = kommpot::devices(supported_devices);
+    for (auto &communication : communications)
+    {
+        auto device = power_strip_factory::create(std::move(communication));
+        if (!device)
+        {
+            // spdlog::error("std::make_unique() failed creating the device!");
+            continue;
+        }
+
+        if (device->configuration().id != serial_number)
+        {
+            continue;
+        }
+
+        return device;
+    }
+
+    return nullptr;
+}

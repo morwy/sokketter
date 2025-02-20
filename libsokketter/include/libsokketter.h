@@ -83,7 +83,7 @@ namespace sokketter {
     };
 
     /**
-     * @brief The class for controlling and configuring the socket.
+     * @brief the class for controlling and configuring the socket.
      */
     class EXPORTED socket
     {
@@ -131,7 +131,7 @@ namespace sokketter {
     };
 
     /**
-     * @brief The enum specifying supported devices.
+     * @brief the enum specifying supported devices.
      */
     enum class power_strip_type
     {
@@ -163,7 +163,7 @@ namespace sokketter {
     };
 
     /**
-     * @brief The class for controlling and configuring the power strip.
+     * @brief the class for controlling and configuring the power strip.
      */
     class EXPORTED power_strip
     {
@@ -233,6 +233,21 @@ namespace sokketter {
      */
     auto EXPORTED devices(const device_filter &filter = {})
         -> const std::vector<std::unique_ptr<sokketter::power_strip>>;
+
+    /**
+     * @brief returns the power strip device by its index.
+     * @param index of the device.
+     * @return unique pointer to power_strip object or nullptr in case of any failure.
+     */
+    auto EXPORTED device(const size_t &index) -> const std::unique_ptr<sokketter::power_strip>;
+
+    /**
+     * @brief returns the power strip device by its serial number.
+     * @param serial_number of the device.
+     * @return unique pointer to power_strip object or nullptr in case of any failure.
+     */
+    auto EXPORTED device(const std::string &serial_number)
+        -> const std::unique_ptr<sokketter::power_strip>;
 } // namespace sokketter
 
 #endif // LIBSOKKETTER_H
