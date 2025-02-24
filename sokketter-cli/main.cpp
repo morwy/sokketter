@@ -163,7 +163,7 @@ auto main(int argc, char *argv[]) -> int
         if (devices.empty())
         {
             std::cout << "No devices found." << std::endl;
-            return EXIT_FAILURE;
+            return EXIT_SUCCESS;
         }
 
         std::cout << "Available devices:" << std::endl;
