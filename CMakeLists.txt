@@ -75,5 +75,5 @@ include_directories(${PROJECT_ROOT_PATH}/third-party/)
 # Add projects.
 #
 add_subdirectory(libsokketter)
-add_subdirectory(libsokketter-test-app)
+# add_subdirectory(libsokketter-test-app)
 add_subdirectory(sokketter-cli)
