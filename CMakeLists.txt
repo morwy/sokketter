@@ -23,6 +23,11 @@ include(ProjectVersion.cmake)
 include(ConvenienceDefinitions.cmake)
 
 #
+# Third-party fetch.
+#
+include(ThirdPartyFetch.cmake)
+
+#
 # Set output folder for binaries.
 #
 set(PROJECT_ROOT_PATH ${CMAKE_CURRENT_LIST_DIR})
