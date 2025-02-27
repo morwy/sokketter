@@ -10,9 +10,7 @@ foreach(FILE_EXTENSION IN LISTS FILE_EXTENSIONS)
     set(TEST_FOLDER_FILES ${TEST_FOLDER_FILES} ${FOUND_FILES})
 endforeach()
 
-add_executable(${PROJECT_NAME} ${TEST_FOLDER_FILES} ${GTestFiles})
-target_include_directories(${PROJECT_NAME} PRIVATE ${googletest_SOURCE_DIR}/googletest/include)
-
+add_executable(${PROJECT_NAME} ${TEST_FOLDER_FILES} ${GTEST_FILES})
 target_link_libraries(${PROJECT_NAME} PRIVATE gtest gtest_main)
 
 include(GoogleTest)
