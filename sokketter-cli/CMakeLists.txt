@@ -3,6 +3,7 @@ project(${PROJECT_NAME} LANGUAGES CXX)
 
 find_package(Threads REQUIRED)
 
+include_directories(${CMAKE_CURRENT_LIST_DIR}/sources)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../libsokketter/include)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../third-party)
 
