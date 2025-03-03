@@ -1,4 +1,4 @@
-name: CMake (build dry run)
+name: CMake (compile and test)
 
 on:
   push:
@@ -63,11 +63,16 @@ jobs:
         echo "build-output-dir=${{ github.workspace }}${{ env.path-separator }}build" >> "$GITHUB_OUTPUT"
         echo "binary-output-dir=${{ github.workspace }}${{ env.path-separator }}bin${{ env.path-separator }}${{ (startsWith(matrix.os, 'ubuntu') && 'linux') || (startsWith(matrix.os, 'windows') && 'windows') || (startsWith(matrix.os, 'macos') && 'macos') || '' }}_${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86_64' }}${{ env.path-separator }}${{ matrix.build_type }}" >> "$GITHUB_OUTPUT"
 
-    - name: Install dependencies (Ubuntu-only)
+    - name: Install dependencies (Ubuntu only)
       run: |
         sudo apt update
-        sudo apt install libudev-dev ninja-build
+        sudo apt install gcc lcov libudev-dev ninja-build -y
       if: ${{ startsWith(matrix.os, 'ubuntu') }}
+
+    - name: Install dependencies (MacOS only)
+      run: |
+        brew install lcov
+      if: ${{ startsWith(matrix.os, 'macos') }}
 
     - name: Configure CMake for static libraries
       run: |
@@ -90,3 +95,7 @@ jobs:
         files: "${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}includes${{ env.path-separator }}*, ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}libs${{ env.path-separator }}*"
         ignore_case: true
         fail: true
+
+    - name: Run tests
+      run: |
+        ctest --output-on-failure --test-dir ${{ steps.strings.outputs.build-output-dir }}
