@@ -29,4 +29,6 @@ endforeach()
 #
 # Add tests if available.
 #
-add_subdirectory(tests)
+if(ENABLE_TESTING)
+    add_subdirectory(tests)
+endif()

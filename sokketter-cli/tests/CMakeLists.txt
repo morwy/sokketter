@@ -25,5 +25,27 @@ foreach (SOKKETTER_DEPENDENCY IN LISTS SOKKETTER_DEPENDENCIES)
     add_dependencies(${PROJECT_NAME} ${SOKKETTER_DEPENDENCY})
 endforeach()
 
+if(ENABLE_COVERAGE)
+    message(STATUS "Enabling coverage flags")
+
+    target_compile_options(${PROJECT_NAME} PRIVATE --coverage)
+    target_link_libraries(${PROJECT_NAME} PRIVATE --coverage)
+
+    target_compile_options(${PROJECT_NAME} PRIVATE --coverage)
+    target_link_libraries(${PROJECT_NAME} PRIVATE --coverage)
+
+    find_program(LCOV_PATH lcov)
+    find_program(GENHTML_PATH genhtml)
+
+    add_custom_target(coverage
+            COMMAND ${LCOV_PATH} --capture --directory ../sources --output-file coverage.info
+            COMMAND ${LCOV_PATH} --remove coverage.info '/usr/*' --output-file coverage.filtered.info
+            COMMAND ${GENHTML_PATH} coverage.filtered.info --output-directory coverage_report
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+            COMMENT "Generating code coverage report"
+            VERBATIM
+    )
+endif()
+
 include(GoogleTest)
 gtest_discover_tests(${PROJECT_NAME} PROPERTIES LABELS "unit" DISCOVERY_TIMEOUT 240)

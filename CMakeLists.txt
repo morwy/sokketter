@@ -23,6 +23,12 @@ include(ProjectVersion.cmake)
 include(ConvenienceDefinitions.cmake)
 
 #
+# Tests.
+#
+option(ENABLE_TESTING "Enable testing" ON)
+option(ENABLE_COVERAGE "Enable coverage reporting" ON)
+
+#
 # Third-party fetch.
 #
 include(ThirdPartyFetch.cmake)
