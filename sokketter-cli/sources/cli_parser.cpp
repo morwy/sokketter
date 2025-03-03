@@ -205,6 +205,11 @@ int cli_parser::parse_and_process(int argc, char *argv[])
             }
         }
 
+        if (!socket_indices.empty())
+        {
+            std::cout << device->to_string() << std::endl;
+        }
+
         for (const auto &socket_index : socket_indices)
         {
             if (socket_index >= device->sockets().size())
@@ -212,8 +217,6 @@ int cli_parser::parse_and_process(int argc, char *argv[])
                 std::cerr << "Socket index " << socket_index << " is out of range." << std::endl;
                 return EXIT_FAILURE;
             }
-
-            std::cout << device->to_string() << std::endl;
 
             const auto &socket = device->sockets().at(socket_index);
 
