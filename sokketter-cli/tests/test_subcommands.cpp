@@ -88,7 +88,8 @@ TEST(cli_subcommand_tests, list_test_devices)
 
 TEST(cli_subcommand_tests, test_power_status)
 {
-    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status"};
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
+        (char *)"--device-at-index", (char *)"0"};
 
     ASSERT_TRUE(set_env_var("LIBSOKKETTER_TESTING_ENABLED", "1"));
 
@@ -103,7 +104,9 @@ TEST(cli_subcommand_tests, test_power_status)
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(stdout, "Available devices:\n1. Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, "
-                      "located at TEST_ADDRESS)\n");
+    ASSERT_EQ(stdout,
+        "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n  Socket 1: "
+        "Unnamed socket, status: off\n  Socket 2: Unnamed socket, status: off\n  Socket 3: "
+        "Unnamed socket, status: off\n  Socket 4: Unnamed socket, status: off\n");
     ASSERT_EQ(stderr, "");
 }
