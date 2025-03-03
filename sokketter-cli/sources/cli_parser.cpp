@@ -44,9 +44,7 @@ int cli_parser::parse_and_process(int argc, char *argv[])
     auto subcommand_power_toggle = subcommand_power->add_subcommand("toggle");
 
     subcommand_list->excludes(subcommand_power);
-
     subcommand_power->excludes(subcommand_list);
-    subcommand_power->require_subcommand(1, 1);
 
     /**
      * @brief adding device and socket access options.
@@ -56,7 +54,6 @@ int cli_parser::parse_and_process(int argc, char *argv[])
 
     auto device_group =
         subcommand_power->add_option_group("--device-at-index or --device-with-serial");
-    device_group->required();
 
     size_t device_index = 0;
     auto option_device_index = device_group->add_option("--device-at-index,-i", device_index);
@@ -126,6 +123,31 @@ int cli_parser::parse_and_process(int argc, char *argv[])
      ** ***********************************************************************/
     else if (subcommand_power->parsed())
     {
+        /**
+         * @warning --help flag is not being forwarded to application level,
+         * even though a fallthrough is set for all subcommands.
+         * Checking it manually for power and power related subcommands.
+         */
+        if (subcommand_power->count("--help") > 0 || subcommand_power->count("-h") > 0)
+        {
+            std::cout << application.help() << std::endl;
+            return EXIT_SUCCESS;
+        }
+
+        /**
+         * @warning stating device access group as required via CLI11 functionality
+         * does not work as expected. It has a higher precedence than following subcommands,
+         * thus it displays the wrong error message. Checking it manually.
+         */
+        if (option_device_index->count() == 0 && option_device_serial->count() == 0)
+        {
+            std::cout << "[Option Group: --device-at-index or --device-with-serial] is "
+                         "required"
+                      << std::endl
+                      << "Run with --help for more information." << std::endl;
+            return EXIT_FAILURE;
+        }
+
         std::unique_ptr<sokketter::power_strip> device;
 
         if (option_device_index->count() > 0)
