@@ -1,5 +1,9 @@
 .DS_Store
+report.info
 CMakeLists.txt.user
+
+# Testing temp files.
+Testing/
 
 # Prerequisites
 *.d
