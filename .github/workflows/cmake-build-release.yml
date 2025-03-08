@@ -161,12 +161,12 @@ jobs:
 
     - name: Configure CMake for static libraries
       run: |
-        cmake --build ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=true -DIS_COMPILING_SHARED=false 
+        cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=true -DIS_COMPILING_SHARED=false 
       if: matrix.library_type == 'static'
 
     - name: Configure CMake for shared libraries
       run: |
-        cmake --build ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=false -DIS_COMPILING_SHARED=true 
+        cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=false -DIS_COMPILING_SHARED=true 
       if: matrix.library_type == 'shared'
 
     - name: Build binaries
