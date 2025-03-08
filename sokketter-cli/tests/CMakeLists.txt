@@ -37,6 +37,7 @@ if(ENABLE_COVERAGE)
 
     if(CTEST_PATH AND LCOV_PATH AND GENHTML_PATH)
         message(STATUS "Coverage tools found: ${CTEST_PATH}, ${LCOV_PATH}, ${GENHTML_PATH}")
+        message(STATUS "Target test coverage folder: ${CMAKE_BINARY_DIR}")
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E echo "-------------------------------------------------------"
             COMMAND ${CMAKE_COMMAND} -E echo "Running the tests..."
