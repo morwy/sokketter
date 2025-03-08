@@ -30,29 +30,6 @@ if(ENABLE_COVERAGE)
 
     target_compile_options(${PROJECT_NAME} PRIVATE --coverage)
     target_link_libraries(${PROJECT_NAME} PRIVATE --coverage)
-
-    find_program(CTEST_PATH NAMES ctest)
-    find_program(LCOV_PATH NAMES lcov)
-    find_program(GENHTML_PATH NAMES genhtml)
-
-    if(CTEST_PATH AND LCOV_PATH AND GENHTML_PATH)
-        message(STATUS "Coverage tools found: ${CTEST_PATH}, ${LCOV_PATH}, ${GENHTML_PATH}")
-        message(STATUS "Target test coverage folder: ${CMAKE_BINARY_DIR}")
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E echo "-------------------------------------------------------"
-            COMMAND ${CMAKE_COMMAND} -E echo "Running the tests..."
-            COMMAND ${CTEST_PATH} --test-dir ${CMAKE_BINARY_DIR} --output-on-failure
-            COMMAND ${CMAKE_COMMAND} -E echo "-------------------------------------------------------"
-            COMMAND ${CMAKE_COMMAND} -E echo "Building the coverage..."
-            COMMAND ${LCOV_PATH} --capture --directory ${CMAKE_BINARY_DIR} --output-file ${CMAKE_BINARY_DIR}/coverage.info --keep-going || ${CMAKE_COMMAND} -E true
-            COMMAND ${LCOV_PATH} --remove ${CMAKE_BINARY_DIR}/coverage.info '/Applications/*' 'v1/*' '${PROJECT_ROOT_PATH}/third-party/*' '${CMAKE_BINARY_DIR}/_deps/*' '${PROJECT_ROOT_PATH}/sokketter-cli/tests/*' --output-file ${CMAKE_BINARY_DIR}/coverage.filtered.info --keep-going || ${CMAKE_COMMAND} -E true
-            COMMAND ${CMAKE_COMMAND} -E echo "-------------------------------------------------------"
-            COMMAND ${CMAKE_COMMAND} -E echo "Generating HTML report..."
-            COMMAND ${GENHTML_PATH} ${CMAKE_BINARY_DIR}/coverage.filtered.info --output-directory ${CMAKE_BINARY_DIR}/coverage_report --keep-going || ${CMAKE_COMMAND} -E true
-        )
-    else()
-        message(WARNING "Coverage tools not found, skipping coverage generation.")
-    endif()
 endif()
 
 include(GoogleTest)
