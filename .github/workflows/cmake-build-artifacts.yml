@@ -78,7 +78,7 @@ jobs:
       if: matrix.library_type == 'shared'
 
     - name: Build binaries
-      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }} --target all
+      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
       # This action has bug with wildcards under Windows OS, thus ignore it.
     - name: Check binaries (non-Windows)
