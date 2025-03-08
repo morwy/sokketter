@@ -63,8 +63,8 @@ auto sokketter::version_information::to_string() const noexcept -> std::string
 
 auto sokketter::version() noexcept -> sokketter::version_information
 {
-    return {PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_MICRO,
-        PROJECT_VERSION_NANO, PROJECT_VERSION_SHA};
+    return {SOKKETTER_VERSION_MAJOR, SOKKETTER_VERSION_MINOR, SOKKETTER_VERSION_MICRO,
+        SOKKETTER_VERSION_NANO, SOKKETTER_VERSION_SHA};
 }
 
 sokketter::socket::socket(const size_t index, std::function<bool(size_t, bool)> power_cb,
