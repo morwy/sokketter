@@ -77,22 +77,22 @@ jobs:
     - name: Configure CMake for static libraries (Windows)
       run: |
         cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=true -DIS_COMPILING_SHARED=false
-      if: matrix.library_type == 'static' && ${{ startsWith(matrix.os, 'windows') }}
+      if: ${{ matrix.library_type == 'static' && startsWith(matrix.os, 'windows') }}
 
     - name: Configure CMake for shared libraries (Windows)
       run: |
         cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=false -DIS_COMPILING_SHARED=true
-      if: matrix.library_type == 'shared' && ${{ startsWith(matrix.os, 'windows') }}
+      if: ${{ matrix.library_type == 'shared' && startsWith(matrix.os, 'windows') }}
 
     - name: Configure CMake for static libraries (non-Windows)
       run: |
         cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=true -DIS_COMPILING_SHARED=false -DENABLE_TESTING=true
-      if: matrix.library_type == 'static' && ${{ !startsWith(matrix.os, 'windows') }}
+      if: ${{ matrix.library_type == 'static' && !startsWith(matrix.os, 'windows') }}
 
     - name: Configure CMake for shared libraries (non-Windows)
       run: |
         cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=false -DIS_COMPILING_SHARED=true -DENABLE_TESTING=true
-      if: matrix.library_type == 'shared' && ${{ !startsWith(matrix.os, 'windows') }}
+      if: ${{ matrix.library_type == 'shared' && !startsWith(matrix.os, 'windows') }}
 
     - name: Build binaries
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
