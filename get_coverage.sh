@@ -1,30 +1,24 @@
 #!/bin/bash
 
-current_dir=$(pwd)
+current_directory=$(pwd)
+build_directory="$current_directory/build-coverage"
 
-for path in "$current_dir"/build/*/; do
-    if [ -f "$current_dir/coverage.info" ]; then
-        rm "$current_dir/coverage.info"
-        echo "Deleted existing coverage.info file."
-    fi
+if [ -d "$build_directory" ]; then
+    rm -rf "$build_directory"
+    echo "Deleted existing coverage directory."
+fi
 
-    if [ -f "$current_dir/coverage.filtered.info" ]; then
-        rm "$current_dir/coverage.filtered.info"
-        echo "Deleted existing coverage.filtered.info file."
-    fi
+cmake -B "$build_directory" -DCMAKE_CXX_COMPILER=clang++ -DIS_COMPILING_STATIC=true -DIS_COMPILING_SHARED=false -DENABLE_TESTING=true -DENABLE_COVERAGE=true
 
-    if [ -d "$current_dir/coverage_report" ]; then
-        rm -rf "$current_dir/coverage_report"
-        echo "Deleted existing coverage_report directory."
-    fi
+cmake --build "$build_directory" --config Release
 
-    ctest --output-on-failure --test-dir "$path"
+ctest --output-on-failure --test-dir "$build_directory"
 
-    lcov --capture --directory "$path" --output-file "$current_dir/coverage.info" --keep-going
+lcov --capture --directory "$build_directory" --output-file "$build_directory/coverage.info" --keep-going
 
-    lcov --remove coverage.info "/Applications/*" "v1/*" "*gtest*" "googlemock/*" "$current_dir/third-party/*" "$path/_deps/*" "$current_dir/sokketter-cli/tests/*" --output-file "$current_dir/coverage.filtered.info" --keep-going
+lcov --remove "$build_directory/coverage.info" "/Applications/*" "v1/*" "*gtest*" "googlemock/*" "$current_directory/third-party/*" "$build_directory/_deps/*" "$current_directory/sokketter-cli/tests/*" --output-file "$build_directory/coverage.filtered.info" --keep-going
 
-    genhtml "$current_dir/coverage.filtered.info" --output-directory "$current_dir/coverage_report" --keep-going
+genhtml "$build_directory/coverage.filtered.info" --output-directory "$build_directory/coverage_report" --keep-going
 
-    break
-done
+FILE="$build_directory/coverage_report/index.html"
+[ -f "$FILE" ] && open "$FILE"
