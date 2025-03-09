@@ -1,4 +1,4 @@
-name: CMake (build dry run)
+name: CMake (compile and test)
 
 on:
   push:
@@ -63,23 +63,38 @@ jobs:
         echo "build-output-dir=${{ github.workspace }}${{ env.path-separator }}build" >> "$GITHUB_OUTPUT"
         echo "binary-output-dir=${{ github.workspace }}${{ env.path-separator }}bin${{ env.path-separator }}${{ (startsWith(matrix.os, 'ubuntu') && 'linux') || (startsWith(matrix.os, 'windows') && 'windows') || (startsWith(matrix.os, 'macos') && 'macos') || '' }}_${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86_64' }}${{ env.path-separator }}${{ matrix.build_type }}" >> "$GITHUB_OUTPUT"
 
-    - name: Install dependencies (Ubuntu-only)
+    - name: Install dependencies (Ubuntu only)
       run: |
         sudo apt update
-        sudo apt install libudev-dev ninja-build
+        sudo apt install gcc lcov libudev-dev ninja-build -y
       if: ${{ startsWith(matrix.os, 'ubuntu') }}
 
-    - name: Configure CMake for static libraries
+    - name: Install dependencies (MacOS only)
       run: |
-        cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=true -DIS_COMPILING_SHARED=false 
-      if: matrix.library_type == 'static'
+        brew install lcov
+      if: ${{ startsWith(matrix.os, 'macos') }}
 
-    - name: Configure CMake for shared libraries
+    - name: Configure CMake for static libraries (Windows)
       run: |
-        cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=false -DIS_COMPILING_SHARED=true 
-      if: matrix.library_type == 'shared'
+        cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=true -DIS_COMPILING_SHARED=false
+      if: ${{ matrix.library_type == 'static' && startsWith(matrix.os, 'windows') }}
 
-    - name: Build libraries
+    - name: Configure CMake for shared libraries (Windows)
+      run: |
+        cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=false -DIS_COMPILING_SHARED=true
+      if: ${{ matrix.library_type == 'shared' && startsWith(matrix.os, 'windows') }}
+
+    - name: Configure CMake for static libraries (non-Windows)
+      run: |
+        cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=true -DIS_COMPILING_SHARED=false -DENABLE_TESTING=true
+      if: ${{ matrix.library_type == 'static' && !startsWith(matrix.os, 'windows') }}
+
+    - name: Configure CMake for shared libraries (non-Windows)
+      run: |
+        cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=false -DIS_COMPILING_SHARED=true -DENABLE_TESTING=true
+      if: ${{ matrix.library_type == 'shared' && !startsWith(matrix.os, 'windows') }}
+
+    - name: Build binaries
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
       # This action has bug with wildcards under Windows OS, thus ignore it.
@@ -90,3 +105,7 @@ jobs:
         files: "${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}includes${{ env.path-separator }}*, ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}libs${{ env.path-separator }}*"
         ignore_case: true
         fail: true
+
+    - name: Run tests
+      run: |
+        ctest --output-on-failure --test-dir ${{ steps.strings.outputs.build-output-dir }}

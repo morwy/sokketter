@@ -5,8 +5,21 @@
 #include <utility>
 
 #include <devices/power_strip_factory.h>
+#include <devices/test_device.h>
 #include <spdlog/spdlog.h>
 #include <third-party/kommpot/libkommpot/include/libkommpot.h>
+
+bool is_internal_testing_enabled()
+{
+    const std::string &name = "LIBSOKKETTER_TESTING_ENABLED";
+    const char *value = std::getenv(name.c_str());
+    if (value == nullptr)
+    {
+        return false;
+    }
+
+    return std::string(value) == "1";
+}
 
 sokketter::version_information::version_information(const uint8_t major, const uint8_t minor,
     const uint8_t micro, const uint8_t nano, std::string git_hash)
@@ -50,8 +63,8 @@ auto sokketter::version_information::to_string() const noexcept -> std::string
 
 auto sokketter::version() noexcept -> sokketter::version_information
 {
-    return {PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_MICRO,
-        PROJECT_VERSION_NANO, PROJECT_VERSION_SHA};
+    return {SOKKETTER_VERSION_MAJOR, SOKKETTER_VERSION_MINOR, SOKKETTER_VERSION_MICRO,
+        SOKKETTER_VERSION_NANO, SOKKETTER_VERSION_SHA};
 }
 
 sokketter::socket::socket(const size_t index, std::function<bool(size_t, bool)> power_cb,
@@ -101,6 +114,9 @@ std::string sokketter::power_strip_type_to_string(const power_strip_type &type)
 {
     switch (type)
     {
+    case power_strip_type::TEST_DEVICE: {
+        return "TEST DEVICE";
+    }
     case power_strip_type::GEMBIRD_MSIS_PM: {
         return "Gembird MSIS-PM";
     }
@@ -150,6 +166,12 @@ auto sokketter::devices(const device_filter &filter)
 
     std::vector<std::unique_ptr<sokketter::power_strip>> devices;
 
+    if (is_internal_testing_enabled())
+    {
+        devices.push_back(std::make_unique<test_device>());
+        return devices;
+    }
+
     const auto supported_devices = power_strip_factory::supported_devices();
     auto communications = kommpot::devices(supported_devices);
     for (auto &communication : communications)
@@ -173,6 +195,16 @@ auto sokketter::device(const size_t &index) -> const std::unique_ptr<sokketter::
     if (logger != nullptr)
     {
         logger->set_level(spdlog::level::err);
+    }
+
+    if (is_internal_testing_enabled())
+    {
+        if (index == 0)
+        {
+            return std::make_unique<test_device>();
+        }
+
+        return nullptr;
     }
 
     const auto supported_devices = power_strip_factory::supported_devices();
@@ -201,6 +233,16 @@ auto sokketter::device(const std::string &serial_number)
     if (logger != nullptr)
     {
         logger->set_level(spdlog::level::err);
+    }
+
+    if (is_internal_testing_enabled())
+    {
+        if (serial_number == "TEST_SERIAL_NUMBER")
+        {
+            return std::make_unique<test_device>();
+        }
+
+        return nullptr;
     }
 
     const auto supported_devices = power_strip_factory::supported_devices();

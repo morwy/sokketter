@@ -15,17 +15,15 @@ energenie_eg_base::energenie_eg_base(std::unique_ptr<kommpot::device_communicati
      */
     m_communication->open();
 
-    kommpot::endpoint_information endpoint_information;
-    endpoint_information.parameters.set<std::string>("libusb_transfer_type", "control");
-    endpoint_information.parameters.set<int>("libusb_ctrl_type", 0xa1);
-    endpoint_information.parameters.set<int>("libusb_ctrl_request", 0x01);
-    endpoint_information.parameters.set<int>("libusb_ctrl_value", 0x0301);
-    endpoint_information.parameters.set<int>("libusb_ctrl_index", 0);
+    kommpot::control_transfer_configuration configuration;
+    configuration.request_type = 0xa1;
+    configuration.request = 0x01;
+    configuration.value = 0x0301;
+    configuration.index = 0;
 
     std::array<uint8_t, 5> serial_number_raw = {0};
 
-    if (!m_communication->read(
-            endpoint_information, serial_number_raw.data(), serial_number_raw.size()))
+    if (!m_communication->read(configuration, serial_number_raw.data(), serial_number_raw.size()))
     {}
 
     m_communication->close();
@@ -50,12 +48,11 @@ auto energenie_eg_base::sockets() -> const std::vector<sokketter::socket> &
 
 auto energenie_eg_base::power_socket(size_t index, bool is_toggled) -> bool
 {
-    kommpot::endpoint_information endpoint;
-    endpoint.parameters.set<std::string>("libusb_transfer_type", "control");
-    endpoint.parameters.set<int>("libusb_ctrl_type", 0x21);
-    endpoint.parameters.set<int>("libusb_ctrl_request", 0x09);
-    endpoint.parameters.set<int>("libusb_ctrl_value", 0x0300 + 3 * index);
-    endpoint.parameters.set<int>("libusb_ctrl_index", 0);
+    kommpot::control_transfer_configuration configuration;
+    configuration.request_type = 0x21;
+    configuration.request = 0x09;
+    configuration.value = 0x0300 + 3 * index;
+    configuration.index = 0;
 
     std::array<uint8_t, 5> buffer = {uint8_t(3 * index), 0x00, 0x00, 0x00, 0x00};
     if (is_toggled)
@@ -65,7 +62,7 @@ auto energenie_eg_base::power_socket(size_t index, bool is_toggled) -> bool
 
     m_communication->open();
 
-    bool is_operation_succeed = m_communication->write(endpoint, buffer.data(), buffer.size());
+    bool is_operation_succeed = m_communication->write(configuration, buffer.data(), buffer.size());
 
     m_communication->close();
 
@@ -79,18 +76,17 @@ auto energenie_eg_base::power_socket(size_t index, bool is_toggled) -> bool
 
 auto energenie_eg_base::socket_status(size_t index) -> bool
 {
-    kommpot::endpoint_information endpoint;
-    endpoint.parameters.set<std::string>("libusb_transfer_type", "control");
-    endpoint.parameters.set<int>("libusb_ctrl_type", 0xa1);
-    endpoint.parameters.set<int>("libusb_ctrl_request", 0x01);
-    endpoint.parameters.set<int>("libusb_ctrl_value", 0x0300 + 3 * index);
-    endpoint.parameters.set<int>("libusb_ctrl_index", 0);
+    kommpot::control_transfer_configuration configuration;
+    configuration.request_type = 0xa1;
+    configuration.request = 0x01;
+    configuration.value = 0x0300 + 3 * index;
+    configuration.index = 0;
 
     std::array<uint8_t, 5> buffer = {uint8_t(3 * index), 0x03, 0x00, 0x00, 0x00};
 
     m_communication->open();
 
-    bool is_operation_succeed = m_communication->read(endpoint, buffer.data(), buffer.size());
+    bool is_operation_succeed = m_communication->read(configuration, buffer.data(), buffer.size());
 
     m_communication->close();
 

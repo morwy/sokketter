@@ -1,5 +1,10 @@
 .DS_Store
+report.info
 CMakeLists.txt.user
+build-coverage
+
+# Testing temp files.
+Testing/
 
 # Prerequisites
 *.d

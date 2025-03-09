@@ -136,11 +136,12 @@ namespace sokketter {
     enum class power_strip_type
     {
         UNKNOWN = 0,
-        GEMBIRD_MSIS_PM = 1,
-        GEMBIRD_SIS_PM = 2,
-        GEMBIRD_MSIS_PM_2 = 3,
-        ENERGENIE_EG_PMS = 4,
-        ENERGENIE_EG_PMS2 = 5,
+        TEST_DEVICE = 1,
+        GEMBIRD_MSIS_PM = 2,
+        GEMBIRD_SIS_PM = 3,
+        GEMBIRD_MSIS_PM_2 = 4,
+        ENERGENIE_EG_PMS = 5,
+        ENERGENIE_EG_PMS2 = 6,
     };
 
     /**

@@ -1,67 +1,8 @@
-#include <cstdlib>
+#include "cli_parser.h"
 
 #include "libsokketter.h"
 
-#include <cli11/CLI11.hpp>
-#include <sstream>
-
-class OverriddenHelpFormatter : public CLI::Formatter
-{
-public:
-    std::string make_help(const CLI::App *app, std::string, CLI::AppFormatMode) const override
-    {
-        std::stringstream help;
-
-        help << "A command-line interface for controlling attached power strips and sockets."
-             << std::endl;
-        help << std::endl;
-
-        help << "Usage: sokketter-cli SUBCOMMAND [OPTIONS]" << std::endl;
-        help << std::endl;
-
-        help << "Options:" << std::endl;
-        help << "  -h,--help\tPrints descriptive help message and exits." << std::endl;
-        help << "  -v,--version\tPrints the version of sokketter-cli." << std::endl;
-        help << std::endl;
-
-        help << "Subcommands:" << std::endl;
-        help << "  list\t\tLists all available devices." << std::endl;
-        help << std::endl;
-
-        help << "  power\t\tContains actions related to power control of the socket(s)."
-             << std::endl;
-        help << std::endl;
-
-        help << "  Subcommands:" << std::endl;
-        help << "    status\t\tStates current power state of the socket(s)." << std::endl;
-        help << "    on\t\tTurns power on the socket(s)." << std::endl;
-        help << "    off\t\tTurns power off the socket(s)." << std::endl;
-        help << "    toggle\t\tToggles power state of the socket(s)." << std::endl;
-        help << std::endl;
-
-        help << "  Options:" << std::endl;
-        help << "    -i,--device-at-index UINT\tStates which power strip to use by its index. "
-                "Excludes --device-with-serial option."
-             << std::endl;
-        help << "    -n,--device-with-serial TEXT\tStates which power strip to use by its serial "
-                "number. Excludes --device-at-index option."
-             << std::endl;
-        help << "    -s,--sockets UINT ...\tStates one or multiple socket(s) indices. Empty option "
-                "means that subcommand will apply to all available sockets."
-             << std::endl;
-        help << std::endl;
-
-        help << "Examples:" << std::endl;
-        help << "  sokketter-cli list" << std::endl;
-        help << "  sokketter-cli power on --sockets 1 --device-at-index 0" << std::endl;
-        help << "  sokketter-cli power status --device-with-serial 01:01:60:35:c6" << std::endl;
-        help << std::endl;
-
-        return help.str();
-    }
-};
-
-auto main(int argc, char *argv[]) -> int
+int cli_parser::parse_and_process(int argc, char *argv[])
 {
     /** ************************************************************************
      *
@@ -103,9 +44,7 @@ auto main(int argc, char *argv[]) -> int
     auto subcommand_power_toggle = subcommand_power->add_subcommand("toggle");
 
     subcommand_list->excludes(subcommand_power);
-
     subcommand_power->excludes(subcommand_list);
-    subcommand_power->require_subcommand(1, 1);
 
     /**
      * @brief adding device and socket access options.
@@ -115,7 +54,6 @@ auto main(int argc, char *argv[]) -> int
 
     auto device_group =
         subcommand_power->add_option_group("--device-at-index or --device-with-serial");
-    device_group->required();
 
     size_t device_index = 0;
     auto option_device_index = device_group->add_option("--device-at-index,-i", device_index);
@@ -162,8 +100,8 @@ auto main(int argc, char *argv[]) -> int
         const auto devices = sokketter::devices();
         if (devices.empty())
         {
-            std::cout << "No devices found." << std::endl;
-            return EXIT_SUCCESS;
+            std::cerr << "No devices found." << std::endl;
+            return EXIT_FAILURE;
         }
 
         std::cout << "Available devices:" << std::endl;
@@ -185,6 +123,31 @@ auto main(int argc, char *argv[]) -> int
      ** ***********************************************************************/
     else if (subcommand_power->parsed())
     {
+        /**
+         * @warning --help flag is not being forwarded to application level,
+         * even though a fallthrough is set for all subcommands.
+         * Checking it manually for power and power related subcommands.
+         */
+        if (subcommand_power->count("--help") > 0 || subcommand_power->count("-h") > 0)
+        {
+            std::cout << application.help() << std::endl;
+            return EXIT_SUCCESS;
+        }
+
+        /**
+         * @warning stating device access group as required via CLI11 functionality
+         * does not work as expected. It has a higher precedence than following subcommands,
+         * thus it displays the wrong error message. Checking it manually.
+         */
+        if (option_device_index->count() == 0 && option_device_serial->count() == 0)
+        {
+            std::cerr << "[Option Group: --device-at-index or --device-with-serial] is "
+                         "required."
+                      << std::endl
+                      << "Run with --help for more information." << std::endl;
+            return EXIT_FAILURE;
+        }
+
         std::unique_ptr<sokketter::power_strip> device;
 
         if (option_device_index->count() > 0)
@@ -242,15 +205,18 @@ auto main(int argc, char *argv[]) -> int
             }
         }
 
+        if (!socket_indices.empty())
+        {
+            std::cout << device->to_string() << std::endl;
+        }
+
         for (const auto &socket_index : socket_indices)
         {
-            if (socket_index >= device->sockets().size())
+            if (socket_index == 0 || socket_index >= device->sockets().size())
             {
                 std::cerr << "Socket index " << socket_index << " is out of range." << std::endl;
                 return EXIT_FAILURE;
             }
-
-            std::cout << device->to_string() << std::endl;
 
             const auto &socket = device->sockets().at(socket_index);
 
@@ -281,5 +247,7 @@ auto main(int argc, char *argv[]) -> int
         return EXIT_SUCCESS;
     }
 
+    // LCOV_EXCL_START
     return EXIT_FAILURE;
+    // LCOV_EXCL_STOP
 }

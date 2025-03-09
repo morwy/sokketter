@@ -23,6 +23,17 @@ include(ProjectVersion.cmake)
 include(ConvenienceDefinitions.cmake)
 
 #
+# Tests.
+#
+option(ENABLE_TESTING "Enable testing" OFF)
+option(ENABLE_COVERAGE "Enable coverage reporting" OFF)
+
+#
+# Third-party fetch.
+#
+include(ThirdPartyFetch.cmake)
+
+#
 # Set output folder for binaries.
 #
 set(PROJECT_ROOT_PATH ${CMAKE_CURRENT_LIST_DIR})
