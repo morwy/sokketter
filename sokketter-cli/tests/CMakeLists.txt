@@ -22,7 +22,7 @@ foreach (SOKKETTER_DEPENDENCY IN LISTS SOKKETTER_DEPENDENCIES)
     add_dependencies(${PROJECT_NAME} ${SOKKETTER_DEPENDENCY})
 endforeach()
 
-if(ENABLE_COVERAGE)
+if(ENABLE_COVERAGE AND NOT PLATFORM_OS_WINDOWS)
     message(STATUS "Enabling coverage flags")
 
     target_compile_options(${PROJECT_NAME} PRIVATE --coverage)
