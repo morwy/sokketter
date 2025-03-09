@@ -199,7 +199,12 @@ auto sokketter::device(const size_t &index) -> const std::unique_ptr<sokketter::
 
     if (is_internal_testing_enabled())
     {
-        return std::make_unique<test_device>();
+        if (index == 0)
+        {
+            return std::make_unique<test_device>();
+        }
+
+        return nullptr;
     }
 
     const auto supported_devices = power_strip_factory::supported_devices();
@@ -232,7 +237,12 @@ auto sokketter::device(const std::string &serial_number)
 
     if (is_internal_testing_enabled())
     {
-        return std::make_unique<test_device>();
+        if (serial_number == "TEST_SERIAL_NUMBER")
+        {
+            return std::make_unique<test_device>();
+        }
+
+        return nullptr;
     }
 
     const auto supported_devices = power_strip_factory::supported_devices();
