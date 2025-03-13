@@ -110,8 +110,12 @@ jobs:
     - name: Upload built binaries
       uses: actions/upload-artifact@v4
       with:
-        name: artifacts
-        path: |
-          ${{ steps.strings.outputs.archive-name }}
-          ${{ steps.strings.outputs.sokketter-cli-name }}
+        name: ${{ steps.strings.outputs.archive-name }}
+        path: ${{ steps.strings.outputs.archive-name }}
+  
+    - name: Upload built binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.strings.outputs.sokketter-cli-name }}
+        path: ${{ steps.strings.outputs.sokketter-cli-name }}
   
