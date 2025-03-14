@@ -29,6 +29,6 @@ endforeach()
 #
 # Add tests if available.
 #
-if(ENABLE_TESTING)
+if(SOKKETTER_ENABLE_TESTING)
     add_subdirectory(tests)
 endif()

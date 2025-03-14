@@ -25,8 +25,8 @@ include(ConvenienceDefinitions.cmake)
 #
 # Tests.
 #
-option(ENABLE_TESTING "Enable testing" ON)
-option(ENABLE_COVERAGE "Enable coverage reporting" OFF)
+option(SOKKETTER_ENABLE_TESTING "Enable testing" OFF)
+option(SOKKETTER_ENABLE_COVERAGE "Enable coverage reporting" OFF)
 
 #
 # Third-party fetch.
