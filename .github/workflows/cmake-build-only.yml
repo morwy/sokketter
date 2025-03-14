@@ -102,7 +102,7 @@ jobs:
       uses: andstor/file-existence-action@v3
       if: ${{ !startsWith(matrix.os, 'windows') }}
       with:
-        files: "${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}includes${{ env.path-separator }}*, ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}libs${{ env.path-separator }}*, ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin${{ env.path-separator }}*"
+        files: "${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}include${{ env.path-separator }}*, ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}libs${{ env.path-separator }}*, ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin${{ env.path-separator }}*"
         ignore_case: true
         fail: true
 
