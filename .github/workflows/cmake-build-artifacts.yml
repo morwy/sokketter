@@ -90,14 +90,6 @@ jobs:
         ignore_case: true
         fail: true
 
-    - name: Archive built binaries (Windows-only)
-      if: ${{ startsWith(matrix.os, 'windows') }}
-      run: Compress-Archive -Path ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}include, ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}libs -Destination ${{ steps.strings.outputs.archive-name }}.zip
-  
-    - name: Archive built binaries (non-Windows)
-      if: ${{ !startsWith(matrix.os, 'windows') }}
-      run: cd ${{ steps.strings.outputs.binary-output-dir }} && zip -r ${{ github.workspace }}${{ env.path-separator }}${{ steps.strings.outputs.archive-name }}.zip include libs
-  
     - name: Rename sokketter-cli (Windows-only)
       if: ${{ startsWith(matrix.os, 'windows') }}
       run: mv ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin${{ env.path-separator }}sokketter-cli.exe ${{ github.workspace }}${{ env.path-separator }}${{ steps.strings.outputs.sokketter-cli-name }}.exe
@@ -110,7 +102,9 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ${{ steps.strings.outputs.archive-name }}
-        path: ${{ steps.strings.outputs.archive-name }}.zip
+        path: |
+          ${{ steps.strings.outputs.binary-output-dir }}include
+          ${{ steps.strings.outputs.binary-output-dir }}libs
   
     - name: Upload sokketter-cli (Windows-only)
       if: ${{ startsWith(matrix.os, 'windows') }}
