@@ -18,6 +18,19 @@ endforeach()
 
 add_executable(${PROJECT_NAME} ${PROJECT_FOLDER_FILES})
 
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${SOKKETTER_BINARY_OUTPUT_PATH}
+    LIBRARY_OUTPUT_DIRECTORY ${SOKKETTER_LIBRARY_OUTPUT_PATH}
+    ARCHIVE_OUTPUT_DIRECTORY ${SOKKETTER_LIBRARY_OUTPUT_PATH}
+)
+
+if(PLATFORM_OS_WINDOWS)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND cmd.exe /C "move \"${SOKKETTER_LIBRARY_OUTPUT_PATH}\\*.exe\" \"${SOKKETTER_BINARY_OUTPUT_PATH}\""
+        COMMENT "Copying all executables to binary output directory"
+    )
+endif()
+
 #
 # Link with sokketter dependencies.
 #
@@ -29,6 +42,6 @@ endforeach()
 #
 # Add tests if available.
 #
-if(ENABLE_TESTING)
+if(SOKKETTER_ENABLE_TESTING)
     add_subdirectory(tests)
 endif()

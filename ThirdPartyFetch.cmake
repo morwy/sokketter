@@ -1,4 +1,4 @@
-if(ENABLE_TESTING)
+if(SOKKETTER_ENABLE_TESTING)
     message("Fetching GoogleTest test library.")
 
     include(FetchContent)

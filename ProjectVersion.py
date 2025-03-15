@@ -57,48 +57,48 @@ if __name__ == "__main__":
 
         for line_index, line in enumerate(version_file_lines):
             if args.version_part == "MAJOR":
-                if line.startswith("set(PROJECT_VERSION_MAJOR"):
+                if line.startswith("set(SOKKETTER_VERSION_MAJOR"):
                     version_part = int(
-                        line.replace("set(PROJECT_VERSION_MAJOR", "")
+                        line.replace("set(SOKKETTER_VERSION_MAJOR", "")
                         .replace(")", "")
                         .strip()
                     )
                     incremented_version_part = version_part + 1
                     version_file_lines[line_index] = (
-                        f"set(PROJECT_VERSION_MAJOR {incremented_version_part})\n"
+                        f"set(SOKKETTER_VERSION_MAJOR {incremented_version_part})\n"
                     )
             elif args.version_part == "MINOR":
-                if line.startswith("set(PROJECT_VERSION_MINOR"):
+                if line.startswith("set(SOKKETTER_VERSION_MINOR"):
                     version_part = int(
-                        line.replace("set(PROJECT_VERSION_MINOR", "")
+                        line.replace("set(SOKKETTER_VERSION_MINOR", "")
                         .replace(")", "")
                         .strip()
                     )
                     incremented_version_part = version_part + 1
                     version_file_lines[line_index] = (
-                        f"set(PROJECT_VERSION_MINOR {incremented_version_part})\n"
+                        f"set(SOKKETTER_VERSION_MINOR {incremented_version_part})\n"
                     )
             elif args.version_part == "MICRO":
-                if line.startswith("set(PROJECT_VERSION_MICRO"):
+                if line.startswith("set(SOKKETTER_VERSION_MICRO"):
                     version_part = int(
-                        line.replace("set(PROJECT_VERSION_MICRO", "")
+                        line.replace("set(SOKKETTER_VERSION_MICRO", "")
                         .replace(")", "")
                         .strip()
                     )
                     incremented_version_part = version_part + 1
                     version_file_lines[line_index] = (
-                        f"set(PROJECT_VERSION_MICRO {incremented_version_part})\n"
+                        f"set(SOKKETTER_VERSION_MICRO {incremented_version_part})\n"
                     )
             elif args.version_part == "NANO":
-                if line.startswith("set(PROJECT_VERSION_NANO"):
+                if line.startswith("set(SOKKETTER_VERSION_NANO"):
                     version_part = int(
-                        line.replace("set(PROJECT_VERSION_NANO", "")
+                        line.replace("set(SOKKETTER_VERSION_NANO", "")
                         .replace(")", "")
                         .strip()
                     )
                     incremented_version_part = version_part + 1
                     version_file_lines[line_index] = (
-                        f"set(PROJECT_VERSION_NANO {incremented_version_part})\n"
+                        f"set(SOKKETTER_VERSION_NANO {incremented_version_part})\n"
                     )
 
         with open(file=version_filepath, mode="w", encoding="utf-8") as version_file:
@@ -120,30 +120,30 @@ if __name__ == "__main__":
         version_nano = 0
 
         for line_index, line in enumerate(version_file_lines):
-            if line.startswith("set(PROJECT_VERSION_MAJOR"):
+            if line.startswith("set(SOKKETTER_VERSION_MAJOR"):
                 version_major = int(
-                    line.replace("set(PROJECT_VERSION_MAJOR", "")
+                    line.replace("set(SOKKETTER_VERSION_MAJOR", "")
                     .replace(")", "")
                     .strip()
                 )
 
-            elif line.startswith("set(PROJECT_VERSION_MINOR"):
+            elif line.startswith("set(SOKKETTER_VERSION_MINOR"):
                 version_minor = int(
-                    line.replace("set(PROJECT_VERSION_MINOR", "")
+                    line.replace("set(SOKKETTER_VERSION_MINOR", "")
                     .replace(")", "")
                     .strip()
                 )
 
-            elif line.startswith("set(PROJECT_VERSION_MICRO"):
+            elif line.startswith("set(SOKKETTER_VERSION_MICRO"):
                 version_micro = int(
-                    line.replace("set(PROJECT_VERSION_MICRO", "")
+                    line.replace("set(SOKKETTER_VERSION_MICRO", "")
                     .replace(")", "")
                     .strip()
                 )
 
-            elif line.startswith("set(PROJECT_VERSION_NANO"):
+            elif line.startswith("set(SOKKETTER_VERSION_NANO"):
                 version_nano = int(
-                    line.replace("set(PROJECT_VERSION_NANO", "")
+                    line.replace("set(SOKKETTER_VERSION_NANO", "")
                     .replace(")", "")
                     .strip()
                 )
