@@ -204,7 +204,15 @@ jobs:
         name: ${{ steps.strings.outputs.archive-name }}
         path: ${{ steps.strings.outputs.archive-name }}
   
-    - name: Upload sokketter-cli
+    - name: Upload sokketter-cli (Windows-only)
+      if: ${{ startsWith(matrix.os, 'windows') }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.strings.outputs.sokketter-cli-name }}
+        path: ${{ steps.strings.outputs.sokketter-cli-name }}.exe
+  
+    - name: Upload sokketter-cli (non-Windows)
+      if: ${{ !startsWith(matrix.os, 'windows') }}
       uses: actions/upload-artifact@v4
       with:
         name: ${{ steps.strings.outputs.sokketter-cli-name }}
