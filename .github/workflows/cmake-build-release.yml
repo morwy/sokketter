@@ -152,7 +152,7 @@ jobs:
         echo "build-output-dir=${{ github.workspace }}${{ env.path-separator }}build" >> "$GITHUB_OUTPUT"
         echo "binary-output-dir=${{ github.workspace }}${{ env.path-separator }}bin${{ env.path-separator }}${{ (startsWith(matrix.os, 'ubuntu') && 'linux') || (startsWith(matrix.os, 'windows') && 'windows') || (startsWith(matrix.os, 'macos') && 'macos') || '' }}_${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86_64' }}${{ env.path-separator }}${{ matrix.build_type }}" >> "$GITHUB_OUTPUT"
         echo "archive-name=libsokketter-${{ needs.increment-version.outputs.NEW_TAG_NAME }}-${{ matrix.os }}-${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86-64' }}" >> "$GITHUB_OUTPUT"
-        echo "sokketter-cli-name=sokketter-cli-$CURRENT_VERSION-${{ matrix.os }}-${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86-64' }}" >> "$GITHUB_OUTPUT"
+        echo "sokketter-cli-name=sokketter-cli-${{ needs.increment-version.outputs.NEW_TAG_NAME }}-${{ matrix.os }}-${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86-64' }}" >> "$GITHUB_OUTPUT"
 
     - name: Install dependencies (Ubuntu-only)
       run: |
@@ -182,6 +182,14 @@ jobs:
         ignore_case: true
         fail: true
 
+    - name: Archive built binaries (Windows-only)
+      if: ${{ startsWith(matrix.os, 'windows') }}
+      run: Compress-Archive -Path ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}include, ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}libs -Destination ${{ steps.strings.outputs.archive-name }}.zip
+  
+    - name: Archive built binaries (non-Windows)
+      if: ${{ !startsWith(matrix.os, 'windows') }}
+      run: cd ${{ steps.strings.outputs.binary-output-dir }} && zip -r ${{ github.workspace }}${{ env.path-separator }}${{ steps.strings.outputs.archive-name }}.zip include libs
+
     - name: Rename sokketter-cli (Windows-only)
       if: ${{ startsWith(matrix.os, 'windows') }}
       run: mv ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin${{ env.path-separator }}sokketter-cli.exe ${{ github.workspace }}${{ env.path-separator }}${{ steps.strings.outputs.sokketter-cli-name }}.exe
@@ -194,16 +202,14 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ${{ steps.strings.outputs.archive-name }}
-        path: |
-          ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}include
-          ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}libs
+        path: "${{ github.workspace }}${{ env.path-separator }}*.zip"
   
     - name: Upload sokketter-cli (Windows-only)
       if: ${{ startsWith(matrix.os, 'windows') }}
       uses: actions/upload-artifact@v4
       with:
         name: ${{ steps.strings.outputs.sokketter-cli-name }}
-        path: ${{ steps.strings.outputs.sokketter-cli-name }}.exe
+        path: "${{ steps.strings.outputs.sokketter-cli-name }}.exe"
   
     - name: Upload sokketter-cli (non-Windows)
       if: ${{ !startsWith(matrix.os, 'windows') }}
@@ -233,4 +239,4 @@ jobs:
       with:
         body: "${{ needs.increment-version.outputs.RELEASE_ENTRY_TEXT }}"
         tag: "v${{ needs.increment-version.outputs.NEW_TAG_NAME }}"
-        artifacts: "*.zip"
+        artifacts: "*"
