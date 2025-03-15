@@ -1,25 +1,5 @@
 # Changelog
 
-## [1.1.0] - 2025-03-15
-
-### 🚀 Features
-
-- Added an application that provides CLI access to libsokketter. (#2)
-- Added tests for sokketter-cli application. (#3)
-
-### 🐛 Bug Fixes
-
-- Returning EXIT_SUCCESS in case when no devices were found.
-
-### ⚙️ Miscellaneous Tasks
-
-- Renamed IncrementProjectVersion to ProjectVersion.
-- Added an action for building artifacts only.
-- Renamed the action.
-- Corrected build artifacts action.
-- Excluded libsokketter-test-app from compilation.
-- Proper independent packaging for libsokketter and sokketter-cli. (#4)
-
 ## [1.0.0] - 2025-01-19
 
 ### 🚀 Features
