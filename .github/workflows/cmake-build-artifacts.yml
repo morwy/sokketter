@@ -103,8 +103,8 @@ jobs:
       with:
         name: ${{ steps.strings.outputs.archive-name }}
         path: |
-          ${{ steps.strings.outputs.binary-output-dir }}include
-          ${{ steps.strings.outputs.binary-output-dir }}libs
+          ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}include
+          ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}libs
   
     - name: Upload sokketter-cli (Windows-only)
       if: ${{ startsWith(matrix.os, 'windows') }}
