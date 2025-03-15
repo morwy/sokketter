@@ -26,7 +26,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 if(PLATFORM_OS_WINDOWS)
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SOKKETTER_LIBRARY_OUTPUT_PATH}/*.exe ${SOKKETTER_BINARY_OUTPUT_PATH}
+        COMMAND cmd.exe /C "xcopy /Y /E /I \"${SOKKETTER_LIBRARY_OUTPUT_PATH}\\*.exe\" \"${SOKKETTER_BINARY_OUTPUT_PATH}\""
         COMMENT "Copying all executables to binary output directory"
     )
 endif()
