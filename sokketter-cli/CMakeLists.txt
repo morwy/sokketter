@@ -24,6 +24,13 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY ${SOKKETTER_LIBRARY_OUTPUT_PATH}
 )
 
+if(PLATFORM_OS_WINDOWS)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SOKKETTER_LIBRARY_OUTPUT_PATH}/*.exe ${SOKKETTER_BINARY_OUTPUT_PATH}
+        COMMENT "Copying all executables to binary output directory"
+    )
+endif()
+
 #
 # Link with sokketter dependencies.
 #
