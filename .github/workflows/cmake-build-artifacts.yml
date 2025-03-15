@@ -92,7 +92,7 @@ jobs:
 
     - name: Archive built binaries (Windows-only)
       if: ${{ startsWith(matrix.os, 'windows') }}
-      run: Compress-Archive -Path ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}include ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}libs -Destination ${{ steps.strings.outputs.archive-name }}
+      run: Compress-Archive -Path ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}include, ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}libs -Destination ${{ steps.strings.outputs.archive-name }}
   
     - name: Archive built binaries (non-Windows)
       if: ${{ !startsWith(matrix.os, 'windows') }}
