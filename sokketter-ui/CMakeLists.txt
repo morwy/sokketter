@@ -11,15 +11,18 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/sources)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../libsokketter/include)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../third-party)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/../third-party/SlidingStackedWidget)
 
 #
 # Add source files recursively.
 #
-set(FILE_EXTENSIONS *.h *.hpp *.c *.cpp *.ui)
+set(FILE_EXTENSIONS *.h *.hpp *.c *.cpp *.ui *.qrc)
 foreach(FILE_EXTENSION IN LISTS FILE_EXTENSIONS)
-    file (GLOB_RECURSE FOUND_FILES ${CMAKE_CURRENT_SOURCE_DIR}/sources/${FILE_EXTENSION})
+    file (GLOB_RECURSE FOUND_FILES ${CMAKE_CURRENT_SOURCE_DIR}/${FILE_EXTENSION})
     set(PROJECT_FOLDER_FILES ${PROJECT_FOLDER_FILES} ${FOUND_FILES})
 endforeach()
+
+set(PROJECT_FOLDER_FILES ${PROJECT_FOLDER_FILES} ${CMAKE_CURRENT_LIST_DIR}/../third-party/SlidingStackedWidget/SlidingStackedWidget.h ${CMAKE_CURRENT_LIST_DIR}/../third-party/SlidingStackedWidget/SlidingStackedWidget.cpp)
 
 add_executable(${PROJECT_NAME} ${PROJECT_FOLDER_FILES})
 

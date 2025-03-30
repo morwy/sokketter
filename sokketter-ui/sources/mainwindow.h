@@ -3,6 +3,9 @@
 
 #pragma once
 
+#include <libsokketter.h>
+
+#include <QListWidget>
 #include <QMainWindow>
 
 QT_BEGIN_NAMESPACE
@@ -19,8 +22,15 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+private slots:
+    auto on_power_strip_clicked(QListWidgetItem *item) -> void;
+    auto on_socket_clicked(QListWidgetItem *item) -> void;
+
 private:
-    Ui::MainWindow *ui;
+    Ui::MainWindow *m_ui;
+
+    auto repopulate_device_list() -> void;
+    auto repopulate_socket_list(const sokketter::power_strip_configuration &configuration) -> void;
 };
 
 #endif // MAINWINDOW_H

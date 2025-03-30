@@ -1,14 +1,138 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+#include <power_strip_list_item.h>
+#include <socket_list_item.h>
+
+#include <QListWidgetItem>
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
+    , m_ui(new Ui::MainWindow)
 {
-    ui->setupUi(this);
+    m_ui->setupUi(this);
+
+    /**
+     * @brief set the background of the list widgets to transparent.
+     */
+    m_ui->power_strip_list_widget->setStyleSheet("background: transparent;");
+    m_ui->socket_list_widget->setStyleSheet("background: transparent;");
+
+    /**
+     * @brief set power strip list page as the default page.
+     */
+    const int &index = m_ui->stackedWidget->indexOf(m_ui->power_strip_list_widget);
+    m_ui->stackedWidget->setCurrentIndex(index);
+
+    /**
+     * @brief connect the signal to the slot.
+     */
+    QObject::connect(m_ui->power_strip_list_widget, &QListWidget::itemClicked, this,
+        &MainWindow::on_power_strip_clicked);
+
+    QObject::connect(
+        m_ui->socket_list_widget, &QListWidget::itemClicked, this, &MainWindow::on_socket_clicked);
+
+    QObject::connect(m_ui->socket_list_back_button, &QPushButton::clicked, [this]() {
+        const int &index = m_ui->stackedWidget->indexOf(m_ui->power_strip_list_page);
+        m_ui->stackedWidget->slideInIdx(index);
+    });
+
+    repopulate_device_list();
 }
 
 MainWindow::~MainWindow()
 {
-    delete ui;
+    delete m_ui;
+}
+
+auto MainWindow::on_power_strip_clicked(QListWidgetItem *item) -> void
+{
+    const int &index = m_ui->stackedWidget->indexOf(m_ui->socket_list_page);
+    m_ui->stackedWidget->slideInIdx(index);
+
+    const auto &configuration =
+        dynamic_cast<power_strip_list_item *>(m_ui->power_strip_list_widget->itemWidget(item))
+            ->configuration();
+
+    repopulate_socket_list(configuration);
+}
+
+auto MainWindow::on_socket_clicked(QListWidgetItem *item) -> void
+{
+    auto socket_item = dynamic_cast<socket_list_item *>(m_ui->socket_list_widget->itemWidget(item));
+    if (socket_item == nullptr)
+    {
+        return;
+    }
+
+    const auto &power_strip_configuration = socket_item->power_strip_configuration();
+
+    const auto &device = sokketter::device(power_strip_configuration.id);
+    if (device == nullptr)
+    {
+        return;
+    }
+
+    const size_t &index = m_ui->socket_list_widget->row(item);
+
+    const auto &socket_opt = device->socket(index);
+    if (!socket_opt.has_value())
+    {
+        return;
+    }
+
+    const auto& socket = socket_opt->get();
+    if (!socket.toggle())
+    {
+        return;
+    }
+
+    socket_item->set_state(socket.is_powered_on());
+}
+
+auto MainWindow::repopulate_device_list() -> void
+{
+    while (m_ui->power_strip_list_widget->count() > 0)
+    {
+        m_ui->power_strip_list_widget->takeItem(0);
+    }
+
+    const auto &power_strips = sokketter::devices();
+    for (const auto &power_strip : power_strips)
+    {
+        power_strip_list_item *power_strip_item =
+            new power_strip_list_item(power_strip->configuration());
+        QListWidgetItem *item = new QListWidgetItem();
+        item->setSizeHint(power_strip_item->sizeHint());
+        m_ui->power_strip_list_widget->addItem(item);
+        m_ui->power_strip_list_widget->setItemWidget(item, power_strip_item);
+    }
+}
+
+auto MainWindow::repopulate_socket_list(const sokketter::power_strip_configuration &configuration)
+    -> void
+{
+    while (m_ui->socket_list_widget->count() > 0)
+    {
+        m_ui->socket_list_widget->takeItem(0);
+    }
+
+    const auto &device = sokketter::device(configuration.id);
+    if (device == nullptr)
+    {
+        return;
+    }
+
+    const auto &sockets = device->sockets();
+    for (const auto &socket : sockets)
+    {
+        socket_list_item *socket_item = new socket_list_item(configuration, socket.configuration());
+        socket_item->set_state(socket.is_powered_on());
+
+        QListWidgetItem *item = new QListWidgetItem();
+        item->setSizeHint(socket_item->sizeHint());
+        m_ui->socket_list_widget->addItem(item);
+        m_ui->socket_list_widget->setItemWidget(item, socket_item);
+    }
 }
