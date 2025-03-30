@@ -111,6 +111,12 @@ namespace sokketter {
         auto power(const bool &on) const noexcept -> bool;
 
         /**
+         * @brief toggles the socket state.
+         * @return true in case of success, false in case of any failure.
+         */
+        auto toggle() const noexcept -> bool;
+
+        /**
          * @brief gets current socket state.
          * @return true if powered on, false if powered off.
          */

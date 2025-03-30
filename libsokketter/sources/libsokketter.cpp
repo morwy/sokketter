@@ -94,6 +94,18 @@ bool sokketter::socket::power(const bool &on) const noexcept
     return m_power_cb(m_index, on);
 }
 
+auto sokketter::socket::toggle() const noexcept -> bool
+{
+    if (m_power_cb == nullptr)
+    {
+        return false;
+    }
+
+    const bool powered_on = is_powered_on();
+
+    return m_power_cb(m_index, !powered_on);
+}
+
 auto sokketter::socket::is_powered_on() const noexcept -> bool
 {
     if (m_status_cb == nullptr)
