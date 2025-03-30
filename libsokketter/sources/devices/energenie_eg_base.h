@@ -13,6 +13,9 @@ public:
 
     [[nodiscard]] auto sockets() -> const std::vector<sokketter::socket> & override;
 
+    [[nodiscard]] auto socket(const size_t &index)
+        -> const std::optional<std::reference_wrapper<sokketter::socket>> override;
+
 protected:
     std::vector<sokketter::socket> m_sockets;
     std::string m_serial_number = "";
