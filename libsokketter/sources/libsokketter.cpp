@@ -84,7 +84,7 @@ auto sokketter::socket::configure(const socket_configuration &configuration) -> 
     m_configuration = configuration;
 }
 
-bool sokketter::socket::power(const bool &on) const noexcept
+auto sokketter::socket::power(const bool &on) const noexcept -> bool
 {
     if (m_power_cb == nullptr)
     {
