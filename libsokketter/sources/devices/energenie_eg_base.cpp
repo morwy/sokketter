@@ -46,6 +46,17 @@ auto energenie_eg_base::sockets() -> const std::vector<sokketter::socket> &
     return m_sockets;
 }
 
+auto energenie_eg_base::socket(const size_t &index)
+    -> const std::optional<std::reference_wrapper<sokketter::socket>>
+{
+    if (index >= m_sockets.size())
+    {
+        return std::nullopt;
+    }
+
+    return m_sockets[index];
+}
+
 auto energenie_eg_base::power_socket(size_t index, bool is_toggled) -> bool
 {
     kommpot::control_transfer_configuration configuration;

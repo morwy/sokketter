@@ -215,6 +215,15 @@ namespace sokketter {
         [[nodiscard]] virtual auto sockets() -> const std::vector<socket> & = 0;
 
         /**
+         * @brief gets a specific socket controlled by the power strip.
+         * @param index of the socket.
+         * @return socket object as std::optional in case of success, std::nullopt in case of
+         * failure.
+         */
+        [[nodiscard]] virtual auto socket(const size_t &index)
+            -> const std::optional<std::reference_wrapper<socket>> = 0;
+
+        /**
          * @brief creates string based on power strip parameters
          * @return string in format "POWER_STRIP_NAME (TYPE, ID, located at ADDRESS)".
          */
