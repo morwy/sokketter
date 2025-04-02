@@ -58,7 +58,7 @@
            <bool>false</bool>
           </property>
           <property name="resizeMode">
-           <enum>QListView::Fixed</enum>
+           <enum>QListView::Adjust</enum>
           </property>
           <property name="itemAlignment">
            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>

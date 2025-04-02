@@ -82,7 +82,7 @@ auto MainWindow::on_socket_clicked(QListWidgetItem *item) -> void
         return;
     }
 
-    const auto& socket = socket_opt->get();
+    const auto &socket = socket_opt->get();
     if (!socket.toggle())
     {
         return;
@@ -101,10 +101,12 @@ auto MainWindow::repopulate_device_list() -> void
     const auto &power_strips = sokketter::devices();
     for (const auto &power_strip : power_strips)
     {
-        power_strip_list_item *power_strip_item =
-            new power_strip_list_item(power_strip->configuration());
-        QListWidgetItem *item = new QListWidgetItem();
-        item->setSizeHint(power_strip_item->sizeHint());
+        auto *power_strip_item = new power_strip_list_item(power_strip->configuration());
+        power_strip_item->set_state(power_strip->is_connected());
+
+        auto *item = new QListWidgetItem();
+        const auto &size_hint = power_strip_item->sizeHint();
+        item->setSizeHint(size_hint);
         m_ui->power_strip_list_widget->addItem(item);
         m_ui->power_strip_list_widget->setItemWidget(item, power_strip_item);
     }
@@ -127,11 +129,12 @@ auto MainWindow::repopulate_socket_list(const sokketter::power_strip_configurati
     const auto &sockets = device->sockets();
     for (const auto &socket : sockets)
     {
-        socket_list_item *socket_item = new socket_list_item(configuration, socket.configuration());
+        auto *socket_item = new socket_list_item(configuration, socket.configuration());
         socket_item->set_state(socket.is_powered_on());
 
-        QListWidgetItem *item = new QListWidgetItem();
-        item->setSizeHint(socket_item->sizeHint());
+        auto *item = new QListWidgetItem();
+        const auto &size_hint = socket_item->sizeHint();
+        item->setSizeHint(size_hint);
         m_ui->socket_list_widget->addItem(item);
         m_ui->socket_list_widget->setItemWidget(item, socket_item);
     }

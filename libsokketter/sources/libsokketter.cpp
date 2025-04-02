@@ -122,7 +122,7 @@ auto sokketter::socket::to_string() const noexcept -> std::string
            std::string(is_powered_on() ? "on" : "off");
 }
 
-std::string sokketter::power_strip_type_to_string(const power_strip_type &type)
+auto sokketter::power_strip_type_to_string(const power_strip_type &type) -> std::string
 {
     switch (type)
     {
