@@ -22,6 +22,8 @@ public:
 
     auto configuration() const -> const sokketter::power_strip_configuration &;
 
+    auto set_state(const bool is_on) const -> void;
+
 private:
     Ui::power_strip_list_item *m_ui;
     const sokketter::power_strip_configuration m_configuration;

@@ -155,7 +155,7 @@ namespace sokketter {
      * @param type of power strip.
      * @return string.
      */
-    static auto power_strip_type_to_string(const power_strip_type &type) -> std::string;
+    auto EXPORTED power_strip_type_to_string(const power_strip_type &type) -> std::string;
 
     /**
      * @brief structure containing configuration parameters of the specific power strip.
