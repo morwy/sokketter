@@ -13,6 +13,11 @@ MainWindow::MainWindow(QWidget *parent)
     m_ui->setupUi(this);
 
     /**
+     * @brief set the speed of the sliding stacked widget to 500 ms.
+     */
+    m_ui->stackedWidget->setSpeed(500);
+
+    /**
      * @brief set the background of the list widgets to transparent.
      */
     m_ui->power_strip_list_widget->setStyleSheet("background: transparent;");
