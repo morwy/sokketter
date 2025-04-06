@@ -34,5 +34,6 @@ auto power_strip_list_item::configuration() const -> const sokketter::power_stri
 
 void power_strip_list_item::set_state(const bool is_on) const
 {
-    m_ui->status_label->setText(is_on ? "on" : "off");
+    m_ui->status_label->setState(is_on);
+    m_ui->status_label->setToolTip(is_on ? tr("connected") : tr("disconnected"));
 }
