@@ -126,10 +126,13 @@ auto MainWindow::repopulate_socket_list(const sokketter::power_strip_configurati
         return;
     }
 
+    size_t socket_index = 1;
+
     const auto &sockets = device->sockets();
     for (const auto &socket : sockets)
     {
-        auto *socket_item = new socket_list_item(configuration, socket.configuration());
+        auto *socket_item =
+            new socket_list_item(configuration, socket.configuration(), socket_index);
         socket_item->set_state(socket.is_powered_on());
 
         auto *item = new QListWidgetItem();
@@ -137,5 +140,7 @@ auto MainWindow::repopulate_socket_list(const sokketter::power_strip_configurati
         item->setSizeHint(size_hint);
         m_ui->socket_list_widget->addItem(item);
         m_ui->socket_list_widget->setItemWidget(item, socket_item);
+
+        socket_index++;
     }
 }

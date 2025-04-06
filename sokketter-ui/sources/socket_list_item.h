@@ -17,7 +17,8 @@ class socket_list_item : public QWidget
 
 public:
     explicit socket_list_item(const sokketter::power_strip_configuration &power_strip,
-        const sokketter::socket_configuration &socket, QWidget *parent = nullptr);
+        const sokketter::socket_configuration &socket, const size_t &socket_index,
+        QWidget *parent = nullptr);
     ~socket_list_item();
 
     auto power_strip_configuration() const -> const sokketter::power_strip_configuration &;
@@ -29,6 +30,7 @@ private:
     Ui::socket_list_item *m_ui;
     const sokketter::power_strip_configuration m_power_strip;
     const sokketter::socket_configuration m_socket;
+    const size_t m_socket_index;
 };
 
 #endif // SOCKET_LIST_ITEM_H
