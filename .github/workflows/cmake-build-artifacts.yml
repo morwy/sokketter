@@ -100,11 +100,12 @@ jobs:
       if: ${{ startsWith(matrix.os, 'macos') }}
       run: |
         cd ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin
+        mv sokketter-ui.app ${{ steps.strings.outputs.sokketter-ui-name }}.app
         APP_PATH=$(find . -name "*.app" -type d | head -n 1)
-        echo "App path found: $APP_PATH"
-        macdeployqt "$APP_PATH"
         APP_NAME=$(find . -name "*.app" -type d | head -n 1 | xargs basename)
+        echo "App path found: $APP_PATH"
         echo "App name found: $APP_NAME"
+        macdeployqt "$APP_PATH"
         zip -r sokketter-ui.zip "${APP_NAME}"
 
     - name: Rename sokketter-cli (Windows-only)
