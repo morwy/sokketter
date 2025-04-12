@@ -69,7 +69,7 @@ jobs:
       run: |
         sudo apt update
         sudo apt install libudev-dev ninja-build wget
-        wget -c https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-x86_64.AppImage
+        wget -c https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage 
         chmod +x linuxdeployqt-x86_64.AppImage
 
     - name: Install Qt6 dependencies
