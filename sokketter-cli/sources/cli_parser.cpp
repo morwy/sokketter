@@ -212,13 +212,16 @@ int cli_parser::parse_and_process(int argc, char *argv[])
 
         for (const auto &socket_index : socket_indices)
         {
-            if (socket_index == 0 || socket_index >= device->sockets().size())
+            if (socket_index == 0 || socket_index > device->sockets().size())
             {
                 std::cerr << "Socket index " << socket_index << " is out of range." << std::endl;
                 return EXIT_FAILURE;
             }
 
-            const auto &socket = device->sockets().at(socket_index);
+            /**
+             * @attention decrement CLI socket index to match the vector index.
+             */
+            const auto &socket = device->sockets().at(socket_index - 1);
 
             if (subcommand_power_status->parsed())
             {
