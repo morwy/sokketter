@@ -38,21 +38,22 @@ public:
         help << std::endl;
 
         help << "  Subcommands:" << std::endl;
-        help << "    status\t\tStates current power state of the socket(s)." << std::endl;
+        help << "    status\tStates current power state of the socket(s)." << std::endl;
         help << "    on\t\tTurns power on the socket(s)." << std::endl;
         help << "    off\t\tTurns power off the socket(s)." << std::endl;
-        help << "    toggle\t\tToggles power state of the socket(s)." << std::endl;
+        help << "    toggle\tToggles power state of the socket(s)." << std::endl;
         help << std::endl;
 
         help << "  Options:" << std::endl;
-        help << "    -i,--device-at-index UINT\tStates which power strip to use by its index. "
+        help << "    -i,--device-at-index UINT\t\tStates which power strip to use by its index. "
                 "Excludes --device-with-serial option."
              << std::endl;
         help << "    -n,--device-with-serial TEXT\tStates which power strip to use by its serial "
                 "number. Excludes --device-at-index option."
              << std::endl;
-        help << "    -s,--sockets UINT ...\tStates one or multiple socket(s) indices. Empty option "
-                "means that subcommand will apply to all available sockets."
+        help << "    -s,--sockets UINT ...\t\tStates one or multiple socket(s) indices. Empty "
+                "option means that subcommand will apply\n\t\t\t\t\tto all available sockets. Indices start "
+                "from 1 to be in accordance with physical markings\n\t\t\t\t\ton the device."
              << std::endl;
         help << std::endl;
 
