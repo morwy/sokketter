@@ -68,7 +68,7 @@ jobs:
       if: ${{ startsWith(matrix.os, 'ubuntu') }}
       run: |
         sudo apt update
-        sudo apt install libudev-dev ninja-build wget
+        sudo apt install libudev-dev ninja-build wget libxcb1 libxcb-cursor0 libxcb-xinerama0 libxcb-xfixes0 libxcb-image0
         wget -c https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage
         chmod +x linuxdeployqt-continuous-x86_64.AppImage
 
