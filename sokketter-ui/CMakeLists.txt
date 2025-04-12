@@ -5,6 +5,10 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
+if(PLATFORM_OS_MACOS)
+    set(MACOSX_BUNDLE TRUE)
+endif()
+
 find_package(Threads REQUIRED)
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
@@ -17,17 +21,32 @@ include_directories(${CMAKE_CURRENT_LIST_DIR}/../third-party/SlidingStackedWidge
 #
 # Add source files recursively.
 #
-set(FILE_EXTENSIONS *.h *.hpp *.c *.cpp *.mm *.ui *.qrc)
+set(FILE_EXTENSIONS *.h *.hpp *.c *.cpp *.ui *.qrc)
+
+if(PLATFORM_OS_MACOS)
+    #
+    # Add Objective-C files for MacOS separately.
+    #
+    list(APPEND FILE_EXTENSIONS *.mm)
+endif()
+
 foreach(FILE_EXTENSION IN LISTS FILE_EXTENSIONS)
     file (GLOB_RECURSE FOUND_FILES ${CMAKE_CURRENT_SOURCE_DIR}/${FILE_EXTENSION})
     set(PROJECT_FOLDER_FILES ${PROJECT_FOLDER_FILES} ${FOUND_FILES})
 endforeach()
 
+#
+# Add third-party classes.
+#
 set(PROJECT_FOLDER_FILES ${PROJECT_FOLDER_FILES} ${CMAKE_CURRENT_LIST_DIR}/../third-party/QLedLabel/QLedLabel.h ${CMAKE_CURRENT_LIST_DIR}/../third-party/QLedLabel/QLedLabel.cpp)
-
 set(PROJECT_FOLDER_FILES ${PROJECT_FOLDER_FILES} ${CMAKE_CURRENT_LIST_DIR}/../third-party/SlidingStackedWidget/SlidingStackedWidget.h ${CMAKE_CURRENT_LIST_DIR}/../third-party/SlidingStackedWidget/SlidingStackedWidget.cpp)
 
-add_executable(${PROJECT_NAME} ${PROJECT_FOLDER_FILES})
+
+if(PLATFORM_OS_MACOS)
+    add_executable(${PROJECT_NAME} MACOSX_BUNDLE ${PROJECT_FOLDER_FILES})
+else()
+    add_executable(${PROJECT_NAME} ${PROJECT_FOLDER_FILES})
+endif()
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${SOKKETTER_BINARY_OUTPUT_PATH}
