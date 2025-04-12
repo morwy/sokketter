@@ -69,8 +69,8 @@ jobs:
       run: |
         sudo apt update
         sudo apt install libudev-dev ninja-build wget
-        wget -c https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage 
-        chmod +x linuxdeployqt-x86_64.AppImage
+        wget -c https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage
+        chmod +x linuxdeployqt-continuous-x86_64.AppImage
 
     - name: Install Qt6 dependencies
       uses: jurplel/install-qt-action@v3
@@ -109,7 +109,7 @@ jobs:
         cp sokketter-ui-icon.png ${{ steps.strings.outputs.sokketter-ui-name }}/
         sed -i '/^Version=/c\Version=${{ steps.strings.outputs.release-version }}' ${{ steps.strings.outputs.sokketter-ui-name }}/sokketter-ui.desktop
         sed -i '/^X-AppImage-Version=/c\X-AppImage-Version=${{ steps.strings.outputs.release-version }}' ${{ steps.strings.outputs.sokketter-ui-name }}/sokketter-ui.desktop
-        ./linuxdeployqt-x86_64.AppImage ${{ steps.strings.outputs.sokketter-ui-name }}/usr/bin/sokketter-ui -appimage \
+        ./linuxdeployqt-continuous-x86_64.AppImage ${{ steps.strings.outputs.sokketter-ui-name }}/usr/bin/sokketter-ui -appimage \
           -executable=${{ steps.strings.outputs.sokketter-ui-name }}/usr/bin/sokketter-ui \
           -desktop-file=${{ steps.strings.outputs.sokketter-ui-name }}/sokketter-ui.desktop \
           -icon-file=${{ steps.strings.outputs.sokketter-ui-name }}/sokketter-ui-icon.png \
