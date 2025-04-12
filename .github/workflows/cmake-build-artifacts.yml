@@ -99,10 +99,10 @@ jobs:
     - name: Deploy with macdeployqt (MacOS-only)
       if: ${{ startsWith(matrix.os, 'macos') }}
       run: |
-        cd ${{ steps.strings.outputs.binary-output-dir }}
+        cd ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin
         APP_PATH=$(find . -name "*.app" -type d | head -n 1)
         echo "App path found: $APP_PATH"
-        macdeployqt -verbose=3 "$APP_PATH"
+        macdeployqt "$APP_PATH"
 
         if [ ! -d "*.app" ]; then
           echo "Error: No .app file found!"
