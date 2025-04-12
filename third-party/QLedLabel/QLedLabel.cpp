@@ -4,7 +4,7 @@
  * @link https://forum.qt.io/topic/101648/how-to-create-simply-virtual-led-indicator/2?_=1743619030242&lang=en-US
  */
 
-#include "qledlabel.h"
+#include "QLedLabel.h"
 
 #include <QDebug>
 
