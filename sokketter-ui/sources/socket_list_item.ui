@@ -52,8 +52,32 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
+     <property name="minimumSize">
+      <size>
+       <width>58</width>
+       <height>58</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>58</width>
+       <height>58</height>
+      </size>
+     </property>
      <property name="text">
-      <string>TextLabel</string>
+      <string/>
+     </property>
+     <property name="pixmap">
+      <pixmap resource="../resources/resources.qrc">:/icons/socket_icon_black.png</pixmap>
+     </property>
+     <property name="scaledContents">
+      <bool>true</bool>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+     <property name="textInteractionFlags">
+      <set>Qt::NoTextInteraction</set>
      </property>
     </widget>
    </item>
@@ -160,6 +184,8 @@
    <header location="global">QLedLabel.h</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="../resources/resources.qrc"/>
+ </resources>
  <connections/>
 </ui>

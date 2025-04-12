@@ -27,6 +27,10 @@ public:
 private:
     Ui::power_strip_list_item *m_ui;
     const sokketter::power_strip_configuration m_configuration;
+
+    auto event(QEvent *event) -> bool override;
+    auto isDarkMode() const -> bool;
+    auto setThemeAccordingToMode() -> void;
 };
 
 #endif // POWER_STRIP_LIST_ITEM_H

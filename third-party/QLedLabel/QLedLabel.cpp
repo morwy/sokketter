@@ -22,14 +22,12 @@ static const QString orangeSS = QString(
 QLedLabel::QLedLabel(QWidget *parent)
     : QLabel(parent)
 {
-    // Set to ok by default
     setState(StateOk);
     setFixedSize(SIZE, SIZE);
 }
 
 void QLedLabel::setState(State state)
 {
-    qDebug() << "setState" << state;
     switch (state)
     {
     default:
