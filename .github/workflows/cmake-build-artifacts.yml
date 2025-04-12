@@ -69,15 +69,10 @@ jobs:
         sudo apt update
         sudo apt install libudev-dev ninja-build
 
-    - name: Install dependencies (MacOS-only)
+    - name: Install Qt6 dependencies
       uses: jurplel/install-qt-action@v3
-      if: ${{ startsWith(matrix.os, 'macos') }}
       with:
-        version: '6.5.3'
-        host: 'mac'
-        target: 'desktop'
-        arch: 'clang_64'
-        modules: 'qtbase qttools'
+        version: '6.5.*'
 
     - name: Configure CMake for static libraries
       run: |
