@@ -31,6 +31,10 @@ private:
     const sokketter::power_strip_configuration m_power_strip;
     const sokketter::socket_configuration m_socket;
     const size_t m_socket_index;
+
+    auto event(QEvent *event) -> bool override;
+    auto isDarkMode() const -> bool;
+    auto setThemeAccordingToMode() -> void;
 };
 
 #endif // SOCKET_LIST_ITEM_H

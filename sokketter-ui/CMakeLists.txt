@@ -17,7 +17,7 @@ include_directories(${CMAKE_CURRENT_LIST_DIR}/../third-party/SlidingStackedWidge
 #
 # Add source files recursively.
 #
-set(FILE_EXTENSIONS *.h *.hpp *.c *.cpp *.ui *.qrc)
+set(FILE_EXTENSIONS *.h *.hpp *.c *.cpp *.mm *.ui *.qrc)
 foreach(FILE_EXTENSION IN LISTS FILE_EXTENSIONS)
     file (GLOB_RECURSE FOUND_FILES ${CMAKE_CURRENT_SOURCE_DIR}/${FILE_EXTENSION})
     set(PROJECT_FOLDER_FILES ${PROJECT_FOLDER_FILES} ${FOUND_FILES})

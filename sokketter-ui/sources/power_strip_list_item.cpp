@@ -3,6 +3,7 @@
 
 #include <QPainter>
 #include <QPixmap>
+#include <QStyleHints>
 
 #include <libsokketter.h>
 
@@ -20,6 +21,8 @@ power_strip_list_item::power_strip_list_item(
         QString::fromStdString(sokketter::power_strip_type_to_string(configuration.type)) +
         " located at " + QString::fromStdString(configuration.address);
     m_ui->description_label->setText(description);
+
+    setThemeAccordingToMode();
 }
 
 power_strip_list_item::~power_strip_list_item()
@@ -36,4 +39,44 @@ void power_strip_list_item::set_state(const bool is_on) const
 {
     m_ui->status_label->setState(is_on);
     m_ui->status_label->setToolTip(is_on ? tr("connected") : tr("disconnected"));
+}
+
+auto power_strip_list_item::event(QEvent *event) -> bool
+{
+    if (event->type() == QEvent::ThemeChange)
+    {
+        setThemeAccordingToMode();
+        return true;
+    }
+
+    return QWidget::event(event);
+}
+
+bool power_strip_list_item::isDarkMode() const
+{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+    const auto scheme = QGuiApplication::styleHints()->colorScheme();
+    return scheme == Qt::ColorScheme::Dark;
+#else
+    const QPalette palette;
+    const auto text = palette.color(QPalette::WindowText);
+    const auto window = palette.color(QPalette::Window);
+    return text.lightness() > window.lightness();
+#endif
+}
+
+void power_strip_list_item::setThemeAccordingToMode()
+{
+    QPixmap pixmap;
+
+    if (isDarkMode())
+    {
+        pixmap.load(":/icons/power_strip_icon_white.png");
+    }
+    else
+    {
+        pixmap.load(":/icons/power_strip_icon_black.png");
+    }
+
+    m_ui->icon_label->setPixmap(pixmap);
 }

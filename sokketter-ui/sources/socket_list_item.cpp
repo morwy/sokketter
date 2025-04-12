@@ -15,6 +15,8 @@ socket_list_item::socket_list_item(const sokketter::power_strip_configuration &p
 
     m_ui->index_label->setText(index_text);
     m_ui->name_label->setText(QString::fromStdString(socket.name));
+
+    setThemeAccordingToMode();
 }
 
 socket_list_item::~socket_list_item()
@@ -37,4 +39,44 @@ void socket_list_item::set_state(const bool is_on) const
 {
     m_ui->status_label->setState(is_on);
     m_ui->status_label->setToolTip(is_on ? tr("powered on") : tr("powered off"));
+}
+
+auto socket_list_item::event(QEvent *event) -> bool
+{
+    if (event->type() == QEvent::ThemeChange)
+    {
+        setThemeAccordingToMode();
+        return true;
+    }
+
+    return QWidget::event(event);
+}
+
+bool socket_list_item::isDarkMode() const
+{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+    const auto scheme = QGuiApplication::styleHints()->colorScheme();
+    return scheme == Qt::ColorScheme::Dark;
+#else
+    const QPalette palette;
+    const auto text = palette.color(QPalette::WindowText);
+    const auto window = palette.color(QPalette::Window);
+    return text.lightness() > window.lightness();
+#endif
+}
+
+void socket_list_item::setThemeAccordingToMode()
+{
+    QPixmap pixmap;
+
+    if (isDarkMode())
+    {
+        pixmap.load(":/icons/socket_icon_white.png");
+    }
+    else
+    {
+        pixmap.load(":/icons/socket_icon_black.png");
+    }
+
+    m_ui->icon_label->setPixmap(pixmap);
 }
