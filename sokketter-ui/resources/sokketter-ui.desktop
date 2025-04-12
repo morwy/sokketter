@@ -3,12 +3,10 @@ Version=1.0
 Name=sokketter-ui
 Comment=A simple UI application for controlling the connected power strips and sockets.
 Exec=sokketter-ui %u
-Icon=sokketter-ui
+Icon=sokketter-ui-icon.png
 Terminal=false
 Type=Application
-Categories=Utility;Qt;Development;
-# MimeType=
-# StartupWMClass=
+Categories=Utility;
 
 # Optional fields
 X-AppImage-Version=1.0
