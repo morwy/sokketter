@@ -134,7 +134,7 @@ jobs:
 
     - name: Rename sokketter-ui (Ubuntu-only)
       if: ${{ startsWith(matrix.os, 'ubuntu') }}
-      run: mv ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin${{ env.path-separator }}sokketter-ui.AppImage ${{ github.workspace }}${{ env.path-separator }}${{ steps.strings.outputs.sokketter-ui-name }}.AppImage
+      run: mv ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin${{ env.path-separator }}sokketter-ui*.AppImage ${{ github.workspace }}${{ env.path-separator }}${{ steps.strings.outputs.sokketter-ui-name }}.AppImage
 
     - name: Rename sokketter-ui (MacOS-only)
       if: ${{ startsWith(matrix.os, 'macos') }}
