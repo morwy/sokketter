@@ -103,7 +103,7 @@ jobs:
         APP_PATH=$(find . -name "*.app" -type d | head -n 1)
         macdeployqt "$APP_PATH"
         APP_NAME=$(find . -name "*.app" -type d | head -n 1 | xargs basename)
-        zip -r "${APP_NAME}.zip" "${APP_NAME}"
+        zip -r sokketter-ui.zip "${APP_NAME}"
 
     - name: Rename sokketter-cli (Windows-only)
       if: ${{ startsWith(matrix.os, 'windows') }}
