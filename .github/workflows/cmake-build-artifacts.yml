@@ -103,13 +103,6 @@ jobs:
         APP_PATH=$(find . -name "*.app" -type d | head -n 1)
         echo "App path found: $APP_PATH"
         macdeployqt "$APP_PATH"
-
-        if [ ! -d "*.app" ]; then
-          echo "Error: No .app file found!"
-          exit 1
-        fi
-        echo ".app file found successfully."
-
         APP_NAME=$(find . -name "*.app" -type d | head -n 1 | xargs basename)
         echo "App name found: $APP_NAME"
         zip -r sokketter-ui.zip "${APP_NAME}"
