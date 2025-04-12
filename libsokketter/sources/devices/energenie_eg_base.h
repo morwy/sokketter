@@ -6,6 +6,8 @@
 #include <devices/power_strip_base.h>
 #include <libsokketter.h>
 
+#include <optional>
+
 class energenie_eg_base : public power_strip_base
 {
 public:

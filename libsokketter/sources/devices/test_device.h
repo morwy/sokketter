@@ -6,6 +6,8 @@
 #include <libsokketter.h>
 #include <third-party/kommpot/libkommpot/include/libkommpot.h>
 
+#include <optional>
+
 class test_device : public sokketter::power_strip
 {
 public:
