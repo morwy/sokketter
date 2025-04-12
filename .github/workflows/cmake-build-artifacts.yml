@@ -111,9 +111,6 @@ jobs:
         sed -i '/^X-AppImage-Version=/c\X-AppImage-Version=${{ steps.strings.outputs.release-version }}' ${{ steps.strings.outputs.sokketter-ui-name }}/sokketter-ui.desktop
         ${{ github.workspace }}${{ env.path-separator }}linuxdeployqt-continuous-x86_64.AppImage ${{ steps.strings.outputs.sokketter-ui-name }}/usr/bin/sokketter-ui -appimage \
           -executable=${{ steps.strings.outputs.sokketter-ui-name }}/usr/bin/sokketter-ui \
-          -desktop-file=${{ steps.strings.outputs.sokketter-ui-name }}/sokketter-ui.desktop \
-          -icon-file=${{ steps.strings.outputs.sokketter-ui-name }}/sokketter-ui-icon.png \
-          -qmlimport=/usr/lib/qt6/qml \
           -verbose=2
 
     - name: Deploy with macdeployqt (MacOS-only)
