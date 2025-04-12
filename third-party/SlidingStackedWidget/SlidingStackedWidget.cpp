@@ -18,7 +18,8 @@
     SOFTWARE.
  *
  */
-#include "slidingstackedwidget.h"
+#include "SlidingStackedWidget.h"
+
 #include <QPropertyAnimation>
 #include <QParallelAnimationGroup>
 #include <QGraphicsOpacityEffect>
