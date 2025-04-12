@@ -1,6 +1,8 @@
 #include "socket_list_item.h"
 #include "ui_socket_list_item.h"
 
+#include <QStyleHints>
+
 socket_list_item::socket_list_item(const sokketter::power_strip_configuration &power_strip,
     const sokketter::socket_configuration &socket, const size_t &socket_index, QWidget *parent)
     : QWidget(parent)
