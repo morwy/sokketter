@@ -99,6 +99,16 @@ jobs:
         ignore_case: true
         fail: true
 
+    - name: Deploy with windowsdeployqt (Windows-only)
+      if: ${{ startsWith(matrix.os, 'windows') }}
+      run: |
+        cd ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin
+        mkdir ${{ steps.strings.outputs.sokketter-ui-name }}
+        dir
+        cp sokketter-ui.exe ${{ steps.strings.outputs.sokketter-ui-name }}
+        windowsdeployqt sokketter-ui.exe -dir ${{ steps.strings.outputs.sokketter-ui-name }}
+        powershell Compress-Archive -Path ${{ steps.strings.outputs.sokketter-ui-name }}${{ env.path-separator }}* -DestinationPath ${{ steps.strings.outputs.sokketter-ui-name }}.zip
+
     - name: Deploy with linuxdeployqt (Ubuntu-only)
       if: ${{ startsWith(matrix.os, 'ubuntu') }}
       run: |
@@ -132,6 +142,10 @@ jobs:
       if: ${{ !startsWith(matrix.os, 'windows') }}
       run: mv ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin${{ env.path-separator }}sokketter-cli ${{ github.workspace }}${{ env.path-separator }}${{ steps.strings.outputs.sokketter-cli-name }}
 
+    - name: Rename sokketter-ui (Windows-only)
+      if: ${{ startsWith(matrix.os, 'windows') }}
+      run: move ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin${{ env.path-separator }}${{ steps.strings.outputs.sokketter-ui-name }}.zip ${{ github.workspace }}${{ env.path-separator }}${{ steps.strings.outputs.sokketter-ui-name }}.zip
+
     - name: Rename sokketter-ui (Ubuntu-only)
       if: ${{ startsWith(matrix.os, 'ubuntu') }}
       run: mv ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin${{ env.path-separator }}sokketter-ui*.AppImage ${{ github.workspace }}${{ env.path-separator }}${{ steps.strings.outputs.sokketter-ui-name }}.AppImage
@@ -162,6 +176,13 @@ jobs:
         name: ${{ steps.strings.outputs.sokketter-cli-name }}
         path: ${{ steps.strings.outputs.sokketter-cli-name }}
       
+    - name: Upload sokketter-ui (Windows-only)
+      if: ${{ startsWith(matrix.os, 'windows') }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.strings.outputs.sokketter-ui-name }}
+        path: ${{ steps.strings.outputs.sokketter-ui-name }}.zip
+    
     - name: Upload sokketter-ui (Ubuntu-only)
       if: ${{ startsWith(matrix.os, 'ubuntu') }}
       uses: actions/upload-artifact@v4
