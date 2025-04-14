@@ -99,14 +99,14 @@ jobs:
         ignore_case: true
         fail: true
 
-    - name: Deploy with windowsdeployqt (Windows-only)
+    - name: Deploy with windeployqt (Windows-only)
       if: ${{ startsWith(matrix.os, 'windows') }}
       run: |
         cd ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin
         mkdir ${{ steps.strings.outputs.sokketter-ui-name }}
         dir
         cp sokketter-ui.exe ${{ steps.strings.outputs.sokketter-ui-name }}
-        windowsdeployqt sokketter-ui.exe -dir ${{ steps.strings.outputs.sokketter-ui-name }}
+        windeployqt sokketter-ui.exe -dir ${{ steps.strings.outputs.sokketter-ui-name }}
         powershell Compress-Archive -Path ${{ steps.strings.outputs.sokketter-ui-name }}${{ env.path-separator }}* -DestinationPath ${{ steps.strings.outputs.sokketter-ui-name }}.zip
 
     - name: Deploy with linuxdeployqt (Ubuntu-only)
