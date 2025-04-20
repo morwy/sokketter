@@ -16,34 +16,43 @@ const QString base_theme = R"(
     QListWidget::item {
         border: none;
     }
+)";
+
+const QString light_theme = base_theme + R"(
+    QMainWindow {
+        background-color: #EDEEF0;
+    }
+
+    QLabel {
+        color: #111113;
+    }
+
+    QListWidget::item:hover {
+        background-color: #B0B4BA;
+    }
 
     QListWidget::item:selected {
         background: transparent;
         color: black;
     }
-
-    QListWidget::item:hover {
-        background: transparent;
-    }
-)";
-
-const QString light_theme = base_theme + R"(
-    QMainWindow {
-        background-color: #f8f9fa;
-    }
-
-    QLabel {
-        color: #343a40;
-    }
 )";
 
 const QString dark_theme = base_theme + R"(
     QMainWindow {
-        background-color: #212529;
+        background-color: #18191B;
     }
 
     QLabel {
-        color: #ffffff;
+        color: #EDEEF0;
+    }
+
+    QListWidget::item:hover {
+        background-color: #212225;
+    }
+
+    QListWidget::item:selected {
+        background: transparent;
+        color: black;
     }
 )";
 
