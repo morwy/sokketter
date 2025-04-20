@@ -1,6 +1,8 @@
 #include "power_strip_list_item.h"
 #include "ui_power_strip_list_item.h"
 
+#include <theme_stylesheets.h>
+
 #include <QPainter>
 #include <QPixmap>
 #include <QStyleHints>
@@ -50,19 +52,6 @@ auto power_strip_list_item::event(QEvent *event) -> bool
     }
 
     return QWidget::event(event);
-}
-
-bool power_strip_list_item::isDarkMode() const
-{
-#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
-    const auto scheme = QGuiApplication::styleHints()->colorScheme();
-    return scheme == Qt::ColorScheme::Dark;
-#else
-    const QPalette palette;
-    const auto text = palette.color(QPalette::WindowText);
-    const auto window = palette.color(QPalette::Window);
-    return text.lightness() > window.lightness();
-#endif
 }
 
 void power_strip_list_item::setThemeAccordingToMode()

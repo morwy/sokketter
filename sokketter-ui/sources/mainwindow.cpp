@@ -1,9 +1,12 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+#include <empty_power_strip_list_item.h>
 #include <power_strip_list_item.h>
 #include <socket_list_item.h>
+#include <theme_stylesheets.h>
 
+#include <QApplication>
 #include <QListWidgetItem>
 
 MainWindow::MainWindow(QWidget *parent)
@@ -13,15 +16,14 @@ MainWindow::MainWindow(QWidget *parent)
     m_ui->setupUi(this);
 
     /**
+     * @brief apply the common stylesheet.
+     */
+    qApp->setStyleSheet(isDarkMode() ? dark_theme : light_theme);
+
+    /**
      * @brief set the speed of the sliding stacked widget to 500 ms.
      */
     m_ui->stackedWidget->setSpeed(500);
-
-    /**
-     * @brief set the background of the list widgets to transparent.
-     */
-    m_ui->power_strip_list_widget->setStyleSheet("background: transparent;");
-    m_ui->socket_list_widget->setStyleSheet("background: transparent;");
 
     /**
      * @brief set power strip list page as the default page.
@@ -53,6 +55,15 @@ MainWindow::~MainWindow()
 
 auto MainWindow::on_power_strip_clicked(QListWidgetItem *item) -> void
 {
+    /**
+     * @brief ignore click if it's a empty_power_strip_list_item.
+     */
+    QWidget *widget = m_ui->power_strip_list_widget->itemWidget(item);
+    if (qobject_cast<empty_power_strip_list_item *>(widget))
+    {
+        return;
+    }
+
     const int &index = m_ui->stackedWidget->indexOf(m_ui->socket_list_page);
     m_ui->stackedWidget->slideInIdx(index);
 
@@ -96,6 +107,22 @@ auto MainWindow::on_socket_clicked(QListWidgetItem *item) -> void
     socket_item->set_state(socket.is_powered_on());
 }
 
+auto MainWindow::event(QEvent *event) -> bool
+{
+    if (event->type() == QEvent::ThemeChange)
+    {
+        setThemeAccordingToMode();
+        return true;
+    }
+
+    return QWidget::event(event);
+}
+
+void MainWindow::setThemeAccordingToMode()
+{
+    qApp->setStyleSheet(isDarkMode() ? dark_theme : light_theme);
+}
+
 auto MainWindow::repopulate_device_list() -> void
 {
     while (m_ui->power_strip_list_widget->count() > 0)
@@ -107,6 +134,7 @@ auto MainWindow::repopulate_device_list() -> void
     for (const auto &power_strip : power_strips)
     {
         auto *power_strip_item = new power_strip_list_item(power_strip->configuration());
+        power_strip_item->setStyleSheet("background: none; border: none;");
         power_strip_item->set_state(power_strip->is_connected());
 
         auto *item = new QListWidgetItem();
@@ -114,6 +142,17 @@ auto MainWindow::repopulate_device_list() -> void
         item->setSizeHint(size_hint);
         m_ui->power_strip_list_widget->addItem(item);
         m_ui->power_strip_list_widget->setItemWidget(item, power_strip_item);
+    }
+
+    if (power_strips.empty())
+    {
+        auto *empty_item = new empty_power_strip_list_item();
+        empty_item->setStyleSheet("background: none; border: none;");
+        auto *item = new QListWidgetItem();
+        const auto &size_hint = empty_item->sizeHint();
+        item->setSizeHint(size_hint);
+        m_ui->power_strip_list_widget->addItem(item);
+        m_ui->power_strip_list_widget->setItemWidget(item, empty_item);
     }
 }
 

@@ -29,7 +29,6 @@ private:
     const sokketter::power_strip_configuration m_configuration;
 
     auto event(QEvent *event) -> bool override;
-    auto isDarkMode() const -> bool;
     auto setThemeAccordingToMode() -> void;
 };
 
