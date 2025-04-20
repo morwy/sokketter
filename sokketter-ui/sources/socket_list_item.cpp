@@ -1,6 +1,8 @@
 #include "socket_list_item.h"
 #include "ui_socket_list_item.h"
 
+#include <theme_stylesheets.h>
+
 #include <QStyleHints>
 
 socket_list_item::socket_list_item(const sokketter::power_strip_configuration &power_strip,
@@ -52,19 +54,6 @@ auto socket_list_item::event(QEvent *event) -> bool
     }
 
     return QWidget::event(event);
-}
-
-bool socket_list_item::isDarkMode() const
-{
-#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
-    const auto scheme = QGuiApplication::styleHints()->colorScheme();
-    return scheme == Qt::ColorScheme::Dark;
-#else
-    const QPalette palette;
-    const auto text = palette.color(QPalette::WindowText);
-    const auto window = palette.color(QPalette::Window);
-    return text.lightness() > window.lightness();
-#endif
 }
 
 void socket_list_item::setThemeAccordingToMode()

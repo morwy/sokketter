@@ -33,7 +33,6 @@ private:
     const size_t m_socket_index;
 
     auto event(QEvent *event) -> bool override;
-    auto isDarkMode() const -> bool;
     auto setThemeAccordingToMode() -> void;
 };
 
