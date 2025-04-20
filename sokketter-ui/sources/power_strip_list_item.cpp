@@ -45,7 +45,7 @@ void power_strip_list_item::set_state(const bool is_on) const
 
 auto power_strip_list_item::event(QEvent *event) -> bool
 {
-    if (event->type() == QEvent::ThemeChange)
+    if (event->type() == QEvent::ThemeChange || event->type() == QEvent::PaletteChange)
     {
         setThemeAccordingToMode();
         return true;
