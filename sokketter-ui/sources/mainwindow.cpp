@@ -27,10 +27,10 @@ MainWindow::MainWindow(QWidget *parent)
     m_ui->stackedWidget->setSpeed(500);
 
     /**
-     * @brief set power strip list page as the default page.
+     * @brief set the margins of clickable labels.
      */
-    const int &index = m_ui->stackedWidget->indexOf(m_ui->power_strip_list_widget);
-    m_ui->stackedWidget->setCurrentIndex(index);
+    m_ui->power_strip_list_refresh_label->setContentsMargins(10, 0, 10, 0);
+    m_ui->socket_list_back_label->setContentsMargins(10, 0, 10, 0);
 
     /**
      * @brief connect the signals to the slots.
