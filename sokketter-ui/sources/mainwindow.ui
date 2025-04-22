@@ -134,7 +134,7 @@
            <enum>QListView::Adjust</enum>
           </property>
           <property name="spacing">
-           <number>6</number>
+           <number>0</number>
           </property>
           <property name="selectionRectVisible">
            <bool>false</bool>
@@ -243,7 +243,7 @@
            <enum>QListView::Adjust</enum>
           </property>
           <property name="spacing">
-           <number>6</number>
+           <number>0</number>
           </property>
           <property name="selectionRectVisible">
            <bool>true</bool>
