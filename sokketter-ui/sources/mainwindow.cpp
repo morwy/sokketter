@@ -8,6 +8,7 @@
 
 #include <QApplication>
 #include <QListWidgetItem>
+#include <ClickableLabel.h>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -32,15 +33,19 @@ MainWindow::MainWindow(QWidget *parent)
     m_ui->stackedWidget->setCurrentIndex(index);
 
     /**
-     * @brief connect the signal to the slot.
+     * @brief connect the signals to the slots.
      */
     QObject::connect(m_ui->power_strip_list_widget, &QListWidget::itemClicked, this,
         &MainWindow::on_power_strip_clicked);
 
+    QObject::connect(m_ui->power_strip_list_refresh_label, &ClickableLabel::clicked, [this]() {
+        repopulate_device_list();
+    });
+
     QObject::connect(
         m_ui->socket_list_widget, &QListWidget::itemClicked, this, &MainWindow::on_socket_clicked);
 
-    QObject::connect(m_ui->socket_list_back_button, &QPushButton::clicked, [this]() {
+    QObject::connect(m_ui->socket_list_back_label, &ClickableLabel::clicked, [this]() {
         const int &index = m_ui->stackedWidget->indexOf(m_ui->power_strip_list_page);
         m_ui->stackedWidget->slideInIdx(index);
     });

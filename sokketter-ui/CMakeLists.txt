@@ -15,6 +15,7 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/sources)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../libsokketter/include)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../third-party)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/../third-party/ClickableLabel)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../third-party/QLedLabel)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../third-party/SlidingStackedWidget)
 
@@ -38,6 +39,7 @@ endforeach()
 #
 # Add third-party classes.
 #
+set(PROJECT_FOLDER_FILES ${PROJECT_FOLDER_FILES} ${CMAKE_CURRENT_LIST_DIR}/../third-party/ClickableLabel/ClickableLabel.h ${CMAKE_CURRENT_LIST_DIR}/../third-party/ClickableLabel/ClickableLabel.cpp)
 set(PROJECT_FOLDER_FILES ${PROJECT_FOLDER_FILES} ${CMAKE_CURRENT_LIST_DIR}/../third-party/QLedLabel/QLedLabel.h ${CMAKE_CURRENT_LIST_DIR}/../third-party/QLedLabel/QLedLabel.cpp)
 set(PROJECT_FOLDER_FILES ${PROJECT_FOLDER_FILES} ${CMAKE_CURRENT_LIST_DIR}/../third-party/SlidingStackedWidget/SlidingStackedWidget.h ${CMAKE_CURRENT_LIST_DIR}/../third-party/SlidingStackedWidget/SlidingStackedWidget.cpp)
 
