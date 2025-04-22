@@ -23,8 +23,8 @@ public:
     ~MainWindow();
 
 private slots:
-    auto on_power_strip_clicked(QListWidgetItem *item) -> void;
-    auto on_socket_clicked(QListWidgetItem *item) -> void;
+    auto onPowerStripClicked(QListWidgetItem *item) -> void;
+    auto onSocketClicked(QListWidgetItem *item) -> void;
 
 private:
     Ui::MainWindow *m_ui;

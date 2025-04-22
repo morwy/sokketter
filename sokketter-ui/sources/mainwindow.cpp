@@ -36,14 +36,14 @@ MainWindow::MainWindow(QWidget *parent)
      * @brief connect the signals to the slots.
      */
     QObject::connect(m_ui->power_strip_list_widget, &QListWidget::itemClicked, this,
-        &MainWindow::on_power_strip_clicked);
+        &MainWindow::onPowerStripClicked);
 
     QObject::connect(m_ui->power_strip_list_refresh_label, &ClickableLabel::clicked, [this]() {
         repopulate_device_list();
     });
 
     QObject::connect(
-        m_ui->socket_list_widget, &QListWidget::itemClicked, this, &MainWindow::on_socket_clicked);
+        m_ui->socket_list_widget, &QListWidget::itemClicked, this, &MainWindow::onSocketClicked);
 
     QObject::connect(m_ui->socket_list_back_label, &ClickableLabel::clicked, [this]() {
         const int &index = m_ui->stackedWidget->indexOf(m_ui->power_strip_list_page);
@@ -58,7 +58,7 @@ MainWindow::~MainWindow()
     delete m_ui;
 }
 
-auto MainWindow::on_power_strip_clicked(QListWidgetItem *item) -> void
+auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
 {
     /**
      * @brief ignore click if it's a empty_power_strip_list_item.
@@ -79,7 +79,7 @@ auto MainWindow::on_power_strip_clicked(QListWidgetItem *item) -> void
     repopulate_socket_list(configuration);
 }
 
-auto MainWindow::on_socket_clicked(QListWidgetItem *item) -> void
+auto MainWindow::onSocketClicked(QListWidgetItem *item) -> void
 {
     auto socket_item = dynamic_cast<socket_list_item *>(m_ui->socket_list_widget->itemWidget(item));
     if (socket_item == nullptr)
