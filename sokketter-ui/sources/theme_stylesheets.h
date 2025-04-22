@@ -15,6 +15,7 @@ const QString base_theme = R"(
 
     QListWidget::item {
         border: none;
+        border-radius: 10px;
     }
 )";
 
