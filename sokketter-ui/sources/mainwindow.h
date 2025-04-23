@@ -30,10 +30,14 @@ private:
     Ui::MainWindow *m_ui;
 
     auto event(QEvent *event) -> bool override;
+    auto resizeEvent(QResizeEvent *event) -> void override;
     auto setThemeAccordingToMode() -> void;
 
     auto repopulate_device_list() -> void;
     auto repopulate_socket_list(const sokketter::power_strip_configuration &configuration) -> void;
+
+    auto redraw_device_list() -> void;
+    auto redraw_socket_list() -> void;
 };
 
 #endif // MAINWINDOW_H
