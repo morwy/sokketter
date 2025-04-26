@@ -157,7 +157,7 @@ jobs:
     - name: Install dependencies (Ubuntu-only)
       run: |
         sudo apt update
-        sudo apt install libudev-dev ninja-build
+        sudo apt install libfuse2 libudev-dev ninja-build
       if: ${{ startsWith(matrix.os, 'ubuntu') }}
 
     - name: Configure CMake for static libraries
