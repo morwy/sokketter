@@ -2,6 +2,7 @@
 report.info
 CMakeLists.txt.user
 build-coverage
+version.rc
 
 # Testing temp files.
 Testing/

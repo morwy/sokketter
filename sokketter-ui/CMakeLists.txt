@@ -20,6 +20,24 @@ include_directories(${CMAKE_CURRENT_LIST_DIR}/../third-party/QLedLabel)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../third-party/SlidingStackedWidget)
 
 #
+# Stating common details.
+#
+set(SOKKETTER_NAME "sokketter-ui")
+
+if(PLATFORM_OS_WINDOWS)
+set(SOKKETTER_EXECUTABLE "sokketter-ui.exe")
+else()
+set(SOKKETTER_EXECUTABLE "sokketter-ui")
+endif()
+
+set(SOKKETTER_COMPANY "")
+set(SOKKETTER_COPYRIGHT "")
+set(SOKKETTER_DESCRIPTION "A UI app that provides a simple and easy-to-use way of controlling the connected sockets.")
+set(SOKKETTER_BINARY_TYPE 0x3fL)
+
+configure_file(${PROJECT_ROOT_PATH}/version.rc.in ${CMAKE_CURRENT_SOURCE_DIR}/resources/version.rc @ONLY)
+
+#
 # Add source files recursively.
 #
 set(FILE_EXTENSIONS *.h *.hpp *.c *.cpp *.ui *.qrc)
@@ -29,6 +47,11 @@ if(PLATFORM_OS_MACOS)
     # Add Objective-C files for MacOS separately.
     #
     list(APPEND FILE_EXTENSIONS *.mm)
+elseif(PLATFORM_OS_WINDOWS)
+    #
+    # Add .rc files for Windows separately.
+    #
+    list(APPEND FILE_EXTENSIONS *.rc)
 endif()
 
 foreach(FILE_EXTENSION IN LISTS FILE_EXTENSIONS)
