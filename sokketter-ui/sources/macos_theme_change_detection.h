@@ -3,7 +3,9 @@
 
 #pragma once
 
-#ifdef __APPLE__
+#include <QtGlobal>
+
+#ifdef Q_OS_MACOS
 void registerForMacThemeChanges();
 #endif
 

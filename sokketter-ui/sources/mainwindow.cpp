@@ -12,16 +12,17 @@
 #include <QScrollBar>
 #include <QTimer>
 
+#ifdef Q_OS_WIN
+#    include <windows_titlebar_theme.h>
+#endif
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , m_ui(new Ui::MainWindow)
 {
     m_ui->setupUi(this);
 
-    /**
-     * @brief apply the common stylesheet.
-     */
-    qApp->setStyleSheet(isDarkMode() ? dark_theme : light_theme);
+    setThemeAccordingToMode();
 
     /**
      * @brief set the speed of the sliding stacked widget to 500 ms.
@@ -194,6 +195,9 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 void MainWindow::setThemeAccordingToMode()
 {
     qApp->setStyleSheet(isDarkMode() ? dark_theme : light_theme);
+#ifdef Q_OS_WIN
+    toggleDarkTitlebar(winId(), isDarkMode());
+#endif
 }
 
 auto MainWindow::repopulate_device_list() -> void
