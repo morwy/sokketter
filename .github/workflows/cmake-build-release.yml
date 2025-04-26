@@ -16,7 +16,7 @@ on:
 
 jobs:
   increment-version:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     permissions:
         contents: write
     outputs:
@@ -104,7 +104,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, windows-2019, macos-13, macos-14]
+        os: [ubuntu-22.04, windows-2019, macos-13, macos-14]
         build_type: [Release]
         c_compiler: [gcc, clang, cl]
         library_type: [static]
@@ -118,7 +118,7 @@ jobs:
           - os: macos-14
             c_compiler: clang
             cpp_compiler: clang++
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             c_compiler: gcc
             cpp_compiler: g++
         exclude:
@@ -134,9 +134,9 @@ jobs:
             c_compiler: cl
           - os: macos-14
             c_compiler: gcc
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             c_compiler: cl
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             c_compiler: clang
 
     steps:
@@ -219,7 +219,7 @@ jobs:
         path: ${{ steps.strings.outputs.sokketter-cli-name }}
 
   create-release-entry:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     permissions:
         contents: write
     needs: [increment-version, build-binaries]
