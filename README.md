@@ -30,7 +30,9 @@ The original driver is available on the [Energenie website](https://energenie.co
 
 During the first run, Windows will say that the application is not recognized and may be not safe. If you trust the application built by a random stranger on the Internet, then click on "More info" and then "Run anyway".
 
-<img src="docs/readme-pictures/windows-11-unrecognized-01.png" alt="windows unrecognized application" width="50%"/> <img src="docs/readme-pictures/windows-11-unrecognized-02.png" alt="windows unrecognized application" width="50%"/>
+<p align="center">
+<img src="docs/readme-pictures/windows-11-unrecognized-01.png" alt="windows unrecognized application" width="45%"/> <img src="docs/readme-pictures/windows-11-unrecognized-02.png" alt="windows unrecognized application" width="45%"/>
+</p>
 
 ### MacOS
 
