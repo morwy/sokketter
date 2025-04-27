@@ -126,6 +126,14 @@ auto MainWindow::event(QEvent *event) -> bool
     return QWidget::event(event);
 }
 
+void MainWindow::resizeEvent(QResizeEvent *event)
+{
+    QMainWindow::resizeEvent(event);
+
+    redraw_device_list();
+    redraw_socket_list();
+}
+
 void MainWindow::redraw_device_list()
 {
     if (m_ui->power_strip_list_widget->isVisible())
@@ -143,14 +151,26 @@ void MainWindow::redraw_device_list()
         }
 
         const int &itemCount = m_ui->power_strip_list_widget->count();
-        for (int i = 0; i < itemCount; ++i)
+        for (int index = 0; index < itemCount; ++index)
         {
-            QListWidgetItem *item = m_ui->power_strip_list_widget->item(i);
-            QWidget *itemWidget = m_ui->power_strip_list_widget->itemWidget(item);
-            if (itemWidget)
+            QListWidgetItem *item = m_ui->power_strip_list_widget->item(index);
+            QWidget *widget = m_ui->power_strip_list_widget->itemWidget(item);
+            if (widget == nullptr)
             {
-                itemWidget->setMaximumWidth(visibleWidth);
-                const auto &size_hint = itemWidget->sizeHint();
+                continue;
+            }
+
+            if (qobject_cast<empty_power_strip_list_item *>(widget))
+            {
+                widget->setMaximumWidth(visibleWidth);
+                const auto &size_hint = widget->sizeHint();
+                item->setSizeHint(QSize(std::max(size_hint.width(), visibleWidth),
+                    std::max(size_hint.width(), visibleHeight)));
+            }
+            else if (qobject_cast<power_strip_list_item *>(widget))
+            {
+                widget->setMaximumWidth(visibleWidth);
+                const auto &size_hint = widget->sizeHint();
                 item->setSizeHint(
                     QSize(std::max(size_hint.width(), visibleWidth), size_hint.height()));
             }
@@ -182,14 +202,6 @@ void MainWindow::redraw_socket_list()
             }
         }
     }
-}
-
-void MainWindow::resizeEvent(QResizeEvent *event)
-{
-    QMainWindow::resizeEvent(event);
-
-    redraw_device_list();
-    redraw_socket_list();
 }
 
 void MainWindow::setThemeAccordingToMode()
