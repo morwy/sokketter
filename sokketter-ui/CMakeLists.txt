@@ -32,7 +32,7 @@ endif()
 
 set(SOKKETTER_COMPANY "")
 set(SOKKETTER_COPYRIGHT "")
-set(SOKKETTER_DESCRIPTION "A UI app that provides a simple and easy-to-use way of controlling the connected sockets.")
+set(SOKKETTER_DESCRIPTION "Application for controlling connected power strips and sockets.")
 set(SOKKETTER_BINARY_TYPE 0x3fL)
 
 configure_file(${PROJECT_ROOT_PATH}/version.rc.in ${CMAKE_CURRENT_SOURCE_DIR}/resources/version.rc @ONLY)
