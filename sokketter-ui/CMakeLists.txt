@@ -73,6 +73,9 @@ else()
     add_executable(${PROJECT_NAME} ${PROJECT_FOLDER_FILES})
 endif()
 
+#
+# Windows OS: state that this is a GUI application to avoid terminal pop-up.
+#
 if(PLATFORM_OS_WINDOWS)
     set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()

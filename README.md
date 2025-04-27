@@ -4,7 +4,13 @@
 
 **sokketter** is a set of CLI and UI applications and the library built with C++17 and Qt that provides a simple and easy-to-use way of controlling the connected sockets.
 The **libsokketter** library provides a high-level interface for socket programming, making it easier to work with sockets in C++.
-The set is designed to be cross-platform and works on Linux, MacOS and Windows.
+The set is designed to be cross-platform and works on multiple operating systems.
+
+## Supported platforms
+
+* Windows 10 & 11
+* MacOS 10.15 and later
+* Ubuntu 20.04 and later
 
 ## Supported devices
 
@@ -14,6 +20,28 @@ The set is designed to be cross-platform and works on Linux, MacOS and Windows.
 * Energenie EG-PMS2
 * Gembird MSIS-PM (not tested)
 * Gembird SIS-PM (not tested)
+
+## Security considerations
+
+The library and binaries are not digitally signed at the moment due to a high cost of signing certificates (approximately 100€ per year for MacOS and 500€ per 3 years for Windows).
+First time you run the application, it will ask you to trust the application.
+
+### Windows
+
+Any operations with Gembird / Energenie devices on Windows 11 may be drastically slowed down in case when no original driver is installed.
+The original driver is available on the [Energenie website](https://energenie.com/item.aspx?id=7415).
+
+### MacOS
+
+```bash
+sudo xattr -r -w com.apple.quarantine APPLICATION_DOWNLOAD_PATH
+```
+
+### Ubuntu / Debian
+
+```bash
+chmod +x APPLICATION_DOWNLOAD_PATH
+```
 
 ## Credits
 
