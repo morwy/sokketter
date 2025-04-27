@@ -2,9 +2,7 @@
 
 ## Description
 
-**sokketter** is a set of CLI and UI applications and the library built with C++17 and Qt that provides a simple and easy-to-use way of controlling the connected sockets.
-The **libsokketter** library provides a high-level interface for socket programming, making it easier to work with sockets in C++.
-The set is designed to be cross-platform and works on multiple operating systems.
+**sokketter** is a set of CLI and UI applications and the library built with C++17 and Qt that provides a simple and easy-to-use way of controlling the connected sockets. The **libsokketter** library provides a high-level interface for socket programming, making it easier to work with sockets in C++. The set is designed to be cross-platform and works on multiple operating systems.
 
 ## Supported platforms
 
@@ -23,13 +21,16 @@ The set is designed to be cross-platform and works on multiple operating systems
 
 ## Security considerations
 
-The library and binaries are not digitally signed at the moment due to a high cost of signing certificates (approximately 100€ per year for MacOS and 500€ per 3 years for Windows).
-First time you run the application, it will ask you to trust the application.
+The library and binaries are not digitally signed at the moment due to a high cost of signing certificates (approximately 100€ per year for MacOS and 500€ per 3 years for Windows). Thus, first time you run the application, it will ask you to approve the application.
 
 ### Windows
 
 Any operations with Gembird / Energenie devices on Windows 11 may be drastically slowed down in case when no original driver is installed.
 The original driver is available on the [Energenie website](https://energenie.com/item.aspx?id=7415).
+
+During the first run, Windows will say that the application is not recognized and may be not safe. If you trust the application built by a random stranger on the Internet, then click on "More info" and then "Run anyway".
+
+<img src="docs/readme-pictures/windows-11-unrecognized-01.png" alt="windows unrecognized application" width="500"/> <img src="docs/readme-pictures/windows-11-unrecognized-02.png" alt="windows unrecognized application" width="500"/>
 
 ### MacOS
 
