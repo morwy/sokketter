@@ -17,6 +17,11 @@ const QString base_theme = R"(
         border: none;
         border-radius: 10px;
     }
+
+    QListWidget::item:selected {
+        background: transparent;
+        color: black;
+    }
 )";
 
 const QString light_theme = base_theme + R"(
@@ -30,11 +35,6 @@ const QString light_theme = base_theme + R"(
 
     QListWidget::item:hover {
         background-color: #E0E1E6;
-    }
-
-    QListWidget::item:selected {
-        background: transparent;
-        color: black;
     }
 
     ClickableLabel:hover {
@@ -55,11 +55,6 @@ const QString dark_theme = base_theme + R"(
 
     QListWidget::item:hover {
         background-color: #212225;
-    }
-
-    QListWidget::item:selected {
-        background: transparent;
-        color: black;
     }
 
     ClickableLabel:hover {
