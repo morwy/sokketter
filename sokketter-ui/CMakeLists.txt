@@ -68,15 +68,32 @@ set(PROJECT_FOLDER_FILES ${PROJECT_FOLDER_FILES} ${CMAKE_CURRENT_LIST_DIR}/../th
 
 
 if(PLATFORM_OS_MACOS)
+    #
+    # MacOS: state that application has an icon.
+    #
+    set(MACOSX_BUNDLE_ICON_FILE socket-icon.icns)
+    set(APP_ICON_MACOS "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/socket-icon.icns")
+    set_source_files_properties(${APP_ICON_MACOS} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+    set(PROJECT_FOLDER_FILES ${PROJECT_FOLDER_FILES} ${APP_ICON_MACOS})
+
     add_executable(${PROJECT_NAME} MACOSX_BUNDLE ${PROJECT_FOLDER_FILES})
 else()
     add_executable(${PROJECT_NAME} ${PROJECT_FOLDER_FILES})
 endif()
 
-#
-# Windows OS: state that this is a GUI application to avoid terminal pop-up.
-#
-if(PLATFORM_OS_WINDOWS)
+if(PLATFORM_OS_MACOS)
+    #
+    # MacOS: state that application has an icon.
+    #
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/resources/Info.plist"
+    )
+
+elseif(PLATFORM_OS_WINDOWS)
+    #
+    # Windows OS: state that this is a GUI application to avoid terminal pop-up.
+    #
     set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
 
