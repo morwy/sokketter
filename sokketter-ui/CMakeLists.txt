@@ -81,16 +81,7 @@ else()
     add_executable(${PROJECT_NAME} ${PROJECT_FOLDER_FILES})
 endif()
 
-if(PLATFORM_OS_MACOS)
-    #
-    # MacOS: state that application has an icon.
-    #
-    set_target_properties(${PROJECT_NAME} PROPERTIES
-        MACOSX_BUNDLE TRUE
-        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/resources/Info.plist"
-    )
-
-elseif(PLATFORM_OS_WINDOWS)
+if(PLATFORM_OS_WINDOWS)
     #
     # Windows OS: state that this is a GUI application to avoid terminal pop-up.
     #
