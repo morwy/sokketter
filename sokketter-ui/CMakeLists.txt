@@ -76,6 +76,11 @@ if(PLATFORM_OS_MACOS)
     set_source_files_properties(${APP_ICON_MACOS} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
     set(PROJECT_FOLDER_FILES ${PROJECT_FOLDER_FILES} ${APP_ICON_MACOS})
 
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/resources/Info.plist.in
+        ${CMAKE_CURRENT_SOURCE_DIR}/resources/Info.plist
+    )
+
     add_executable(${PROJECT_NAME} MACOSX_BUNDLE ${PROJECT_FOLDER_FILES})
 else()
     add_executable(${PROJECT_NAME} ${PROJECT_FOLDER_FILES})
