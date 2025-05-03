@@ -11,7 +11,7 @@
 class test_device : public sokketter::power_strip
 {
 public:
-    test_device();
+    test_device(const size_t& index);
 
     [[nodiscard]] auto is_connected() const -> bool override;
 
@@ -21,6 +21,7 @@ public:
         -> const std::optional<std::reference_wrapper<sokketter::socket>> override;
 
 private:
+    size_t m_index = 0;
     std::string m_serial_number = "TEST_SERIAL_NUMBER";
     size_t m_socket_number = 4;
 
