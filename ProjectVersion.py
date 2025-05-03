@@ -67,6 +67,16 @@ if __name__ == "__main__":
                     version_file_lines[line_index] = (
                         f"set(SOKKETTER_VERSION_MAJOR {incremented_version_part})\n"
                     )
+
+                if line.startswith("set(SOKKETTER_VERSION_MINOR"):
+                    version_file_lines[line_index] = "set(SOKKETTER_VERSION_MINOR 0)\n"
+
+                if line.startswith("set(SOKKETTER_VERSION_MICRO"):
+                    version_file_lines[line_index] = "set(SOKKETTER_VERSION_MICRO 0)\n"
+
+                if line.startswith("set(SOKKETTER_VERSION_NANO"):
+                    version_file_lines[line_index] = "set(SOKKETTER_VERSION_NANO 0)\n"
+
             elif args.version_part == "MINOR":
                 if line.startswith("set(SOKKETTER_VERSION_MINOR"):
                     version_part = int(
@@ -78,6 +88,13 @@ if __name__ == "__main__":
                     version_file_lines[line_index] = (
                         f"set(SOKKETTER_VERSION_MINOR {incremented_version_part})\n"
                     )
+
+                if line.startswith("set(SOKKETTER_VERSION_MICRO"):
+                    version_file_lines[line_index] = "set(SOKKETTER_VERSION_MICRO 0)\n"
+
+                if line.startswith("set(SOKKETTER_VERSION_NANO"):
+                    version_file_lines[line_index] = "set(SOKKETTER_VERSION_NANO 0)\n"
+
             elif args.version_part == "MICRO":
                 if line.startswith("set(SOKKETTER_VERSION_MICRO"):
                     version_part = int(
@@ -89,6 +106,10 @@ if __name__ == "__main__":
                     version_file_lines[line_index] = (
                         f"set(SOKKETTER_VERSION_MICRO {incremented_version_part})\n"
                     )
+
+                if line.startswith("set(SOKKETTER_VERSION_NANO"):
+                    version_file_lines[line_index] = "set(SOKKETTER_VERSION_NANO 0)\n"
+
             elif args.version_part == "NANO":
                 if line.startswith("set(SOKKETTER_VERSION_NANO"):
                     version_part = int(
