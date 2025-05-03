@@ -36,9 +36,41 @@ During the first run, Windows will say that the application is not recognized an
 
 ### MacOS
 
+#### M1 (ARM64)
+
+All downloaded and not signed or notarized ARM64 applications are put into quarantine and require additional steps to run. Running the application for the first time will show a warning that the application is damaged and can't be opened. This is a security feature of MacOS that prevents running untrusted applications.
+
+<p align="center">
+<img src="docs/readme-pictures/macos-arm-damaged-app.png" alt="macos damaged application"/>
+</p>
+
+To run the application, you need to open the terminal and run the following command:
+
 ```bash
-sudo xattr -r -w com.apple.quarantine APPLICATION_DOWNLOAD_PATH
+xattr -c APPLICATION_DOWNLOAD_PATH
 ```
+
+#### Intel (x86_64)
+
+All downloaded and not signed or notarized x86_64 applications are blocked by default and require additional steps to run. Running the application for the first time will show a warning that the application is not verified and can't be opened.
+
+<p align="center">
+<img src="docs/readme-pictures/macos-intel-not-verified-app.png" alt="macos not verified application"/>
+</p>
+
+To run the application, you need to proceed to the "System Preferences" -> "Security & Privacy" and click on "Open Anyway" button.
+
+<p align="center">
+<img src="docs/readme-pictures/macos-intel-open-anyway.png" alt="macos open anyway not verified application"/>
+</p>
+
+It will require you to confirm that you want to run the application. Click on "Open Anyway" button.
+
+<p align="center">
+<img src="docs/readme-pictures/macos-intel-open-anyway-confirmation.png" alt="macos open anyway not verified application confirmation"/>
+</p>
+
+And then enter the local user credentials. After that, you can run the application.
 
 ### Ubuntu / Debian
 
