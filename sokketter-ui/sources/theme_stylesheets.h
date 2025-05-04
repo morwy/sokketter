@@ -33,6 +33,12 @@ const QString light_theme = base_theme + R"(
         color: #111113;
     }
 
+    QFrame[frameShape="4"] {
+        max-height: 1px;
+        border: none;
+        background-color: #E0E1E6;
+    }
+
     QListWidget::item:hover {
         background-color: #E0E1E6;
     }
@@ -51,6 +57,12 @@ const QString dark_theme = base_theme + R"(
 
     QLabel {
         color: #EDEEF0;
+    }
+
+    QFrame[frameShape="4"] {
+        max-height: 1px;
+        border: none;
+        background-color: #212225;
     }
 
     QListWidget::item:hover {
