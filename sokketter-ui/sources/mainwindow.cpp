@@ -33,7 +33,9 @@ MainWindow::MainWindow(QWidget *parent)
      * @brief set the margins of clickable labels.
      */
     m_ui->power_strip_list_refresh_label->setContentsMargins(10, 0, 10, 0);
+    m_ui->power_strip_about_button->setContentsMargins(10, 0, 10, 0);
     m_ui->socket_list_back_label->setContentsMargins(10, 0, 10, 0);
+    m_ui->about_back_label->setContentsMargins(10, 0, 10, 0);
 
     /**
      * @brief connect the signals to the slots.
@@ -53,12 +55,40 @@ MainWindow::MainWindow(QWidget *parent)
         redraw_device_list();
     });
 
+    QObject::connect(m_ui->power_strip_about_button, &ClickableLabel::clicked, [this]() {
+        const int &index = m_ui->stackedWidget->indexOf(m_ui->about_page);
+        m_ui->stackedWidget->slideInIdx(index);
+    });
+
+    initialize_about_page();
+
     QTimer::singleShot(25, [this]() { repopulate_device_list(); });
 }
 
 MainWindow::~MainWindow()
 {
     delete m_ui;
+}
+
+auto MainWindow::initialize_about_page() -> void
+{
+    /**
+     * @brief button signals.
+     */
+    QObject::connect(m_ui->about_back_label, &ClickableLabel::clicked, [this]() {
+        const int &index = m_ui->stackedWidget->indexOf(m_ui->power_strip_list_page);
+        m_ui->stackedWidget->slideInIdx(index);
+        redraw_device_list();
+    });
+
+    /**
+     * @brief build information.
+     */
+    m_ui->about_version_label->setText(
+        "sokketter version " + QString::fromStdString(sokketter::version().to_string()));
+    m_ui->about_git_hash_label->setText(
+        "Git commit hash: " + QString::fromStdString(sokketter::version().git_hash()));
+    m_ui->about_build_date_label->setText(QString("Build on ") + __DATE__ + "  at " + __TIME__);
 }
 
 auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void

@@ -29,6 +29,8 @@ private slots:
 private:
     Ui::MainWindow *m_ui;
 
+    auto initialize_about_page() -> void;
+
     auto event(QEvent *event) -> bool override;
     auto resizeEvent(QResizeEvent *event) -> void override;
     auto setThemeAccordingToMode() -> void;
