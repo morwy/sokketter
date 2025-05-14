@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "license_dialog.h"
 #include "ui_mainwindow.h"
 
 #include <empty_power_strip_list_item.h>
@@ -36,6 +37,7 @@ MainWindow::MainWindow(QWidget *parent)
     m_ui->power_strip_about_button->setContentsMargins(10, 0, 10, 0);
     m_ui->socket_list_back_label->setContentsMargins(10, 0, 10, 0);
     m_ui->about_back_label->setContentsMargins(10, 0, 10, 0);
+    m_ui->about_license_label->setContentsMargins(10, 0, 10, 0);
 
     /**
      * @brief connect the signals to the slots.
@@ -81,6 +83,11 @@ auto MainWindow::initialize_about_page() -> void
         redraw_device_list();
     });
 
+    QObject::connect(m_ui->about_license_label, &ClickableLabel::clicked, [this]() {
+        license_dialog *licenseDialog = new license_dialog(this);
+        licenseDialog->show();
+    });
+
     /**
      * @brief build information.
      */
@@ -89,6 +96,15 @@ auto MainWindow::initialize_about_page() -> void
     m_ui->about_git_hash_label->setText(
         "Git commit hash: " + QString::fromStdString(sokketter::version().git_hash()));
     m_ui->about_build_date_label->setText(QString("Build on ") + __DATE__ + "  at " + __TIME__);
+
+    /**
+     * @brief used components information.
+     */
+    const QString qtVersion = QString(QT_VERSION_STR);
+
+    QString html = m_ui->used_components_text->toHtml();
+    html.replace("%QT_VERSION%", qtVersion);
+    m_ui->used_components_text->setHtml(html);
 }
 
 auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
