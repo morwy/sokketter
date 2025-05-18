@@ -84,6 +84,7 @@ auto MainWindow::initialize_about_page() -> void
      */
     m_ui->about_version_label->setText(
         "sokketter version " + QString::fromStdString(sokketter::version().to_string()));
+    m_ui->about_own_license_label->setText("Distributed under BCD 3-Clause license");
     m_ui->about_git_hash_label->setText(
         "Git commit hash: " + QString::fromStdString(sokketter::version().git_hash()));
     m_ui->about_build_date_label->setText(QString("Build on ") + __DATE__ + " at " + __TIME__);
@@ -96,13 +97,15 @@ auto MainWindow::initialize_about_page() -> void
     QString licenseInfoText = R"(
 \- **Qt %QT_VERSION%:** used as dynamically linked libraries for providing re-linking mechanism and under acceptance of Accept Digital Rights Management terms. Qt souce code was not modified in any way and any possible modification will be non-proprietary and listed here in a detailed way. Distributed under LGPL v3 license ([link to license](https://www.gnu.org/licenses/lgpl-3.0.en.html#license-text)).
 
+\- "**radix-ui**" as a color scheme constructor: made by WorkOS team ([link to profile on GitHub](https://github.com/workos)). Distributed under MIT license ([link to license](https://opensource.org/license/mit)).
+
+\- "**spdlog**" library: made by Gabi Melman ([link to library on GitHub](https://github.com/gabime/spdlog)). Distributed under MIT license ([link to license](https://opensource.org/license/mit)).
+
 \- "**Charge, charging, electric icon**" as an application icon: made by Ümit Can Evleksiz ([link to profile on IconFinder](https://www.iconfinder.com/umitcan_07)), shared on IconFinder ([link to material on IconFinder](https://www.iconfinder.com/icons/2578280/charge_charging_electric_electricity_plug_power_socket_icon)). Distributed under CC BY-NC 3.0 license ([link to license](https://creativecommons.org/licenses/by-nc/3.0/deed.en)). Icon was modified, several parts outside of socket shape were removed.
 
 \- "**Electric, electricity, energy icon**" as a socket picture in UI: made by Ümit Can Evleksiz ([link to profile on IconFinder](https://www.iconfinder.com/umitcan_07)), shared on IconFinder ([link to material on IconFinder](https://www.iconfinder.com/icons/2578127/electric_electricity_energy_plug_power_powerpoint_socket_icon)). Distributed under CC BY-NC 3.0 license ([link to license](https://creativecommons.org/licenses/by-nc/3.0/deed.en)). Icon was modified, lines were made thinner and color was changed.
 
 \- "**Electric, electricity, energy icon**" as a power strip picture in UI: made by Ümit Can Evleksiz ([link to profile on IconFinder](https://www.iconfinder.com/umitcan_07)), shared on IconFinder ([link to material on IconFinder](https://www.iconfinder.com/icons/2578128/electric_electricity_energy_plug_power_socket_icon)). Distributed under CC BY-NC 3.0 license ([link to license](https://creativecommons.org/licenses/by-nc/3.0/deed.en)). Icon was modified, rotated, lines were made thinner and color was changed.
-
-\- "**radix-ui**" as a color scheme constructor: made by WorkOS team ([link to profile on GitHub](https://github.com/workos)). Distributed under MIT license ([link to license](https://opensource.org/license/mit)).
     )";
 
     licenseInfoText.replace("%QT_VERSION%", qtVersion);
