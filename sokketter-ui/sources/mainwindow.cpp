@@ -31,15 +31,6 @@ MainWindow::MainWindow(QWidget *parent)
     m_ui->stackedWidget->setSpeed(500);
 
     /**
-     * @brief set the margins of clickable labels.
-     */
-    m_ui->power_strip_list_refresh_label->setContentsMargins(10, 0, 10, 0);
-    m_ui->power_strip_about_button->setContentsMargins(10, 0, 10, 0);
-    m_ui->socket_list_back_label->setContentsMargins(10, 0, 10, 0);
-    m_ui->about_back_label->setContentsMargins(10, 0, 10, 0);
-    m_ui->about_license_label->setContentsMargins(10, 0, 10, 0);
-
-    /**
      * @brief connect the signals to the slots.
      */
     QObject::connect(m_ui->power_strip_list_widget, &QListWidget::itemClicked, this,
