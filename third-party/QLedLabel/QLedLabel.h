@@ -1,7 +1,8 @@
 /**
  * Based on the answer from the Qt Forum.
  * @author Gojir4 (https://forum.qt.io/user/gojir4)
- * @link https://forum.qt.io/topic/101648/how-to-create-simply-virtual-led-indicator/2?_=1743619030242&lang=en-US
+ * @link
+ * https://forum.qt.io/topic/101648/how-to-create-simply-virtual-led-indicator/2?_=1743619030242&lang=en-US
  */
 
 #ifndef QLEDLABEL_H
