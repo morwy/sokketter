@@ -11,7 +11,7 @@
 
 auto get_requested_test_device_number() -> size_t
 {
-    const std::string &name = "LIBSOKKETTER_TESTING_ENABLED";
+    const std::string &name = "LIBSOKKETTER_TEST_DEVICE_NUMBER";
     const char *value = std::getenv(name.c_str());
     if (value == nullptr)
     {
