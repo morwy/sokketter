@@ -13,6 +13,7 @@ find_package(Threads REQUIRED)
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
 include_directories(${CMAKE_CURRENT_LIST_DIR}/sources)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/sources/Qt)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../libsokketter/include)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../third-party)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../third-party/ClickableLabel)
