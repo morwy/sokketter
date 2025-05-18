@@ -74,6 +74,8 @@ And then enter the local user credentials. After that, you can run the applicati
 
 ### Ubuntu / Debian
 
+To run the application, you need to make it executable by running the following command:
+
 ```bash
 chmod +x APPLICATION_DOWNLOAD_PATH
 ```
