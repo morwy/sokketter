@@ -1,5 +1,123 @@
 # Changelog
 
+## [1.2.0] - 2025-05-18
+
+### 🚀 Features
+
+- Added initial UI application.
+- Added SlidingStackedWidget class.
+- Added sokketter::toggle() function.
+- Added sokketter::power_strip::socket() function.
+- Added QLedStatus widget.
+- Added QLedLabel widget.
+- Automatically switching light and dark modes.
+- Added Windows build.
+- Styling the app with common style sheets.
+- Some UI changes.
+- Setting detail information for Windows binaries.
+- Setting icon for Windows application.
+- Added icon for MacOS application.
+- Initial about page.
+- Added license dialog.
+- Added classes for easier styling in CSS.
+- Added original files of used pictures.
+
+### 🐛 Bug Fixes
+
+- Fixed compilation for Qt 6.5 and higher.
+- Fixing Windows compilation issues.
+- Fixing Linux compilation.
+- Corrected dependencies.
+- Corrected link.
+- Corrected filename.
+- Corrected path to icon.
+- Corrected call path to linuxdeployqt.
+- Removed some parameters for linuxdeployqt.
+- Added more required libs.
+- Corrected .desktop file format issues.
+- Removed icon extension.
+- Moving with a wildcard.
+- Corrected name of windeployqt.
+- Made device and socket list without borders.
+- Some style changes.
+- Fixed signal-slot warning.
+- Setting correct height and width of list items.
+- Setting Windows title bar according to current OS theme.
+- Fixed CLI windows popping up for UI app.
+- Wording change.
+- Fixed issue with redrawing empty device stub.
+- Removed plist file.
+- Nullifying lower digits during increment.
+- Added detailed Info.plist generation.
+- Changed the way how mock devices are working.
+- Styling vertical line.
+- Styling horizontal line.
+- Removed redundant Info.plist.
+- Added proper license info and details on about page.
+- Changed LIBSOKKETTER_TESTING_ENABLED to LIBSOKKETTER_TEST_DEVICE_NUMBER.
+- Removed extra space.
+- Including widget directory to build.
+- Somewhat finalizing the dark theme.
+- Added underline on hover.
+- Removed margin from clickable labels.
+- Some theme changes.
+- Corrected color issues in license info text.
+- More theme work.
+- Made dialog wider.
+- Changed coloring and thickness of icons.
+- Finalized light theme.
+- Style changes.
+- Changed coloring according to scheme.
+- Corrected license text.
+- Added MIT and BSD 3-Clause licenses.
+- Corrected mention.
+- Added more license info.
+- Setting QTextBrowser text color depending on theme.
+- Little wording change.
+
+### 🚜 Refactor
+
+- Small UI changes for power strip item.
+
+### 📚 Documentation
+
+- Added initial README file. by @morwy
+- Extra comment.
+- Updated to latest.
+- Setting image width in percents.
+- Fixing the images.
+- Added security chapter about MacOS.
+- More info about Ubuntu.
+
+### ⚙️ Miscellaneous Tasks
+
+- Small clean up.
+- Added initial power strip UI list item.
+- Added initial socket UI list item.
+- Added initial main UI class.
+- Small UI corrections for socket_list_item.
+- Added status tooltip for power_strip_list_item.
+- Small UI fixes.
+- Building .app for MacOS.
+- Trying to build Qt app for MacOS.
+- Simplified Qt6 installation.
+- Zipping MacOS app for uploading.
+- Proper zipping.
+- Hid MacOS only codes under defines.
+- Renamed file to fix Linux build.
+- Fixing Linux compilation.
+- Fixing zipping yet again.
+- Added extra checks.
+- Corrected process.
+- Removed redundant check.
+- Renaming MacOS exe before zipping.
+- Added files required for linuxdeployqt.
+- Updated kommpot to latest.
+- Updated Ubuntu builder to ubuntu-22.04.
+- Fixed Ubuntu 22.04 build.
+- Style changes.
+- Synced with latest.
+
 ## [1.1.1] - 2025-04-12
 
 ### 🚀 Features
