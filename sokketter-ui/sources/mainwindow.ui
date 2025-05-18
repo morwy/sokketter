@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>417</width>
-    <height>445</height>
+    <width>432</width>
+    <height>455</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -65,7 +65,7 @@
             <number>0</number>
            </property>
            <item>
-            <widget class="QLabel" name="about_title_label">
+            <widget class="TitleLabel" name="about_title_label">
              <property name="font">
               <font>
                <pointsize>14</pointsize>
@@ -75,12 +75,15 @@
              <property name="text">
               <string>About</string>
              </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
+             </property>
             </widget>
            </item>
            <item>
             <spacer name="horizontalSpacer_3">
              <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+              <enum>Qt::Orientation::Horizontal</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -91,9 +94,12 @@
             </spacer>
            </item>
            <item>
-            <widget class="ClickableLabel" name="about_back_label">
+            <widget class="ButtonLabel" name="about_back_label">
              <property name="text">
               <string>Back</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
              </property>
             </widget>
            </item>
@@ -103,7 +109,7 @@
         <item>
          <widget class="Line" name="line_3">
           <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+           <enum>Qt::Orientation::Horizontal</enum>
           </property>
          </widget>
         </item>
@@ -160,7 +166,7 @@
               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Repository: &lt;a href=&quot;https://github.com/morwy/sokketter&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;https://github.com/morwy/sokketter&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
              </property>
              <property name="textFormat">
-              <enum>Qt::MarkdownText</enum>
+              <enum>Qt::TextFormat::MarkdownText</enum>
              </property>
              <property name="openExternalLinks">
               <bool>true</bool>
@@ -170,7 +176,7 @@
            <item>
             <widget class="Line" name="line_4">
              <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+              <enum>Qt::Orientation::Horizontal</enum>
              </property>
             </widget>
            </item>
@@ -204,7 +210,7 @@
               <item>
                <spacer name="horizontalSpacer_4">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -215,7 +221,7 @@
                </spacer>
               </item>
               <item>
-               <widget class="ClickableLabel" name="about_license_label">
+               <widget class="ButtonLabel" name="about_license_label">
                 <property name="text">
                  <string>Click to see license copies</string>
                 </property>
@@ -227,13 +233,13 @@
            <item>
             <widget class="QTextBrowser" name="used_components_text">
              <property name="frameShape">
-              <enum>QFrame::NoFrame</enum>
+              <enum>QFrame::Shape::NoFrame</enum>
              </property>
              <property name="frameShadow">
-              <enum>QFrame::Plain</enum>
+              <enum>QFrame::Shadow::Plain</enum>
              </property>
              <property name="horizontalScrollBarPolicy">
-              <enum>Qt::ScrollBarAlwaysOff</enum>
+              <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
              </property>
              <property name="html">
               <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
@@ -291,7 +297,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
             <number>0</number>
            </property>
            <item>
-            <widget class="QLabel" name="power_strip_title_label">
+            <widget class="TitleLabel" name="power_strip_title_label">
              <property name="font">
               <font>
                <pointsize>14</pointsize>
@@ -301,12 +307,15 @@ li.checked::marker { content: &quot;\2612&quot;; }
              <property name="text">
               <string>Devices</string>
              </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
+             </property>
             </widget>
            </item>
            <item>
             <spacer name="horizontalSpacer">
              <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+              <enum>Qt::Orientation::Horizontal</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -317,16 +326,22 @@ li.checked::marker { content: &quot;\2612&quot;; }
             </spacer>
            </item>
            <item>
-            <widget class="ClickableLabel" name="power_strip_about_button">
+            <widget class="ButtonLabel" name="power_strip_about_button">
              <property name="text">
               <string>About</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
              </property>
             </widget>
            </item>
            <item>
-            <widget class="ClickableLabel" name="power_strip_list_refresh_label">
+            <widget class="ButtonLabel" name="power_strip_list_refresh_label">
              <property name="text">
               <string>Refresh</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
              </property>
             </widget>
            </item>
@@ -336,7 +351,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <item>
          <widget class="Line" name="line">
           <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+           <enum>Qt::Orientation::Horizontal</enum>
           </property>
          </widget>
         </item>
@@ -346,25 +361,25 @@ li.checked::marker { content: &quot;\2612&quot;; }
            <bool>true</bool>
           </property>
           <property name="frameShape">
-           <enum>QFrame::NoFrame</enum>
+           <enum>QFrame::Shape::NoFrame</enum>
           </property>
           <property name="frameShadow">
-           <enum>QFrame::Plain</enum>
+           <enum>QFrame::Shadow::Plain</enum>
           </property>
           <property name="editTriggers">
-           <set>QAbstractItemView::NoEditTriggers</set>
+           <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
           </property>
           <property name="showDropIndicator" stdset="0">
            <bool>false</bool>
           </property>
           <property name="selectionMode">
-           <enum>QAbstractItemView::NoSelection</enum>
+           <enum>QAbstractItemView::SelectionMode::NoSelection</enum>
           </property>
           <property name="isWrapping" stdset="0">
            <bool>false</bool>
           </property>
           <property name="resizeMode">
-           <enum>QListView::Adjust</enum>
+           <enum>QListView::ResizeMode::Adjust</enum>
           </property>
           <property name="spacing">
            <number>0</number>
@@ -373,7 +388,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
            <bool>false</bool>
           </property>
           <property name="itemAlignment">
-           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+           <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
           </property>
          </widget>
         </item>
@@ -410,7 +425,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
             <number>0</number>
            </property>
            <item>
-            <widget class="QLabel" name="socket_list_title_label">
+            <widget class="TitleLabel" name="socket_list_title_label">
              <property name="font">
               <font>
                <pointsize>14</pointsize>
@@ -420,12 +435,15 @@ li.checked::marker { content: &quot;\2612&quot;; }
              <property name="text">
               <string>Sockets</string>
              </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
+             </property>
             </widget>
            </item>
            <item>
             <spacer name="horizontalSpacer_2">
              <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+              <enum>Qt::Orientation::Horizontal</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -436,9 +454,12 @@ li.checked::marker { content: &quot;\2612&quot;; }
             </spacer>
            </item>
            <item>
-            <widget class="ClickableLabel" name="socket_list_back_label">
+            <widget class="ButtonLabel" name="socket_list_back_label">
              <property name="text">
               <string>Back</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
              </property>
             </widget>
            </item>
@@ -448,7 +469,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <item>
          <widget class="Line" name="line_2">
           <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+           <enum>Qt::Orientation::Horizontal</enum>
           </property>
          </widget>
         </item>
@@ -458,22 +479,22 @@ li.checked::marker { content: &quot;\2612&quot;; }
            <bool>true</bool>
           </property>
           <property name="frameShape">
-           <enum>QFrame::NoFrame</enum>
+           <enum>QFrame::Shape::NoFrame</enum>
           </property>
           <property name="frameShadow">
-           <enum>QFrame::Plain</enum>
+           <enum>QFrame::Shadow::Plain</enum>
           </property>
           <property name="editTriggers">
-           <set>QAbstractItemView::NoEditTriggers</set>
+           <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
           </property>
           <property name="showDropIndicator" stdset="0">
            <bool>false</bool>
           </property>
           <property name="selectionMode">
-           <enum>QAbstractItemView::NoSelection</enum>
+           <enum>QAbstractItemView::SelectionMode::NoSelection</enum>
           </property>
           <property name="resizeMode">
-           <enum>QListView::Adjust</enum>
+           <enum>QListView::ResizeMode::Adjust</enum>
           </property>
           <property name="spacing">
            <number>0</number>
@@ -482,7 +503,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
            <bool>true</bool>
           </property>
           <property name="itemAlignment">
-           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+           <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
           </property>
          </widget>
         </item>
@@ -501,9 +522,14 @@ li.checked::marker { content: &quot;\2612&quot;; }
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>ClickableLabel</class>
+   <class>TitleLabel</class>
    <extends>QLabel</extends>
-   <header location="global">ClickableLabel.h</header>
+   <header>TitleLabel.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ButtonLabel</class>
+   <extends>QLabel</extends>
+   <header>ButtonLabel.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
