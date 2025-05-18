@@ -95,7 +95,7 @@ auto MainWindow::initialize_about_page() -> void
         "sokketter version " + QString::fromStdString(sokketter::version().to_string()));
     m_ui->about_git_hash_label->setText(
         "Git commit hash: " + QString::fromStdString(sokketter::version().git_hash()));
-    m_ui->about_build_date_label->setText(QString("Build on ") + __DATE__ + "  at " + __TIME__);
+    m_ui->about_build_date_label->setText(QString("Build on ") + __DATE__ + " at " + __TIME__);
 
     /**
      * @brief used components information.
