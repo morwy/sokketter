@@ -6,12 +6,17 @@
 #include <devices/power_strip_base.h>
 #include <libsokketter.h>
 
+#include <optional>
+
 class energenie_eg_base : public power_strip_base
 {
 public:
     explicit energenie_eg_base(std::unique_ptr<kommpot::device_communication> communication);
 
     [[nodiscard]] auto sockets() -> const std::vector<sokketter::socket> & override;
+
+    [[nodiscard]] auto socket(const size_t &index)
+        -> const std::optional<std::reference_wrapper<sokketter::socket>> override;
 
 protected:
     std::vector<sokketter::socket> m_sockets;

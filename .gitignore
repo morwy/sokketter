@@ -2,6 +2,8 @@
 report.info
 CMakeLists.txt.user
 build-coverage
+version.rc
+sokketter-ui/resources/Info.plist
 
 # Testing temp files.
 Testing/

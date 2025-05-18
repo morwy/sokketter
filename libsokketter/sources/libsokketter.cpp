@@ -9,16 +9,27 @@
 #include <spdlog/spdlog.h>
 #include <third-party/kommpot/libkommpot/include/libkommpot.h>
 
-bool is_internal_testing_enabled()
+auto get_requested_test_device_number() -> size_t
 {
-    const std::string &name = "LIBSOKKETTER_TESTING_ENABLED";
+    const std::string &name = "LIBSOKKETTER_TEST_DEVICE_NUMBER";
     const char *value = std::getenv(name.c_str());
     if (value == nullptr)
     {
-        return false;
+        return 0;
     }
 
-    return std::string(value) == "1";
+    try
+    {
+        return std::stoul(value);
+    }
+    catch (const std::invalid_argument &)
+    {
+        return 0;
+    }
+    catch (const std::out_of_range &)
+    {
+        return 0;
+    }
 }
 
 sokketter::version_information::version_information(const uint8_t major, const uint8_t minor,
@@ -84,7 +95,7 @@ auto sokketter::socket::configure(const socket_configuration &configuration) -> 
     m_configuration = configuration;
 }
 
-bool sokketter::socket::power(const bool &on) const noexcept
+auto sokketter::socket::power(const bool &on) const noexcept -> bool
 {
     if (m_power_cb == nullptr)
     {
@@ -92,6 +103,18 @@ bool sokketter::socket::power(const bool &on) const noexcept
     }
 
     return m_power_cb(m_index, on);
+}
+
+auto sokketter::socket::toggle() const noexcept -> bool
+{
+    if (m_power_cb == nullptr)
+    {
+        return false;
+    }
+
+    const bool powered_on = is_powered_on();
+
+    return m_power_cb(m_index, !powered_on);
 }
 
 auto sokketter::socket::is_powered_on() const noexcept -> bool
@@ -110,7 +133,7 @@ auto sokketter::socket::to_string() const noexcept -> std::string
            std::string(is_powered_on() ? "on" : "off");
 }
 
-std::string sokketter::power_strip_type_to_string(const power_strip_type &type)
+auto sokketter::power_strip_type_to_string(const power_strip_type &type) -> std::string
 {
     switch (type)
     {
@@ -166,9 +189,14 @@ auto sokketter::devices(const device_filter &filter)
 
     std::vector<std::unique_ptr<sokketter::power_strip>> devices;
 
-    if (is_internal_testing_enabled())
+    auto requested_test_device_number = get_requested_test_device_number();
+    if (requested_test_device_number > 0)
     {
-        devices.push_back(std::make_unique<test_device>());
+        for (size_t device_index = 0; device_index < requested_test_device_number; ++device_index)
+        {
+            devices.push_back(std::make_unique<test_device>(device_index));
+        }
+
         return devices;
     }
 
@@ -197,14 +225,9 @@ auto sokketter::device(const size_t &index) -> const std::unique_ptr<sokketter::
         logger->set_level(spdlog::level::err);
     }
 
-    if (is_internal_testing_enabled())
+    if (get_requested_test_device_number())
     {
-        if (index == 0)
-        {
-            return std::make_unique<test_device>();
-        }
-
-        return nullptr;
+        return std::make_unique<test_device>(index);
     }
 
     const auto supported_devices = power_strip_factory::supported_devices();
@@ -235,11 +258,24 @@ auto sokketter::device(const std::string &serial_number)
         logger->set_level(spdlog::level::err);
     }
 
-    if (is_internal_testing_enabled())
+    if (get_requested_test_device_number())
     {
-        if (serial_number == "TEST_SERIAL_NUMBER")
+        const std::string test_device_prefix = "TEST_SERIAL_NUMBER_";
+        if (serial_number.rfind(test_device_prefix, 0) == 0)
         {
-            return std::make_unique<test_device>();
+            try
+            {
+                size_t index = std::stoul(serial_number.substr(test_device_prefix.length()));
+                return std::make_unique<test_device>(index);
+            }
+            catch (const std::invalid_argument &)
+            {
+                return nullptr;
+            }
+            catch (const std::out_of_range &)
+            {
+                return nullptr;
+            }
         }
 
         return nullptr;

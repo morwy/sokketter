@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -111,6 +112,12 @@ namespace sokketter {
         auto power(const bool &on) const noexcept -> bool;
 
         /**
+         * @brief toggles the socket state.
+         * @return true in case of success, false in case of any failure.
+         */
+        auto toggle() const noexcept -> bool;
+
+        /**
          * @brief gets current socket state.
          * @return true if powered on, false if powered off.
          */
@@ -149,7 +156,7 @@ namespace sokketter {
      * @param type of power strip.
      * @return string.
      */
-    static auto power_strip_type_to_string(const power_strip_type &type) -> std::string;
+    auto EXPORTED power_strip_type_to_string(const power_strip_type &type) -> std::string;
 
     /**
      * @brief structure containing configuration parameters of the specific power strip.
@@ -207,6 +214,15 @@ namespace sokketter {
          * @return vector of socket objects.
          */
         [[nodiscard]] virtual auto sockets() -> const std::vector<socket> & = 0;
+
+        /**
+         * @brief gets a specific socket controlled by the power strip.
+         * @param index of the socket.
+         * @return socket object as std::optional in case of success, std::nullopt in case of
+         * failure.
+         */
+        [[nodiscard]] virtual auto socket(const size_t &index)
+            -> const std::optional<std::reference_wrapper<socket>> = 0;
 
         /**
          * @brief creates string based on power strip parameters

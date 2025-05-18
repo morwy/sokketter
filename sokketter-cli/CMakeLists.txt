@@ -8,11 +8,39 @@ include_directories(${CMAKE_CURRENT_LIST_DIR}/../libsokketter/include)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../third-party)
 
 #
+# Stating common details.
+#
+set(SOKKETTER_NAME "sokketter-cli")
+
+if(PLATFORM_OS_WINDOWS)
+set(SOKKETTER_EXECUTABLE "sokketter-cli.exe")
+else()
+set(SOKKETTER_EXECUTABLE "sokketter-cli")
+endif()
+
+set(SOKKETTER_COMPANY "")
+set(SOKKETTER_COPYRIGHT "")
+set(SOKKETTER_DESCRIPTION "Application for controlling connected power strips and sockets.")
+set(SOKKETTER_BINARY_TYPE 0x3fL)
+
+configure_file(${PROJECT_ROOT_PATH}/version.rc.in ${CMAKE_CURRENT_SOURCE_DIR}/resources/version.rc @ONLY)
+
+#
 # Add source files recursively.
 #
 set(FILE_EXTENSIONS *.h *.hpp *.c *.cpp)
+
+if(PLATFORM_OS_WINDOWS)
+    #
+    # Add .rc files for Windows separately.
+    #
+    list(APPEND FILE_EXTENSIONS *.rc)
+endif()
+
 foreach(FILE_EXTENSION IN LISTS FILE_EXTENSIONS)
     file (GLOB_RECURSE FOUND_FILES ${CMAKE_CURRENT_SOURCE_DIR}/sources/${FILE_EXTENSION})
+    set(PROJECT_FOLDER_FILES ${PROJECT_FOLDER_FILES} ${FOUND_FILES})
+    file (GLOB_RECURSE FOUND_FILES ${CMAKE_CURRENT_SOURCE_DIR}/resources/${FILE_EXTENSION})
     set(PROJECT_FOLDER_FILES ${PROJECT_FOLDER_FILES} ${FOUND_FILES})
 endforeach()
 

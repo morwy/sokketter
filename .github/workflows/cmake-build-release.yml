@@ -16,7 +16,7 @@ on:
 
 jobs:
   increment-version:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     permissions:
         contents: write
     outputs:
@@ -104,7 +104,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, windows-2019, macos-13, macos-14]
+        os: [ubuntu-22.04, windows-2019, macos-13, macos-14]
         build_type: [Release]
         c_compiler: [gcc, clang, cl]
         library_type: [static]
@@ -118,7 +118,7 @@ jobs:
           - os: macos-14
             c_compiler: clang
             cpp_compiler: clang++
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             c_compiler: gcc
             cpp_compiler: g++
         exclude:
@@ -134,9 +134,9 @@ jobs:
             c_compiler: cl
           - os: macos-14
             c_compiler: gcc
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             c_compiler: cl
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             c_compiler: clang
 
     steps:
@@ -153,21 +153,29 @@ jobs:
         echo "binary-output-dir=${{ github.workspace }}${{ env.path-separator }}bin${{ env.path-separator }}${{ (startsWith(matrix.os, 'ubuntu') && 'linux') || (startsWith(matrix.os, 'windows') && 'windows') || (startsWith(matrix.os, 'macos') && 'macos') || '' }}_${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86_64' }}${{ env.path-separator }}${{ matrix.build_type }}" >> "$GITHUB_OUTPUT"
         echo "archive-name=libsokketter-${{ needs.increment-version.outputs.NEW_TAG_NAME }}-${{ matrix.os }}-${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86-64' }}" >> "$GITHUB_OUTPUT"
         echo "sokketter-cli-name=sokketter-cli-${{ needs.increment-version.outputs.NEW_TAG_NAME }}-${{ matrix.os }}-${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86-64' }}" >> "$GITHUB_OUTPUT"
+        echo "sokketter-ui-name=sokketter-ui-${{ needs.increment-version.outputs.NEW_TAG_NAME }}-${{ matrix.os }}-${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86-64' }}" >> "$GITHUB_OUTPUT"
 
     - name: Install dependencies (Ubuntu-only)
+      if: ${{ startsWith(matrix.os, 'ubuntu') }}
       run: |
         sudo apt update
-        sudo apt install libudev-dev ninja-build
-      if: ${{ startsWith(matrix.os, 'ubuntu') }}
+        sudo apt install libfuse2 libudev-dev ninja-build wget libxcb1 libxcb-cursor0 libxcb-xinerama0 libxcb-xfixes0 libxcb-image0
+        wget -c https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage
+        chmod +x linuxdeployqt-continuous-x86_64.AppImage
+
+    - name: Install Qt6 dependencies
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: '6.5.*'
 
     - name: Configure CMake for static libraries
       run: |
-        cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=true -DIS_COMPILING_SHARED=false 
+        cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=true -DIS_COMPILING_SHARED=false -DCMAKE_PREFIX_PATH=$Qt6_DIR
       if: matrix.library_type == 'static'
 
     - name: Configure CMake for shared libraries
       run: |
-        cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=false -DIS_COMPILING_SHARED=true 
+        cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=false -DIS_COMPILING_SHARED=true -DCMAKE_PREFIX_PATH=$Qt6_DIR
       if: matrix.library_type == 'shared'
 
     - name: Build binaries
@@ -190,6 +198,41 @@ jobs:
       if: ${{ !startsWith(matrix.os, 'windows') }}
       run: cd ${{ steps.strings.outputs.binary-output-dir }} && zip -r ${{ github.workspace }}${{ env.path-separator }}${{ steps.strings.outputs.archive-name }}.zip include libs
 
+    - name: Deploy with windeployqt (Windows-only)
+      if: ${{ startsWith(matrix.os, 'windows') }}
+      run: |
+        cd ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin
+        mkdir ${{ steps.strings.outputs.sokketter-ui-name }}
+        dir
+        cp sokketter-ui.exe ${{ steps.strings.outputs.sokketter-ui-name }}
+        windeployqt sokketter-ui.exe -dir ${{ steps.strings.outputs.sokketter-ui-name }}
+        powershell Compress-Archive -Path ${{ steps.strings.outputs.sokketter-ui-name }}${{ env.path-separator }}* -DestinationPath ${{ steps.strings.outputs.sokketter-ui-name }}.zip
+
+    - name: Deploy with linuxdeployqt (Ubuntu-only)
+      if: ${{ startsWith(matrix.os, 'ubuntu') }}
+      run: |
+        cd ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin
+        mkdir -p ${{ steps.strings.outputs.sokketter-ui-name }}/usr/bin
+        cp sokketter-ui ${{ steps.strings.outputs.sokketter-ui-name }}/usr/bin/
+        cp ${{ github.workspace }}${{ env.path-separator }}sokketter-ui${{ env.path-separator }}resources${{ env.path-separator }}sokketter-ui.desktop ${{ steps.strings.outputs.sokketter-ui-name }}/
+        cp ${{ github.workspace }}${{ env.path-separator }}sokketter-ui${{ env.path-separator }}resources${{ env.path-separator }}sokketter-ui-icon.png ${{ steps.strings.outputs.sokketter-ui-name }}/
+        sed -i '/^X-AppImage-Version=/c\X-AppImage-Version=${{ needs.increment-version.outputs.NEW_TAG_NAME }}' ${{ steps.strings.outputs.sokketter-ui-name }}/sokketter-ui.desktop
+        ${{ github.workspace }}${{ env.path-separator }}linuxdeployqt-continuous-x86_64.AppImage ${{ steps.strings.outputs.sokketter-ui-name }}/usr/bin/sokketter-ui -appimage \
+          -executable=${{ steps.strings.outputs.sokketter-ui-name }}/usr/bin/sokketter-ui \
+          -verbose=2
+
+    - name: Deploy with macdeployqt (MacOS-only)
+      if: ${{ startsWith(matrix.os, 'macos') }}
+      run: |
+        cd ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin
+        mv sokketter-ui.app ${{ steps.strings.outputs.sokketter-ui-name }}.app
+        APP_PATH=$(find . -name "*.app" -type d | head -n 1)
+        APP_NAME=$(find . -name "*.app" -type d | head -n 1 | xargs basename)
+        echo "App path found: $APP_PATH"
+        echo "App name found: $APP_NAME"
+        macdeployqt "$APP_PATH"
+        zip -r sokketter-ui.zip "${APP_NAME}"
+
     - name: Rename sokketter-cli (Windows-only)
       if: ${{ startsWith(matrix.os, 'windows') }}
       run: mv ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin${{ env.path-separator }}sokketter-cli.exe ${{ github.workspace }}${{ env.path-separator }}${{ steps.strings.outputs.sokketter-cli-name }}.exe
@@ -198,19 +241,33 @@ jobs:
       if: ${{ !startsWith(matrix.os, 'windows') }}
       run: mv ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin${{ env.path-separator }}sokketter-cli ${{ github.workspace }}${{ env.path-separator }}${{ steps.strings.outputs.sokketter-cli-name }}
 
+    - name: Rename sokketter-ui (Windows-only)
+      if: ${{ startsWith(matrix.os, 'windows') }}
+      run: move ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin${{ env.path-separator }}${{ steps.strings.outputs.sokketter-ui-name }}.zip ${{ github.workspace }}${{ env.path-separator }}${{ steps.strings.outputs.sokketter-ui-name }}.zip
+
+    - name: Rename sokketter-ui (Ubuntu-only)
+      if: ${{ startsWith(matrix.os, 'ubuntu') }}
+      run: mv ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin${{ env.path-separator }}sokketter-ui*.AppImage ${{ github.workspace }}${{ env.path-separator }}${{ steps.strings.outputs.sokketter-ui-name }}.AppImage
+
+    - name: Rename sokketter-ui (MacOS-only)
+      if: ${{ startsWith(matrix.os, 'macos') }}
+      run: mv ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin${{ env.path-separator }}sokketter-ui.zip ${{ github.workspace }}${{ env.path-separator }}${{ steps.strings.outputs.sokketter-ui-name }}.zip
+
     - name: Upload libsokketter
       uses: actions/upload-artifact@v4
       with:
         name: ${{ steps.strings.outputs.archive-name }}
-        path: "${{ github.workspace }}${{ env.path-separator }}*.zip"
+        path: |
+          ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}include
+          ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}libs
   
     - name: Upload sokketter-cli (Windows-only)
       if: ${{ startsWith(matrix.os, 'windows') }}
       uses: actions/upload-artifact@v4
       with:
         name: ${{ steps.strings.outputs.sokketter-cli-name }}
-        path: "${{ steps.strings.outputs.sokketter-cli-name }}.exe"
-  
+        path: ${{ steps.strings.outputs.sokketter-cli-name }}.exe
+      
     - name: Upload sokketter-cli (non-Windows)
       if: ${{ !startsWith(matrix.os, 'windows') }}
       uses: actions/upload-artifact@v4
@@ -218,8 +275,29 @@ jobs:
         name: ${{ steps.strings.outputs.sokketter-cli-name }}
         path: ${{ steps.strings.outputs.sokketter-cli-name }}
 
+    - name: Upload sokketter-ui (Windows-only)
+      if: ${{ startsWith(matrix.os, 'windows') }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.strings.outputs.sokketter-ui-name }}
+        path: ${{ steps.strings.outputs.sokketter-ui-name }}.zip
+      
+    - name: Upload sokketter-ui (Ubuntu-only)
+      if: ${{ startsWith(matrix.os, 'ubuntu') }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.strings.outputs.sokketter-ui-name }}
+        path: ${{ steps.strings.outputs.sokketter-ui-name }}.AppImage
+      
+    - name: Upload sokketter-ui (MacOS-only)
+      if: ${{ startsWith(matrix.os, 'macos') }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.strings.outputs.sokketter-ui-name }}
+        path: ${{ steps.strings.outputs.sokketter-ui-name }}.zip
+    
   create-release-entry:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     permissions:
         contents: write
     needs: [increment-version, build-binaries]

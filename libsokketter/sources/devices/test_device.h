@@ -6,18 +6,22 @@
 #include <libsokketter.h>
 #include <third-party/kommpot/libkommpot/include/libkommpot.h>
 
+#include <optional>
+
 class test_device : public sokketter::power_strip
 {
 public:
-    test_device();
+    test_device(const size_t& index);
 
     [[nodiscard]] auto is_connected() const -> bool override;
 
     [[nodiscard]] auto sockets() -> const std::vector<sokketter::socket> & override;
 
+    [[nodiscard]] auto socket(const size_t &index)
+        -> const std::optional<std::reference_wrapper<sokketter::socket>> override;
+
 private:
-    std::vector<sokketter::socket> m_sockets;
-    std::vector<bool> m_socket_states;
+    size_t m_index = 0;
     std::string m_serial_number = "TEST_SERIAL_NUMBER";
     size_t m_socket_number = 4;
 
