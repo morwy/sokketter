@@ -11,6 +11,9 @@ class ButtonLabel : public ClickableLabel
 
 public:
     ButtonLabel(QWidget *parent = Q_NULLPTR, Qt::WindowFlags f = Qt::WindowFlags());
+
+protected:
+    bool event(QEvent *event) override;
 };
 
 #endif // BUTTONLABEL_H
