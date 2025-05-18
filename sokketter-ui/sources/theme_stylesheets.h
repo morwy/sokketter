@@ -22,11 +22,6 @@ const QString base_theme = R"(
         background: transparent;
         color: black;
     }
-
-    QTextBrowser {
-        outline: none;
-        background: transparent;
-    }
 )";
 
 const QString light_theme = base_theme + R"(
@@ -40,6 +35,12 @@ const QString light_theme = base_theme + R"(
 
     QLabel {
         color: #21201C;
+    }
+
+    QTextBrowser {
+        color: #21201C;
+        outline: none;
+        background: transparent;
     }
 
     QFrame[frameShape="4"] {
@@ -118,6 +119,12 @@ const QString dark_theme = base_theme + R"(
 
     QLabel {
         color: #EEEEEC;
+    }
+
+    QTextBrowser {
+        color: #EEEEEC;
+        outline: none;
+        background: transparent;
     }
 
     QFrame[frameShape="4"] {
