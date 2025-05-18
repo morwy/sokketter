@@ -49,42 +49,98 @@ const QString light_theme = base_theme + R"(
         background-color: #E0E1E6;
     }
 
-    ClickableLabel:hover {
+    TitleLabel {
+        color: #EEEEEC;
+        font-size: 24px;
+        font-weight: bold;
+    }
+
+    ButtonLabel {
+        color: #EDBC15;
+    }
+
+    ButtonLabel:hover {
+        color: #EDBC15;
+    }
+
+    ButtonLabel:pressed {
+        color: #EDBC15;
+    }
+
+    QPushButton {
+        background-color: #382715;
+        color: #FFCA16;
         border: none;
+        padding: 5px 10px;
         border-radius: 5px;
-        background-color: #E0E1E6;
+    }
+
+    QPushButton:hover {
+        background-color: #462E17;
+        color: #FFCA16;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 5px;
     }
 )";
 
 const QString dark_theme = base_theme + R"(
     QMainWindow {
-        background-color: #18191B;
+        background-color: #191918;
     }
 
     QLabel {
-        color: #EDEEF0;
+        color: #EEEEEC;
     }
 
     QFrame[frameShape="4"] {
         max-height: 1px;
         border: none;
-        background-color: #212225;
+        background-color: #21211F;
     }
 
     QFrame[frameShape="5"] {
         max-height: 1px;
         border: none;
-        background-color: #212225;
+        background-color: #21211F;
     }
 
     QListWidget::item:hover {
-        background-color: #212225;
+        background-color: #2A2A28;
     }
 
-    ClickableLabel:hover {
+    TitleLabel {
+        color: #EEEEEC;
+        font-size: 24px;
+        font-weight: bold;
+    }
+
+    ButtonLabel {
+        color: #EDBC15;
+    }
+
+    ButtonLabel:hover {
+        color: #EDBC15;
+    }
+
+    ButtonLabel:pressed {
+        color: #EDBC15;
+    }
+
+    QPushButton {
+        background-color: #382715;
+        color: #FFCA16;
         border: none;
+        padding: 5px 10px;
         border-radius: 5px;
-        background-color: #212225;
+    }
+
+    QPushButton:hover {
+        background-color: #462E17;
+        color: #FFCA16;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 5px;
     }
 )";
 
