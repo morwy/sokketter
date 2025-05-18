@@ -11,13 +11,13 @@
 
 static const int SIZE = 8;
 static const QString greenSS =
-    QString("color: white;border-radius: %1;background-color: rgba(45, 190, 71, 1.0);")
-        .arg(SIZE / 2);
-static const QString redSS =
-    QString("color: white;border-radius: %1;background-color: rgba(254, 81, 81, 1.0);")
+    QString("color: white;border-radius: %1;background-color: rgba(70, 167, 88, 1.0);")
         .arg(SIZE / 2);
 static const QString orangeSS =
-    QString("color: white;border-radius: %1;background-color: rgba(254, 177, 64, 1.0);")
+    QString("color: white;border-radius: %1;background-color: rgba(255, 197, 61, 1.0);")
+        .arg(SIZE / 2);
+static const QString redSS =
+    QString("color: white;border-radius: %1;background-color: rgba(229, 72, 77, 1.0);")
         .arg(SIZE / 2);
 
 QLedLabel::QLedLabel(QWidget *parent)
