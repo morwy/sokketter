@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.2.0] - 2025-05-18
+
+### 🚀 Features
+
+- Added an application that provides UI access to libsokketter. (#5) by @morwy
+
+### 📚 Documentation
+
+- Added initial README file. by @morwy
+
 ## [1.1.1] - 2025-04-12
 
 ### 🚀 Features
