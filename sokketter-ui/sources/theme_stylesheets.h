@@ -34,6 +34,10 @@ const QString light_theme = base_theme + R"(
         background-color: #EDEEF0;
     }
 
+    QDialog {
+        background-color: #EDEEF0;
+    }
+
     QLabel {
         color: #111113;
     }
@@ -98,6 +102,10 @@ const QString dark_theme = base_theme + R"(
         background-color: #191918;
     }
 
+    QDialog {
+        background-color: #191918;
+    }
+
     QLabel {
         color: #EEEEEC;
     }
@@ -120,6 +128,16 @@ const QString dark_theme = base_theme + R"(
 
     QListWidget::item:selected {
         background-color: #292A2E;
+    }
+
+    QTabBar::tab {
+        color: #FFCA16;
+        background: #382715;
+    }
+
+    QTabBar::tab:selected {
+        color: #26241C;
+        background: #FFC53D;
     }
 
     TitleLabel {
