@@ -102,7 +102,7 @@ auto MainWindow::initialize_about_page() -> void
 
 \- "**Electric, electricity, energy icon**" as a power strip picture in UI: made by Ümit Can Evleksiz ([link to profile on IconFinder](https://www.iconfinder.com/umitcan_07)), shared on IconFinder ([link to material on IconFinder](https://www.iconfinder.com/icons/2578128/electric_electricity_energy_plug_power_socket_icon)). Distributed under CC BY-NC 3.0 license ([link to license](https://creativecommons.org/licenses/by-nc/3.0/deed.en)). Icon was modified, rotated, lines were made thinner and color was changed.
 
-\- "**radix-ui**" as a color scheme constructor. Distributed under MIT license ([link to license](https://opensource.org/license/mit)).
+\- "**radix-ui**" as a color scheme constructor: made by WorkOS team ([link to profile on GitHub](https://github.com/workos)). Distributed under MIT license ([link to license](https://opensource.org/license/mit)).
     )";
 
     licenseInfoText.replace("%QT_VERSION%", qtVersion);
