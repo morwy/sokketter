@@ -15,12 +15,17 @@ const QString base_theme = R"(
 
     QListWidget::item {
         border: none;
-        border-radius: 10px;
+        border-radius: 8px;
     }
 
     QListWidget::item:selected {
         background: transparent;
         color: black;
+    }
+
+    QTextBrowser {
+        outline: none;
+        background: transparent;
     }
 )";
 
@@ -49,9 +54,13 @@ const QString light_theme = base_theme + R"(
         background-color: #E0E1E6;
     }
 
+    QListWidget::item:selected {
+        background-color: #E0E1E6;
+    }
+
     TitleLabel {
         color: #EEEEEC;
-        font-size: 24px;
+        font-size: 16px;
         font-weight: bold;
     }
 
@@ -106,12 +115,16 @@ const QString dark_theme = base_theme + R"(
     }
 
     QListWidget::item:hover {
-        background-color: #2A2A28;
+        background-color: #222325;
+    }
+
+    QListWidget::item:selected {
+        background-color: #292A2E;
     }
 
     TitleLabel {
         color: #EEEEEC;
-        font-size: 24px;
+        font-size: 16px;
         font-weight: bold;
     }
 
