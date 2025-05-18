@@ -31,66 +31,76 @@ const QString base_theme = R"(
 
 const QString light_theme = base_theme + R"(
     QMainWindow {
-        background-color: #EDEEF0;
+        background-color: #FFFFFF;
     }
 
     QDialog {
-        background-color: #EDEEF0;
+        background-color: #FFFFFF;
     }
 
     QLabel {
-        color: #111113;
+        color: #21201C;
     }
 
     QFrame[frameShape="4"] {
         max-height: 1px;
         border: none;
-        background-color: #E0E1E6;
+        background-color: #F0F0EE;
     }
 
     QFrame[frameShape="5"] {
         max-height: 1px;
         border: none;
-        background-color: #E0E1E6;
+        background-color: #F0F0EE;
     }
 
     QListWidget::item:hover {
-        background-color: #E0E1E6;
+        background-color: #F1F0EF;
     }
 
     QListWidget::item:selected {
-        background-color: #E0E1E6;
+        background-color: #E9E8E6;
+    }
+
+    QTabBar::tab {
+        color: #B06E0E;
+        background: #FFF7C2;
+    }
+
+    QTabBar::tab:selected {
+        color: #26241C;
+        background: #FFC53D;
     }
 
     TitleLabel {
-        color: #EEEEEC;
+        color: #21201C;
         font-size: 16px;
         font-weight: bold;
     }
 
     ButtonLabel {
-        color: #EDBC15;
+        color: #AB6400;
     }
 
     ButtonLabel:hover {
-        color: #EDBC15;
+        color: #AB6400;
     }
 
     ButtonLabel:pressed {
-        color: #EDBC15;
+        color: #AB6400;
     }
 
     QPushButton {
-        background-color: #382715;
-        color: #FFCA16;
+        background-color: #FFF7C2;
+        color: #B06E0E;
         border: none;
         padding: 5px 10px;
         border-radius: 5px;
     }
 
     QPushButton:hover {
-        background-color: #462E17;
-        color: #FFCA16;
+        background-color: #FFEDA4;
+        color: #B06E0E;
         border: none;
         padding: 5px 10px;
         border-radius: 5px;
