@@ -23,7 +23,14 @@ include_directories(${CMAKE_CURRENT_LIST_DIR}/../third-party/SlidingStackedWidge
 #
 # Stating common details.
 #
+string(TIMESTAMP BUILD_YEAR "%Y")
+
+set(SOKKETTER_COMPANY "Pavel Ivanov")
+set(SOKKETTER_DESCRIPTION "sokketter-ui")
+
 set(SOKKETTER_NAME "sokketter-ui")
+
+set(SOKKETTER_COPYRIGHT "${BUILD_YEAR} Pavel Ivanov")
 
 if(PLATFORM_OS_WINDOWS)
 set(SOKKETTER_EXECUTABLE "sokketter-ui.exe")
@@ -31,9 +38,6 @@ else()
 set(SOKKETTER_EXECUTABLE "sokketter-ui")
 endif()
 
-set(SOKKETTER_COMPANY "")
-set(SOKKETTER_COPYRIGHT "")
-set(SOKKETTER_DESCRIPTION "Application for controlling connected power strips and sockets.")
 set(SOKKETTER_BINARY_TYPE 0x3fL)
 
 configure_file(${PROJECT_ROOT_PATH}/version.rc.in ${CMAKE_CURRENT_SOURCE_DIR}/resources/version.rc @ONLY)
