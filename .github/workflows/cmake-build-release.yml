@@ -22,6 +22,7 @@ jobs:
     outputs:
       NEW_TAG_NAME: ${{ steps.version.outputs.NEW_TAG_NAME }}
       RELEASE_ENTRY_TEXT: ${{ steps.git-cliff-release-entry.outputs.content }}
+      BRANCH_NAME: ${{ steps.read_branch.outputs.BRANCH_NAME }}
 
     steps:
     - uses: actions/checkout@v4
@@ -31,7 +32,7 @@ jobs:
     - name: Read branch name
       id: read_branch
       shell: bash
-      run: echo "branch_name=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+      run: echo "BRANCH_NAME=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
       
     - name: Increase package version
       id: version
@@ -46,7 +47,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         FILE_TO_COMMIT: ProjectVersion.cmake
-        DESTINATION_BRANCH: ${{ steps.read_branch.outputs.branch_name }}
+        DESTINATION_BRANCH: ${{ steps.read_branch.outputs.BRANCH_NAME }}
         MESSAGE: "chore(release): prepare for upcoming release (ProjectVersion.cmake)"
       run: |
         export SHA=$( git rev-parse $DESTINATION_BRANCH:$FILE_TO_COMMIT )
@@ -81,7 +82,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         FILE_TO_COMMIT: CHANGELOG.md
-        DESTINATION_BRANCH: ${{ steps.read_branch.outputs.branch_name }}
+        DESTINATION_BRANCH: ${{ steps.read_branch.outputs.BRANCH_NAME }}
         MESSAGE: "chore(release): prepare for upcoming release (CHANGELOG.md)"
       run: |
         export SHA=$( git rev-parse $DESTINATION_BRANCH:$FILE_TO_COMMIT )
@@ -143,7 +144,11 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        submodules: 'recursive'
+        ref: ${{ needs.increment-version.outputs.BRANCH_NAME }}
+        fetch-depth: 0
+
+    - name: Fetch the latest changes
+      run: git pull origin ${{ needs.increment-version.outputs.BRANCH_NAME }}
 
     - name: Set reusable strings
       id: strings
