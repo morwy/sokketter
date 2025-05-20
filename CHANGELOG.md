@@ -1,13 +1,5 @@
 # Changelog
 
-## [1.2.1] - 2025-05-20
-
-### 🐛 Bug Fixes
-
-- Corrected displayed file name on shortcut on Windows (#6) by @morwy
-- Corrected issue with incorrect version during release
-- Fixed checkout of submodules
-
 ## [1.2.0] - 2025-05-18
 
 ### 🚀 Features
