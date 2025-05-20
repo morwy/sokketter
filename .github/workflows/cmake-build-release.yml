@@ -147,6 +147,7 @@ jobs:
       with:
         ref: ${{ needs.increment-version.outputs.BRANCH_NAME }}
         fetch-depth: 0
+        submodules: "recursive"
 
     - name: Fetch the latest changes
       run: git pull origin ${{ needs.increment-version.outputs.BRANCH_NAME }}
