@@ -40,7 +40,7 @@ const QString light_theme = base_theme + R"(
     QTextBrowser {
         color: #21201C;
         outline: none;
-        background: transparent;
+        background: #FFFFFF;
     }
 
     QFrame[frameShape="4"] {
@@ -61,6 +61,18 @@ const QString light_theme = base_theme + R"(
 
     QListWidget::item:selected {
         background-color: #E9E8E6;
+    }
+
+    QTabWidget {
+        background: #FFFFFF;
+    }
+
+    QTabWidget::pane {
+        background: #FFFFFF;
+    }
+
+    QWidget#tabPage {
+        background-color: #FFFFFF;
     }
 
     QTabBar::tab {
@@ -124,7 +136,7 @@ const QString dark_theme = base_theme + R"(
     QTextBrowser {
         color: #EEEEEC;
         outline: none;
-        background: transparent;
+        background: #191918;
     }
 
     QFrame[frameShape="4"] {
@@ -145,6 +157,18 @@ const QString dark_theme = base_theme + R"(
 
     QListWidget::item:selected {
         background-color: #292A2E;
+    }
+
+    QTabWidget {
+        background: #191918;
+    }
+
+    QTabWidget::pane {
+        background: #191918;
+    }
+
+    QWidget#tabPage {
+        background-color: #191918;
     }
 
     QTabBar::tab {
