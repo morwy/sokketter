@@ -38,6 +38,7 @@ const QString light_theme = base_theme + R"(
     }
 
     QTextBrowser {
+        border: none;
         color: #21201C;
         outline: none;
         background: #FFFFFF;
@@ -68,6 +69,7 @@ const QString light_theme = base_theme + R"(
     }
 
     QTabWidget::pane {
+        border: 2px solid #FFC53D;
         background: #FFFFFF;
     }
 
@@ -134,6 +136,7 @@ const QString dark_theme = base_theme + R"(
     }
 
     QTextBrowser {
+        border: none;
         color: #EEEEEC;
         outline: none;
         background: #191918;
@@ -164,6 +167,7 @@ const QString dark_theme = base_theme + R"(
     }
 
     QTabWidget::pane {
+        border: 2px solid #FFC53D;
         background: #191918;
     }
 
