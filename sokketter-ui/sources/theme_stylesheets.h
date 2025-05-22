@@ -87,6 +87,46 @@ const QString light_theme = base_theme + R"(
         background: #FFC53D;
     }
 
+    QScrollBar:vertical {
+        background: #FFF7C2;
+    }
+
+    QScrollBar::handle:vertical {
+        background: #FFC53D;
+    }
+
+    QScrollBar::add-line:vertical,
+    QScrollBar::sub-line:vertical {
+        background: none;
+        height: 0px;
+        border: none;
+    }
+
+    QScrollBar::add-page:vertical,
+    QScrollBar::sub-page:vertical {
+        background: none;
+    }
+
+    QScrollBar:horizontal {
+        background: #FFF7C2;
+    }
+
+    QScrollBar::handle:horizontal {
+        background: #FFC53D;
+    }
+
+    QScrollBar::add-line:horizontal,
+    QScrollBar::sub-line:horizontal {
+        background: none;
+        height: 0px;
+        border: none;
+    }
+
+    QScrollBar::add-page:horizontal,
+    QScrollBar::sub-page:horizontal {
+        background: none;
+    }
+
     TitleLabel {
         color: #21201C;
         font-size: 16px;
@@ -183,6 +223,46 @@ const QString dark_theme = base_theme + R"(
     QTabBar::tab:selected {
         color: #26241C;
         background: #FFC53D;
+    }
+
+    QScrollBar:vertical {
+        background: #382715;
+    }
+
+    QScrollBar::handle:vertical {
+        background: #FFC53D;
+    }
+
+    QScrollBar::add-line:vertical,
+    QScrollBar::sub-line:vertical {
+        background: none;
+        height: 0px;
+        border: none;
+    }
+
+    QScrollBar::add-page:vertical,
+    QScrollBar::sub-page:vertical {
+        background: none;
+    }
+
+    QScrollBar:horizontal {
+        background: #382715;
+    }
+
+    QScrollBar::handle:horizontal {
+        background: #FFC53D;
+    }
+
+    QScrollBar::add-line:horizontal,
+    QScrollBar::sub-line:horizontal {
+        background: none;
+        height: 0px;
+        border: none;
+    }
+
+    QScrollBar::add-page:horizontal,
+    QScrollBar::sub-page:horizontal {
+        background: none;
     }
 
     TitleLabel {
