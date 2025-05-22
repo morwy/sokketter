@@ -16,7 +16,10 @@ public:
     ~license_dialog();
 
 private:
-    Ui::license_dialog *ui;
+    Ui::license_dialog *m_ui;
+
+    auto event(QEvent *event) -> bool override;
+    auto setThemeAccordingToMode() -> void;
 };
 
 #endif // LICENSE_DIALOG_H

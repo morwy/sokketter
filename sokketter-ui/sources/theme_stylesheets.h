@@ -38,9 +38,10 @@ const QString light_theme = base_theme + R"(
     }
 
     QTextBrowser {
+        border: none;
         color: #21201C;
         outline: none;
-        background: transparent;
+        background: #FFFFFF;
     }
 
     QFrame[frameShape="4"] {
@@ -63,6 +64,19 @@ const QString light_theme = base_theme + R"(
         background-color: #E9E8E6;
     }
 
+    QTabWidget {
+        background: #FFFFFF;
+    }
+
+    QTabWidget::pane {
+        border: 2px solid #FFC53D;
+        background: #FFFFFF;
+    }
+
+    QWidget#tabPage {
+        background-color: #FFFFFF;
+    }
+
     QTabBar::tab {
         color: #B06E0E;
         background: #FFF7C2;
@@ -71,6 +85,46 @@ const QString light_theme = base_theme + R"(
     QTabBar::tab:selected {
         color: #26241C;
         background: #FFC53D;
+    }
+
+    QScrollBar:vertical {
+        background: #FFF7C2;
+    }
+
+    QScrollBar::handle:vertical {
+        background: #FFC53D;
+    }
+
+    QScrollBar::add-line:vertical,
+    QScrollBar::sub-line:vertical {
+        background: none;
+        height: 0px;
+        border: none;
+    }
+
+    QScrollBar::add-page:vertical,
+    QScrollBar::sub-page:vertical {
+        background: none;
+    }
+
+    QScrollBar:horizontal {
+        background: #FFF7C2;
+    }
+
+    QScrollBar::handle:horizontal {
+        background: #FFC53D;
+    }
+
+    QScrollBar::add-line:horizontal,
+    QScrollBar::sub-line:horizontal {
+        background: none;
+        height: 0px;
+        border: none;
+    }
+
+    QScrollBar::add-page:horizontal,
+    QScrollBar::sub-page:horizontal {
+        background: none;
     }
 
     TitleLabel {
@@ -122,9 +176,10 @@ const QString dark_theme = base_theme + R"(
     }
 
     QTextBrowser {
+        border: none;
         color: #EEEEEC;
         outline: none;
-        background: transparent;
+        background: #191918;
     }
 
     QFrame[frameShape="4"] {
@@ -147,6 +202,19 @@ const QString dark_theme = base_theme + R"(
         background-color: #292A2E;
     }
 
+    QTabWidget {
+        background: #191918;
+    }
+
+    QTabWidget::pane {
+        border: 2px solid #FFC53D;
+        background: #191918;
+    }
+
+    QWidget#tabPage {
+        background-color: #191918;
+    }
+
     QTabBar::tab {
         color: #FFCA16;
         background: #382715;
@@ -155,6 +223,46 @@ const QString dark_theme = base_theme + R"(
     QTabBar::tab:selected {
         color: #26241C;
         background: #FFC53D;
+    }
+
+    QScrollBar:vertical {
+        background: #382715;
+    }
+
+    QScrollBar::handle:vertical {
+        background: #FFC53D;
+    }
+
+    QScrollBar::add-line:vertical,
+    QScrollBar::sub-line:vertical {
+        background: none;
+        height: 0px;
+        border: none;
+    }
+
+    QScrollBar::add-page:vertical,
+    QScrollBar::sub-page:vertical {
+        background: none;
+    }
+
+    QScrollBar:horizontal {
+        background: #382715;
+    }
+
+    QScrollBar::handle:horizontal {
+        background: #FFC53D;
+    }
+
+    QScrollBar::add-line:horizontal,
+    QScrollBar::sub-line:horizontal {
+        background: none;
+        height: 0px;
+        border: none;
+    }
+
+    QScrollBar::add-page:horizontal,
+    QScrollBar::sub-page:horizontal {
+        background: none;
     }
 
     TitleLabel {
