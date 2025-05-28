@@ -15,6 +15,18 @@
 
 namespace sokketter {
     /**
+     * @brief path to the folder where all related files are stored.
+     * @return std::filesystem::path.
+     */
+    auto EXPORTED storage_path() -> std::filesystem::path;
+
+    /**
+     * @brief path to the folder where all logs are stored.
+     * @return std::filesystem::path.
+     */
+    auto EXPORTED logs_path() -> std::filesystem::path;
+
+    /**
      * @brief structure containing version of sokketter library.
      */
     struct EXPORTED version_information

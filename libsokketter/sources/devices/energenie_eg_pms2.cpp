@@ -1,5 +1,7 @@
 #include "energenie_eg_pms2.h"
 
+#include <spdlog/spdlog.h>
+
 energenie_eg_pms2::energenie_eg_pms2(std::unique_ptr<kommpot::device_communication> communication)
     : energenie_eg_base(std::move(communication))
 {
@@ -9,6 +11,8 @@ energenie_eg_pms2::energenie_eg_pms2(std::unique_ptr<kommpot::device_communicati
     configuration.type = sokketter::power_strip_type::ENERGENIE_EG_PMS2;
     configuration.id = m_serial_number;
     configuration.address = std::string("USB:") + m_communication->information().port;
+
+    SPDLOG_DEBUG("{}: construction.", this->to_string());
 
     this->configure(configuration);
 

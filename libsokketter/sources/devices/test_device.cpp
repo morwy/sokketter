@@ -1,6 +1,7 @@
 #include "test_device.h"
 
 #include <map>
+#include <spdlog/spdlog.h>
 
 static std::map<std::string, std::vector<sokketter::socket>> gs_sockets;
 static std::map<std::string, std::vector<bool>> gs_socket_states;
@@ -16,6 +17,8 @@ test_device::test_device(const size_t &index)
     basic_configuration.name = "Test Device " + std::to_string(m_index);
     basic_configuration.address = "TEST_ADDRESS_" + std::to_string(m_index);
     configure(basic_configuration);
+
+    SPDLOG_DEBUG("{}: construction.", this->to_string());
 
     if (gs_socket_states[m_serial_number].size() != m_socket_number)
     {
@@ -49,6 +52,8 @@ auto test_device::socket(const size_t &index)
 {
     if (index >= gs_sockets[m_serial_number].size())
     {
+        SPDLOG_ERROR("{}: index {} is out of range 0-{}!", this->to_string(), index,
+            gs_sockets[m_serial_number].size());
         return std::nullopt;
     }
 
@@ -57,11 +62,13 @@ auto test_device::socket(const size_t &index)
 
 auto test_device::power_socket(size_t index, bool is_toggled) -> bool
 {
+    SPDLOG_DEBUG("{}: powering socket {} {}.", this->to_string(), index, is_toggled ? "on" : "off");
     gs_socket_states[m_serial_number][index - 1] = is_toggled;
     return true;
 }
 
 auto test_device::socket_status(size_t index) -> bool
 {
+    SPDLOG_DEBUG("{}: checking socket {} status.", this->to_string(), index);
     return gs_socket_states[m_serial_number][index - 1];
 }

@@ -5,6 +5,8 @@
 #include <empty_power_strip_list_item.h>
 #include <power_strip_list_item.h>
 #include <socket_list_item.h>
+#include <spdlog/sinks/daily_file_sink.h>
+#include <spdlog/spdlog.h>
 #include <theme_stylesheets.h>
 
 #include <ClickableLabel.h>
@@ -21,6 +23,8 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , m_ui(new Ui::MainWindow)
 {
+    SPDLOG_INFO("Default logging.");
+
     m_ui->setupUi(this);
 
     setThemeAccordingToMode();
