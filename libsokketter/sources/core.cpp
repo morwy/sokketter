@@ -39,6 +39,11 @@ core::core()
     }
 }
 
+core::~core()
+{
+    deinitialize_logger();
+}
+
 auto core::settings() noexcept -> sokketter::settings_information
 {
     return m_settings;
@@ -62,5 +67,11 @@ auto core::initialize_logger() -> void
 
     spdlog::set_default_logger(logger);
 
-    SPDLOG_DEBUG("Default logger is initialized.");
+    SPDLOG_DEBUG("A new logging session is started.");
+}
+
+void core::deinitialize_logger()
+{
+    SPDLOG_DEBUG("The logging session is finished.");
+    spdlog::shutdown();
 }

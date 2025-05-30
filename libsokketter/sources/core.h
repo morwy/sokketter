@@ -10,10 +10,12 @@ class core
 {
 public:
     core();
+    ~core();
 
     auto settings() noexcept -> sokketter::settings_information;
 
     auto initialize_logger() -> void;
+    auto deinitialize_logger() -> void;
 
 private:
     sokketter::settings_information m_settings;
