@@ -31,6 +31,11 @@ gembird_msis_pm::gembird_msis_pm(std::unique_ptr<kommpot::device_communication> 
     }
 }
 
+gembird_msis_pm::~gembird_msis_pm()
+{
+    SPDLOG_DEBUG("{}: destruction.", this->to_string());
+}
+
 auto gembird_msis_pm::identification() -> const kommpot::device_identification
 {
     kommpot::device_identification identitication;

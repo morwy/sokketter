@@ -31,6 +31,11 @@ energenie_eg_pms::energenie_eg_pms(std::unique_ptr<kommpot::device_communication
     }
 }
 
+energenie_eg_pms::~energenie_eg_pms()
+{
+    SPDLOG_DEBUG("{}: destruction.", this->to_string());
+}
+
 auto energenie_eg_pms::identification() -> const kommpot::device_identification
 {
     kommpot::device_identification identitication;

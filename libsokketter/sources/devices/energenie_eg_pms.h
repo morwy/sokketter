@@ -9,6 +9,7 @@ class energenie_eg_pms : public energenie_eg_base
 {
 public:
     explicit energenie_eg_pms(std::unique_ptr<kommpot::device_communication> communication);
+    ~energenie_eg_pms();
 
     static auto identification() -> const kommpot::device_identification;
 };

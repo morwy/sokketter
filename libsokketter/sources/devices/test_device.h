@@ -11,7 +11,8 @@
 class test_device : public sokketter::power_strip
 {
 public:
-    test_device(const size_t& index);
+    test_device(const size_t &index);
+    ~test_device();
 
     [[nodiscard]] auto is_connected() const -> bool override;
 

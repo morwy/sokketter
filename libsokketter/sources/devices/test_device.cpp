@@ -37,6 +37,11 @@ test_device::test_device(const size_t &index)
     }
 }
 
+test_device::~test_device()
+{
+    SPDLOG_DEBUG("{}: destruction.", this->to_string());
+}
+
 auto test_device::is_connected() const -> bool
 {
     return true;
