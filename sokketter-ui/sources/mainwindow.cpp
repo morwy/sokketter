@@ -119,6 +119,8 @@ auto MainWindow::initialize_about_page() -> void
 
 auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
 {
+    SPDLOG_DEBUG("Detected onPowerStripClicked() signal.");
+
     /**
      * @brief ignore click if it's a empty_power_strip_list_item.
      */
@@ -141,6 +143,8 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
 
 auto MainWindow::onSocketClicked(QListWidgetItem *item) -> void
 {
+    SPDLOG_DEBUG("Detected onSocketClicked() signal.");
+
     auto socket_item = dynamic_cast<socket_list_item *>(m_ui->socket_list_widget->itemWidget(item));
     if (socket_item == nullptr)
     {
