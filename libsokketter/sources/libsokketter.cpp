@@ -21,7 +21,7 @@ auto sokketter::storage_path() -> std::filesystem::path
 #elif __APPLE__
     return "/Users/Shared/sokketter";
 #else
-    return "/var/lib/sokketter";
+    return "~/.local/share/sokketter";
 #endif
 }
 
