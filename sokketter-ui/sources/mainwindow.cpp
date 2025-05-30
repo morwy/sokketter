@@ -9,15 +9,15 @@
 #include <spdlog/spdlog.h>
 #include <theme_stylesheets.h>
 
+#ifdef Q_OS_WIN
+#    include <windows_titlebar_theme.h>
+#endif
+
 #include <ClickableLabel.h>
 #include <QApplication>
 #include <QListWidgetItem>
 #include <QScrollBar>
 #include <QTimer>
-
-#ifdef Q_OS_WIN
-#    include <windows_titlebar_theme.h>
-#endif
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)

@@ -14,12 +14,12 @@ public:
 
     auto settings() noexcept -> sokketter::settings_information;
 
+private:
+    const std::string m_logger_name = "sokketter";
+    sokketter::settings_information m_settings;
+
     auto initialize_logger() -> void;
     auto deinitialize_logger() -> void;
-
-private:
-    sokketter::settings_information m_settings;
-    const std::string m_logger_name = "libsokketter";
 };
 
 #endif // CORE_H
