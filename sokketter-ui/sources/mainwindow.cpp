@@ -15,9 +15,12 @@
 
 #include <ClickableLabel.h>
 #include <QApplication>
+#include <QDesktopServices>
+#include <QFileInfo>
 #include <QListWidgetItem>
 #include <QScrollBar>
 #include <QTimer>
+#include <QUrl>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -34,17 +37,32 @@ MainWindow::MainWindow(QWidget *parent)
      */
     m_ui->stackedWidget->setSpeed(500);
 
+    m_ui->settings_data_path_label->setText(
+        QString::fromStdString(sokketter::storage_path().string()));
+    m_ui->settings_data_path_label->setToolTip(
+        QString::fromStdString(sokketter::storage_path().string()));
+
     /**
      * @brief connect the signals to the slots.
      */
     QObject::connect(m_ui->power_strip_list_widget, &QListWidget::itemClicked, this,
         &MainWindow::onPowerStripClicked);
 
+    QObject::connect(
+        m_ui->socket_list_widget, &QListWidget::itemClicked, this, &MainWindow::onSocketClicked);
+
     QObject::connect(m_ui->power_strip_list_refresh_label, &ClickableLabel::clicked,
         [this]() { repopulate_device_list(); });
 
-    QObject::connect(
-        m_ui->socket_list_widget, &QListWidget::itemClicked, this, &MainWindow::onSocketClicked);
+    QObject::connect(m_ui->power_strip_settings_label, &ClickableLabel::clicked, [this]() {
+        const int &index = m_ui->stackedWidget->indexOf(m_ui->settings_page);
+        m_ui->stackedWidget->slideInIdx(index);
+    });
+
+    QObject::connect(m_ui->power_strip_about_label, &ClickableLabel::clicked, [this]() {
+        const int &index = m_ui->stackedWidget->indexOf(m_ui->about_page);
+        m_ui->stackedWidget->slideInIdx(index);
+    });
 
     QObject::connect(m_ui->socket_list_back_label, &ClickableLabel::clicked, [this]() {
         const int &index = m_ui->stackedWidget->indexOf(m_ui->power_strip_list_page);
@@ -52,9 +70,24 @@ MainWindow::MainWindow(QWidget *parent)
         redraw_device_list();
     });
 
-    QObject::connect(m_ui->power_strip_about_button, &ClickableLabel::clicked, [this]() {
-        const int &index = m_ui->stackedWidget->indexOf(m_ui->about_page);
+    QObject::connect(m_ui->settings_open_data_label, &ClickableLabel::clicked, [this]() {
+        const QString &path = m_ui->settings_data_path_label->text();
+        QFileInfo pathInfo(path);
+
+        if (!pathInfo.exists())
+        {
+            SPDLOG_ERROR("Data storage path '{}' does not exist!", path.toStdString());
+            return;
+        }
+
+        QDesktopServices::openUrl(
+            QUrl(QUrl::fromLocalFile(pathInfo.absoluteFilePath()).toString()));
+    });
+
+    QObject::connect(m_ui->settings_back_label, &ClickableLabel::clicked, [this]() {
+        const int &index = m_ui->stackedWidget->indexOf(m_ui->power_strip_list_page);
         m_ui->stackedWidget->slideInIdx(index);
+        redraw_device_list();
     });
 
     initialize_about_page();
