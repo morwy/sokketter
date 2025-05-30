@@ -17,6 +17,7 @@ core::core()
         {
             SPDLOG_CRITICAL(
                 "Failed creating storage directory at '{}'!", shared_data_folder_path.string());
+            return;
         }
 
         SPDLOG_DEBUG("Folder was created.");
@@ -31,6 +32,7 @@ core::core()
         if (!std::filesystem::create_directories(logs_folder_path, error_code))
         {
             SPDLOG_CRITICAL("Failed creating logs directory at '{}'!", logs_folder_path.string());
+            return;
         }
 
         SPDLOG_DEBUG("Folder was created.");
