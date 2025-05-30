@@ -6,8 +6,6 @@
 
 core::core()
 {
-    initialize_logger();
-
     const auto &shared_data_folder_path = sokketter::storage_path();
     if (!std::filesystem::exists(shared_data_folder_path))
     {
@@ -37,6 +35,8 @@ core::core()
 
         SPDLOG_DEBUG("Folder was created.");
     }
+
+    initialize_logger();
 }
 
 core::~core()
