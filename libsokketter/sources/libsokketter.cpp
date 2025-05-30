@@ -19,7 +19,7 @@ auto sokketter::storage_path() -> std::filesystem::path
 #ifdef _WIN32
     return "C:\\ProgramData\\sokketter";
 #elif __APPLE__
-    return "/Library/Application Support/sokketter";
+    return "/Users/Shared/sokketter";
 #else
     return "/var/lib/sokketter";
 #endif
