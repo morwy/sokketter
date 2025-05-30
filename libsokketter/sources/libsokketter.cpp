@@ -325,6 +325,8 @@ auto sokketter::device(const std::string &serial_number)
             }
         }
 
+        SPDLOG_ERROR("No device was created.");
+
         return nullptr;
     }
 
@@ -358,6 +360,8 @@ auto sokketter::device(const std::string &serial_number)
 
         return device;
     }
+
+    SPDLOG_ERROR("No device was created.");
 
     return nullptr;
 }

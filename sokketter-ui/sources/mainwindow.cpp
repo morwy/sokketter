@@ -23,7 +23,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , m_ui(new Ui::MainWindow)
 {
-    SPDLOG_INFO("Default logging.");
+    SPDLOG_DEBUG("sokketter-ui has started.");
 
     m_ui->setupUi(this);
 
@@ -65,6 +65,7 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     delete m_ui;
+    SPDLOG_DEBUG("sokketter-ui has finished.");
 }
 
 auto MainWindow::initialize_about_page() -> void
@@ -124,6 +125,7 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
     QWidget *widget = m_ui->power_strip_list_widget->itemWidget(item);
     if (qobject_cast<empty_power_strip_list_item *>(widget))
     {
+        SPDLOG_DEBUG("Ignoring click on empty power strip item.");
         return;
     }
 
@@ -142,6 +144,7 @@ auto MainWindow::onSocketClicked(QListWidgetItem *item) -> void
     auto socket_item = dynamic_cast<socket_list_item *>(m_ui->socket_list_widget->itemWidget(item));
     if (socket_item == nullptr)
     {
+        SPDLOG_ERROR("Failed getting a socket from the UI list!");
         return;
     }
 
@@ -158,12 +161,14 @@ auto MainWindow::onSocketClicked(QListWidgetItem *item) -> void
     const auto &socket_opt = device->socket(index);
     if (!socket_opt.has_value())
     {
+        SPDLOG_ERROR("Failed getting a socket from device!");
         return;
     }
 
     const auto &socket = socket_opt->get();
     if (!socket.toggle())
     {
+        SPDLOG_ERROR("Failed toggling a socket!");
         return;
     }
 
@@ -174,6 +179,7 @@ auto MainWindow::event(QEvent *event) -> bool
 {
     if (event->type() == QEvent::ThemeChange)
     {
+        SPDLOG_DEBUG("Detected mode change to {}.", isDarkMode() ? "dark" : "light");
         setThemeAccordingToMode();
         return true;
     }
@@ -183,6 +189,8 @@ auto MainWindow::event(QEvent *event) -> bool
 
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
+    SPDLOG_DEBUG("Detected resize event.");
+
     QMainWindow::resizeEvent(event);
 
     redraw_device_list();
@@ -193,6 +201,8 @@ void MainWindow::redraw_device_list()
 {
     if (m_ui->power_strip_list_widget->isVisible())
     {
+        SPDLOG_DEBUG("Re-drawing power strip list.");
+
         int visibleWidth = m_ui->power_strip_list_widget->width();
         if (m_ui->power_strip_list_widget->verticalScrollBar()->isVisible())
         {
@@ -237,6 +247,8 @@ void MainWindow::redraw_socket_list()
 {
     if (m_ui->socket_list_widget->isVisible())
     {
+        SPDLOG_DEBUG("Re-drawing socket list.");
+
         int visibleWidth = m_ui->socket_list_widget->width();
         if (m_ui->socket_list_widget->verticalScrollBar()->isVisible())
         {
@@ -263,12 +275,14 @@ void MainWindow::setThemeAccordingToMode()
 {
     qApp->setStyleSheet(isDarkMode() ? dark_theme : light_theme);
 #ifdef Q_OS_WIN
-    toggleDarkTitlebar(winId(), isDarkMode());
+    toggle_dark_titlebar(winId(), isDarkMode());
 #endif
 }
 
 auto MainWindow::repopulate_device_list() -> void
 {
+    SPDLOG_DEBUG("Repopulating power strip list.");
+
     while (m_ui->power_strip_list_widget->count() > 0)
     {
         m_ui->power_strip_list_widget->takeItem(0);
@@ -316,6 +330,8 @@ auto MainWindow::repopulate_device_list() -> void
 auto MainWindow::repopulate_socket_list(const sokketter::power_strip_configuration &configuration)
     -> void
 {
+    SPDLOG_DEBUG("Repopulating socket list.");
+
     while (m_ui->socket_list_widget->count() > 0)
     {
         m_ui->socket_list_widget->takeItem(0);
