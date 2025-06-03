@@ -46,7 +46,7 @@ auto initialize_app_logger(const std::filesystem::path &path) -> void
 
     auto logger = spdlog::daily_logger_mt(LOGGER_NAME, filepath.string(), 0, 0, false, 30);
 
-    APP_LOGGER->set_level(spdlog::level::debug);
+    APP_LOGGER->set_level(spdlog::level::trace);
     APP_LOGGER->set_pattern("%Y-%m-%d %T.%e - %l - %s:%# - %v");
 
     SPDLOG_LOGGER_DEBUG(APP_LOGGER, "A new logging session is started.");

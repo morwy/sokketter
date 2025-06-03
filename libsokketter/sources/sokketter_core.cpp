@@ -124,7 +124,7 @@ auto sokketter_core::initialize_logger() -> void
 
     kommpot::settings_structure settings;
 
-    settings.logging_level = kommpot::logging_level::INFO;
+    settings.logging_level = kommpot::logging_level(m_settings.logging_level);
     settings.logging_callback =
         std::bind(&sokketter_core::logging_callback, this, std::placeholders::_1);
 

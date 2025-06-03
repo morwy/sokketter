@@ -112,7 +112,7 @@ auto MainWindow::initialize_logging() -> void
 
     sokketter::settings_structure settings;
 
-    settings.logging_level = sokketter::logging_level::INFO;
+    settings.logging_level = sokketter::logging_level(APP_LOGGER->level());
     settings.logging_callback =
         std::bind(&MainWindow::logging_callback, this, std::placeholders::_1);
 
