@@ -121,8 +121,11 @@ auto MainWindow::initialize_logging() -> void
 
 auto MainWindow::logging_callback(const sokketter::callback_response_structure &response) -> void
 {
-    APP_LOGGER->log(spdlog::source_loc{response.file, response.line, response.function},
-        spdlog::level::level_enum(response.level), response.message);
+    if (APP_LOGGER != nullptr)
+    {
+        APP_LOGGER->log(spdlog::source_loc{response.file, response.line, response.function},
+            spdlog::level::level_enum(response.level), response.message);
+    }
 }
 
 auto MainWindow::initialize_about_page() -> void
