@@ -68,7 +68,15 @@ auto sokketter_core::settings() noexcept -> sokketter::settings_structure
 auto sokketter_core::set_settings(const sokketter::settings_structure &settings) noexcept -> void
 {
     m_settings = settings;
-    initialize_logger();
+
+    if (m_settings.logging_level == sokketter::logging_level::OFF)
+    {
+        deinitialize_logger();
+    }
+    else
+    {
+        initialize_logger();
+    }
 }
 
 auto sokketter_core::initialize_logger() -> void
@@ -151,6 +159,15 @@ auto sokketter_core::initialize_logger() -> void
 
 auto sokketter_core::deinitialize_logger() -> void
 {
+    if (SOKKETTER_LOGGER == nullptr)
+    {
+        return;
+    }
+
+    kommpot::settings_structure settings;
+    settings.logging_level = kommpot::logging_level::OFF;
+    kommpot::set_settings(settings);
+
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "The logging session is finished.");
     SOKKETTER_LOGGER->flush();
     spdlog::drop(LOGGER_NAME);

@@ -27,7 +27,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , m_ui(new Ui::MainWindow)
 {
-    initialize_logging();
+    initialize_app_logger();
 
     m_ui->setupUi(this);
 
@@ -104,28 +104,6 @@ MainWindow::~MainWindow()
     delete m_ui;
     SPDLOG_LOGGER_DEBUG(APP_LOGGER, "sokketter-ui has finished.");
     deinitialize_app_logger();
-}
-
-auto MainWindow::initialize_logging() -> void
-{
-    initialize_app_logger(sokketter::storage_path() / "logs");
-
-    sokketter::settings_structure settings;
-
-    settings.logging_level = sokketter::logging_level(APP_LOGGER->level());
-    settings.logging_callback =
-        std::bind(&MainWindow::logging_callback, this, std::placeholders::_1);
-
-    sokketter::set_settings(settings);
-}
-
-auto MainWindow::logging_callback(const sokketter::callback_response_structure &response) -> void
-{
-    if (APP_LOGGER != nullptr)
-    {
-        APP_LOGGER->log(spdlog::source_loc{response.file, response.line, response.function},
-            spdlog::level::level_enum(response.level), response.message);
-    }
 }
 
 auto MainWindow::initialize_about_page() -> void

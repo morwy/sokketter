@@ -3,6 +3,8 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
+#include <filesystem>
+
 #ifdef _WIN32
 #    include <spdlog/sinks/msvc_sink.h>
 #endif
@@ -15,7 +17,7 @@
 #    include <spdlog/sinks/syslog_sink.h>
 #endif
 
-auto initialize_app_logger(const std::filesystem::path &path) -> void
+auto initialize_app_logger() -> void
 {
     std::vector<spdlog::sink_ptr> new_sinks;
 
@@ -42,19 +44,41 @@ auto initialize_app_logger(const std::filesystem::path &path) -> void
     new_sinks.push_back(syslog_sink);
 #endif
 
-    const auto &filepath = path / (std::string(LOGGER_NAME) + ".txt");
+    const auto &filepath = sokketter::storage_path() / "logs" / (std::string(LOGGER_NAME) + ".txt");
 
     auto logger = spdlog::daily_logger_mt(LOGGER_NAME, filepath.string(), 0, 0, false, 30);
 
     APP_LOGGER->set_level(spdlog::level::trace);
     APP_LOGGER->set_pattern("%Y-%m-%d %T.%e - %l - %s:%# - %v");
 
+    sokketter::settings_structure settings;
+
+    settings.logging_level = sokketter::logging_level(APP_LOGGER->level());
+    settings.logging_callback = std::bind(&logging_callback, std::placeholders::_1);
+
+    sokketter::set_settings(settings);
+
     SPDLOG_LOGGER_DEBUG(APP_LOGGER, "A new logging session is started.");
 }
 
 auto deinitialize_app_logger() -> void
 {
+    if (APP_LOGGER == nullptr)
+    {
+        return;
+    }
+
+    sokketter::settings_structure settings;
+    settings.logging_level = sokketter::logging_level::OFF;
+    sokketter::set_settings(settings);
+
     SPDLOG_LOGGER_DEBUG(APP_LOGGER, "The logging session is finished.");
     APP_LOGGER->flush();
     spdlog::drop(LOGGER_NAME);
+}
+
+auto logging_callback(const sokketter::callback_response_structure &response) -> void
+{
+    APP_LOGGER->log(spdlog::source_loc{response.file, response.line, response.function},
+        spdlog::level::level_enum(response.level), response.message);
 }
