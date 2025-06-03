@@ -2,6 +2,7 @@
 #include "license_dialog.h"
 #include "ui_mainwindow.h"
 
+#include <app_logger.h>
 #include <empty_power_strip_list_item.h>
 #include <power_strip_list_item.h>
 #include <socket_list_item.h>
@@ -26,9 +27,11 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , m_ui(new Ui::MainWindow)
 {
-    SPDLOG_DEBUG("sokketter-ui has started.");
+    initialize_logging();
 
     m_ui->setupUi(this);
+
+    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "sokketter-ui has started.");
 
     setThemeAccordingToMode();
 
@@ -76,7 +79,8 @@ MainWindow::MainWindow(QWidget *parent)
 
         if (!pathInfo.exists())
         {
-            SPDLOG_ERROR("Data storage path '{}' does not exist!", path.toStdString());
+            SPDLOG_LOGGER_ERROR(
+                APP_LOGGER, "Data storage path '{}' does not exist!", path.toStdString());
             return;
         }
 
@@ -98,7 +102,27 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     delete m_ui;
-    SPDLOG_DEBUG("sokketter-ui has finished.");
+    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "sokketter-ui has finished.");
+    deinitialize_app_logger();
+}
+
+auto MainWindow::initialize_logging() -> void
+{
+    initialize_app_logger(sokketter::storage_path() / "logs");
+
+    sokketter::settings_structure settings;
+
+    settings.logging_level = sokketter::logging_level::INFO;
+    settings.logging_callback =
+        std::bind(&MainWindow::logging_callback, this, std::placeholders::_1);
+
+    sokketter::set_settings(settings);
+}
+
+auto MainWindow::logging_callback(const sokketter::callback_response_structure &response) -> void
+{
+    APP_LOGGER->log(spdlog::source_loc{response.file, response.line, response.function},
+        spdlog::level::level_enum(response.level), response.message);
 }
 
 auto MainWindow::initialize_about_page() -> void
@@ -152,7 +176,7 @@ auto MainWindow::initialize_about_page() -> void
 
 auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
 {
-    SPDLOG_DEBUG("Detected onPowerStripClicked() signal.");
+    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Detected onPowerStripClicked() signal.");
 
     /**
      * @brief ignore click if it's a empty_power_strip_list_item.
@@ -160,7 +184,7 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
     QWidget *widget = m_ui->power_strip_list_widget->itemWidget(item);
     if (qobject_cast<empty_power_strip_list_item *>(widget))
     {
-        SPDLOG_DEBUG("Ignoring click on empty power strip item.");
+        SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Ignoring click on empty power strip item.");
         return;
     }
 
@@ -176,12 +200,12 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
 
 auto MainWindow::onSocketClicked(QListWidgetItem *item) -> void
 {
-    SPDLOG_DEBUG("Detected onSocketClicked() signal.");
+    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Detected onSocketClicked() signal.");
 
     auto socket_item = dynamic_cast<socket_list_item *>(m_ui->socket_list_widget->itemWidget(item));
     if (socket_item == nullptr)
     {
-        SPDLOG_ERROR("Failed getting a socket from the UI list!");
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed getting a socket from the UI list!");
         return;
     }
 
@@ -198,14 +222,14 @@ auto MainWindow::onSocketClicked(QListWidgetItem *item) -> void
     const auto &socket_opt = device->socket(index);
     if (!socket_opt.has_value())
     {
-        SPDLOG_ERROR("Failed getting a socket from device!");
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed getting a socket from device!");
         return;
     }
 
     const auto &socket = socket_opt->get();
     if (!socket.toggle())
     {
-        SPDLOG_ERROR("Failed toggling a socket!");
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed toggling a socket!");
         return;
     }
 
@@ -216,7 +240,8 @@ auto MainWindow::event(QEvent *event) -> bool
 {
     if (event->type() == QEvent::ThemeChange)
     {
-        SPDLOG_DEBUG("Detected mode change to {}.", isDarkMode() ? "dark" : "light");
+        SPDLOG_LOGGER_DEBUG(
+            APP_LOGGER, "Detected mode change to {}.", isDarkMode() ? "dark" : "light");
         setThemeAccordingToMode();
         return true;
     }
@@ -226,7 +251,7 @@ auto MainWindow::event(QEvent *event) -> bool
 
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
-    SPDLOG_DEBUG("Detected resize event.");
+    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Detected resize event.");
 
     QMainWindow::resizeEvent(event);
 
@@ -238,7 +263,7 @@ void MainWindow::redraw_device_list()
 {
     if (m_ui->power_strip_list_widget->isVisible())
     {
-        SPDLOG_DEBUG("Re-drawing power strip list.");
+        SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Re-drawing power strip list.");
 
         int visibleWidth = m_ui->power_strip_list_widget->width();
         if (m_ui->power_strip_list_widget->verticalScrollBar()->isVisible())
@@ -284,7 +309,7 @@ void MainWindow::redraw_socket_list()
 {
     if (m_ui->socket_list_widget->isVisible())
     {
-        SPDLOG_DEBUG("Re-drawing socket list.");
+        SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Re-drawing socket list.");
 
         int visibleWidth = m_ui->socket_list_widget->width();
         if (m_ui->socket_list_widget->verticalScrollBar()->isVisible())
@@ -318,7 +343,7 @@ void MainWindow::setThemeAccordingToMode()
 
 auto MainWindow::repopulate_device_list() -> void
 {
-    SPDLOG_DEBUG("Repopulating power strip list.");
+    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Repopulating power strip list.");
 
     while (m_ui->power_strip_list_widget->count() > 0)
     {
@@ -367,7 +392,7 @@ auto MainWindow::repopulate_device_list() -> void
 auto MainWindow::repopulate_socket_list(const sokketter::power_strip_configuration &configuration)
     -> void
 {
-    SPDLOG_DEBUG("Repopulating socket list.");
+    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Repopulating socket list.");
 
     while (m_ui->socket_list_widget->count() > 0)
     {

@@ -4,15 +4,26 @@
 #include <string>
 #include <utility>
 
-#include <core.h>
 #include <devices/power_strip_factory.h>
 #include <devices/test_device.h>
+#include <sokketter_core.h>
+#include <sokketter_initializer.h>
 #include <spdlog/spdlog.h>
 #include <third-party/kommpot/libkommpot/include/libkommpot.h>
 
 namespace sokketter {
-    static core s_core;
+    extern sokketter_initializer s_library_initializer;
 } // namespace sokketter
+
+auto sokketter::settings() noexcept -> sokketter::settings_structure
+{
+    return sokketter_core::instance().settings();
+}
+
+auto sokketter::set_settings(const settings_structure &settings) noexcept -> void
+{
+    sokketter_core::instance().set_settings(settings);
+}
 
 auto sokketter::storage_path() -> std::filesystem::path
 {
@@ -97,11 +108,6 @@ auto sokketter::version() noexcept -> sokketter::version_information
 {
     return {SOKKETTER_VERSION_MAJOR, SOKKETTER_VERSION_MINOR, SOKKETTER_VERSION_MICRO,
         SOKKETTER_VERSION_NANO, SOKKETTER_VERSION_SHA};
-}
-
-auto sokketter::settings() noexcept -> sokketter::settings_information
-{
-    return s_core.settings();
 }
 
 sokketter::socket::socket(const size_t index, std::function<bool(size_t, bool)> power_cb,
@@ -247,9 +253,7 @@ auto sokketter::devices(const device_filter &filter)
             continue;
         }
 
-        SPDLOG_DEBUG("Device was succesfully created - name {}, serial number {}, at port {}!",
-            communication->information().name, communication->information().serial_number,
-            communication->information().port);
+        SPDLOG_DEBUG("{}: device was succesfully created!", device->to_string());
 
         devices.push_back(std::move(device));
     }
@@ -291,9 +295,7 @@ auto sokketter::device(const size_t &index) -> const std::unique_ptr<sokketter::
         return nullptr;
     }
 
-    SPDLOG_DEBUG("Device was succesfully created - name {}, serial number {}, at port {}!",
-        communication->information().name, communication->information().serial_number,
-        communication->information().port);
+    SPDLOG_DEBUG("{}: device was succesfully created!", device->to_string());
 
     return device;
 }
@@ -354,9 +356,7 @@ auto sokketter::device(const std::string &serial_number)
             continue;
         }
 
-        SPDLOG_DEBUG("Device was succesfully created - name {}, serial number {}, at port {}!",
-            communication->information().name, communication->information().serial_number,
-            communication->information().port);
+        SPDLOG_DEBUG("{}: device was succesfully created!", device->to_string());
 
         return device;
     }

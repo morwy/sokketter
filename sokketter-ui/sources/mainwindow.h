@@ -29,6 +29,9 @@ private slots:
 private:
     Ui::MainWindow *m_ui;
 
+    auto initialize_logging() -> void;
+    auto logging_callback(const sokketter::callback_response_structure &response) -> void;
+
     auto initialize_about_page() -> void;
 
     auto event(QEvent *event) -> bool override;
