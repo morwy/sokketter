@@ -97,10 +97,6 @@ auto sokketter_core::initialize_logger() -> void
                         sokketter::logging_level(msg.level), msg.source.filename, msg.source.line,
                         msg.source.funcname, std::string(msg.payload.data(), msg.payload.size())});
                 }
-                else
-                {
-                    std::cerr << "Logging callback is null!" << std::endl;
-                }
             });
         new_sinks.push_back(callback_sink);
     }
@@ -130,14 +126,6 @@ auto sokketter_core::initialize_logger() -> void
 #endif
     }
 
-    kommpot::settings_structure settings;
-
-    settings.logging_level = kommpot::logging_level(m_settings.logging_level);
-    settings.logging_callback =
-        std::bind(&sokketter_core::logging_callback, this, std::placeholders::_1);
-
-    kommpot::set_settings(settings);
-
     if (m_logger == nullptr)
     {
         m_logger =
@@ -146,13 +134,24 @@ auto sokketter_core::initialize_logger() -> void
     }
     else
     {
-        auto &sinks = SOKKETTER_LOGGER->sinks();
-        sinks.clear();
-        sinks = {new_sinks.begin(), new_sinks.end()};
+        m_logger->flush();
+        spdlog::drop(LOGGER_NAME);
+
+        m_logger =
+            std::make_shared<spdlog::logger>(LOGGER_NAME, new_sinks.begin(), new_sinks.end());
+        spdlog::register_logger(m_logger);
     }
 
     SOKKETTER_LOGGER->set_level(spdlog::level::level_enum(m_settings.logging_level));
     SOKKETTER_LOGGER->set_pattern(m_settings.logging_pattern);
+
+    kommpot::settings_structure settings;
+
+    settings.logging_level = kommpot::logging_level(m_settings.logging_level);
+    settings.logging_callback =
+        std::bind(&sokketter_core::logging_callback, this, std::placeholders::_1);
+
+    kommpot::set_settings(settings);
 
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "A new logging session is started.");
 }
