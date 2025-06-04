@@ -14,7 +14,7 @@
 #endif
 
 #ifdef __APPLE__
-#    include <spdlog/sinks/syslog_sink.h>
+#    include <spdlog/sinks/rotating_file_sink.h>
 #endif
 
 auto initialize_app_logger() -> void
@@ -39,14 +39,24 @@ auto initialize_app_logger() -> void
 #endif
 
 #ifdef __APPLE__
-    auto syslog_sink =
-        std::make_shared<spdlog::sinks::syslog_sink_mt>(LOGGER_NAME, 0, LOG_USER, false);
-    new_sinks.push_back(syslog_sink);
+    constexpr const auto maxFileCount = 10;
+    constexpr const auto maxFileSize = 100 * 1024 * 1024;
+
+    const auto consoleLogPath =
+        std::filesystem::path(getenv("HOME")) / "Library" / "Logs" / "sokketter";
+    const auto filename = "sokketter-ui.log";
+    const auto logFilepath = consoleLogPath / filename;
+
+    auto macosConsoleLogger = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
+        logFilepath, maxFileSize, maxFileCount, true);
+
+    new_sinks.push_back(macosConsoleLogger);
 #endif
 
     const auto &filepath = sokketter::storage_path() / "logs" / (std::string(LOGGER_NAME) + ".txt");
 
     auto logger = spdlog::daily_logger_mt(LOGGER_NAME, filepath.string(), 0, 0, false, 30);
+    APP_LOGGER->sinks().insert(logger->sinks().end(), new_sinks.begin(), new_sinks.end());
 
     APP_LOGGER->set_level(spdlog::level::trace);
     APP_LOGGER->set_pattern("%Y-%m-%d %T.%e - %l - %s:%# - %v");
