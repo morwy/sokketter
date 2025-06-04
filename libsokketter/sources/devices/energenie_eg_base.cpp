@@ -1,6 +1,7 @@
 #include "energenie_eg_base.h"
 
 #include <array>
+#include <sokketter_core.h>
 #include <spdlog/spdlog.h>
 #include <sstream>
 
@@ -16,7 +17,8 @@ energenie_eg_base::energenie_eg_base(std::unique_ptr<kommpot::device_communicati
      */
     if (!m_communication->open())
     {
-        SPDLOG_ERROR("{}: failed opening the device communication!", this->to_string());
+        SPDLOG_LOGGER_ERROR(
+            SOKKETTER_LOGGER, "{}: failed opening the device communication!", this->to_string());
     }
 
     kommpot::control_transfer_configuration configuration;
@@ -29,7 +31,8 @@ energenie_eg_base::energenie_eg_base(std::unique_ptr<kommpot::device_communicati
 
     if (!m_communication->read(configuration, serial_number_raw.data(), serial_number_raw.size()))
     {
-        SPDLOG_ERROR("{}: failed reading the device serial number!", this->to_string());
+        SPDLOG_LOGGER_ERROR(
+            SOKKETTER_LOGGER, "{}: failed reading the device serial number!", this->to_string());
     }
 
     m_communication->close();
@@ -57,8 +60,8 @@ auto energenie_eg_base::socket(const size_t &index)
 {
     if (index >= m_sockets.size())
     {
-        SPDLOG_ERROR(
-            "{}: index {} is out of range 0-{}!", this->to_string(), index, m_sockets.size());
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "{}: index {} is out of range 0-{}!",
+            this->to_string(), index, m_sockets.size());
         return std::nullopt;
     }
 
@@ -67,7 +70,8 @@ auto energenie_eg_base::socket(const size_t &index)
 
 auto energenie_eg_base::power_socket(size_t index, bool is_toggled) -> bool
 {
-    SPDLOG_DEBUG("{}: powering socket {} {}.", this->to_string(), index, is_toggled ? "on" : "off");
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: powering socket {} {}.", this->to_string(), index,
+        is_toggled ? "on" : "off");
 
     kommpot::control_transfer_configuration configuration;
     configuration.request_type = 0x21;
@@ -83,7 +87,8 @@ auto energenie_eg_base::power_socket(size_t index, bool is_toggled) -> bool
 
     if (!m_communication->open())
     {
-        SPDLOG_ERROR("{}: failed opening the device communication!", this->to_string());
+        SPDLOG_LOGGER_ERROR(
+            SOKKETTER_LOGGER, "{}: failed opening the device communication!", this->to_string());
     }
 
     const bool is_operation_succeed =
@@ -93,7 +98,7 @@ auto energenie_eg_base::power_socket(size_t index, bool is_toggled) -> bool
 
     if (!is_operation_succeed)
     {
-        SPDLOG_ERROR("{}: failed writing the command!", this->to_string());
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "{}: failed writing the command!", this->to_string());
         return false;
     }
 
@@ -102,7 +107,8 @@ auto energenie_eg_base::power_socket(size_t index, bool is_toggled) -> bool
 
 auto energenie_eg_base::socket_status(size_t index) -> bool
 {
-    SPDLOG_DEBUG("{}: checking socket {} status.", this->to_string(), index);
+    SPDLOG_LOGGER_DEBUG(
+        SOKKETTER_LOGGER, "{}: checking socket {} status.", this->to_string(), index);
 
     kommpot::control_transfer_configuration configuration;
     configuration.request_type = 0xa1;
@@ -114,7 +120,8 @@ auto energenie_eg_base::socket_status(size_t index) -> bool
 
     if (!m_communication->open())
     {
-        SPDLOG_ERROR("{}: failed opening the device communication!", this->to_string());
+        SPDLOG_LOGGER_ERROR(
+            SOKKETTER_LOGGER, "{}: failed opening the device communication!", this->to_string());
     }
 
     const bool is_operation_succeed =
@@ -124,7 +131,7 @@ auto energenie_eg_base::socket_status(size_t index) -> bool
 
     if (!is_operation_succeed)
     {
-        SPDLOG_ERROR("{}: failed reading the status!", this->to_string());
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "{}: failed reading the status!", this->to_string());
         return false;
     }
 

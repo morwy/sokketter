@@ -1,5 +1,6 @@
 #include "gembird_sis_pm.h"
 
+#include <sokketter_core.h>
 #include <spdlog/spdlog.h>
 
 gembird_sis_pm::gembird_sis_pm(std::unique_ptr<kommpot::device_communication> communication)
@@ -12,7 +13,7 @@ gembird_sis_pm::gembird_sis_pm(std::unique_ptr<kommpot::device_communication> co
     configuration.id = m_serial_number;
     configuration.address = std::string("USB:") + m_communication->information().port;
 
-    SPDLOG_DEBUG("{}: construction.", this->to_string());
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: construction.", this->to_string());
 
     this->configure(configuration);
 
@@ -33,7 +34,7 @@ gembird_sis_pm::gembird_sis_pm(std::unique_ptr<kommpot::device_communication> co
 
 gembird_sis_pm::~gembird_sis_pm()
 {
-    SPDLOG_DEBUG("{}: destruction.", this->to_string());
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: destruction.", this->to_string());
 }
 
 auto gembird_sis_pm::identification() -> const kommpot::device_identification

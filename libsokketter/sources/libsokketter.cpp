@@ -131,7 +131,8 @@ auto sokketter::socket::power(const bool &on) const noexcept -> bool
 {
     if (m_power_cb == nullptr)
     {
-        SPDLOG_WARN("Trying to change state of socket {} at index {} to {} without set callback!",
+        SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER,
+            "Trying to change state of socket {} at index {} to {} without set callback!",
             this->configuration().name, this->configuration().id, on ? "on" : "off");
         return false;
     }
@@ -143,7 +144,8 @@ auto sokketter::socket::toggle() const noexcept -> bool
 {
     if (m_power_cb == nullptr)
     {
-        SPDLOG_WARN("Trying to change state of socket {} at index {} without set callback!",
+        SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER,
+            "Trying to change state of socket {} at index {} without set callback!",
             this->configuration().name, this->configuration().id);
         return false;
     }
@@ -157,7 +159,8 @@ auto sokketter::socket::is_powered_on() const noexcept -> bool
 {
     if (m_status_cb == nullptr)
     {
-        SPDLOG_WARN("Trying to check status of socket {} at index {} without set callback!",
+        SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER,
+            "Trying to check status of socket {} at index {} without set callback!",
             this->configuration().name, this->configuration().id);
         return false;
     }
@@ -224,7 +227,8 @@ auto sokketter::devices(const device_filter &filter)
     auto requested_test_device_number = get_requested_test_device_number();
     if (requested_test_device_number > 0)
     {
-        SPDLOG_DEBUG("Requested debug devices: {}.", requested_test_device_number);
+        SPDLOG_LOGGER_DEBUG(
+            SOKKETTER_LOGGER, "Requested debug devices: {}.", requested_test_device_number);
 
         for (size_t device_index = 0; device_index < requested_test_device_number; ++device_index)
         {
@@ -236,29 +240,31 @@ auto sokketter::devices(const device_filter &filter)
 
     const auto supported_devices = power_strip_factory::supported_devices();
 
-    SPDLOG_DEBUG("Supported devices: {}.", supported_devices.size());
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Supported devices: {}.", supported_devices.size());
 
     auto communications = kommpot::devices(supported_devices);
 
-    SPDLOG_DEBUG("Connected devices: {}.", communications.size());
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Connected devices: {}.", communications.size());
 
     for (auto &communication : communications)
     {
         auto device = power_strip_factory::create(std::move(communication));
         if (!device)
         {
-            SPDLOG_ERROR("Failed creating the device - name {}, serial number {}, at port {}!",
+            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+                "Failed creating the device - name {}, serial number {}, at port {}!",
                 communication->information().name, communication->information().serial_number,
                 communication->information().port);
             continue;
         }
 
-        SPDLOG_DEBUG("{}: device was succesfully created!", device->to_string());
+        SPDLOG_LOGGER_DEBUG(
+            SOKKETTER_LOGGER, "{}: device was succesfully created!", device->to_string());
 
         devices.push_back(std::move(device));
     }
 
-    SPDLOG_DEBUG("Created devices: {}.", devices.size());
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Created devices: {}.", devices.size());
 
     return devices;
 }
@@ -267,21 +273,22 @@ auto sokketter::device(const size_t &index) -> const std::unique_ptr<sokketter::
 {
     if (get_requested_test_device_number())
     {
-        SPDLOG_DEBUG("Creating debug device at index {}.", index);
+        SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Creating debug device at index {}.", index);
         return std::make_unique<test_device>(index);
     }
 
     const auto supported_devices = power_strip_factory::supported_devices();
 
-    SPDLOG_DEBUG("Supported devices: {}.", supported_devices.size());
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Supported devices: {}.", supported_devices.size());
 
     auto communications = kommpot::devices(supported_devices);
 
-    SPDLOG_DEBUG("Connected devices: {}.", communications.size());
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Connected devices: {}.", communications.size());
 
     if (index >= communications.size())
     {
-        SPDLOG_ERROR("Provided index {} is out of range 0-{}!", index, communications.size());
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "Provided index {} is out of range 0-{}!", index,
+            communications.size());
         return nullptr;
     }
 
@@ -289,13 +296,15 @@ auto sokketter::device(const size_t &index) -> const std::unique_ptr<sokketter::
     auto device = power_strip_factory::create(std::move(communication));
     if (!device)
     {
-        SPDLOG_ERROR("Failed creating the device - name {}, serial number {}, at port {}!",
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+            "Failed creating the device - name {}, serial number {}, at port {}!",
             communication->information().name, communication->information().serial_number,
             communication->information().port);
         return nullptr;
     }
 
-    SPDLOG_DEBUG("{}: device was succesfully created!", device->to_string());
+    SPDLOG_LOGGER_DEBUG(
+        SOKKETTER_LOGGER, "{}: device was succesfully created!", device->to_string());
 
     return device;
 }
@@ -315,37 +324,40 @@ auto sokketter::device(const std::string &serial_number)
             }
             catch (const std::invalid_argument &)
             {
-                SPDLOG_WARN("Failed reading test device index from the provided serial number {}!",
+                SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER,
+                    "Failed reading test device index from the provided serial number {}!",
                     serial_number);
                 return nullptr;
             }
             catch (const std::out_of_range &)
             {
-                SPDLOG_WARN("Failed reading test device index from the provided serial number {}!",
+                SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER,
+                    "Failed reading test device index from the provided serial number {}!",
                     serial_number);
                 return nullptr;
             }
         }
 
-        SPDLOG_ERROR("No device was created.");
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "No device was created.");
 
         return nullptr;
     }
 
     const auto supported_devices = power_strip_factory::supported_devices();
 
-    SPDLOG_DEBUG("Supported devices: {}.", supported_devices.size());
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Supported devices: {}.", supported_devices.size());
 
     auto communications = kommpot::devices(supported_devices);
 
-    SPDLOG_DEBUG("Connected devices: {}.", communications.size());
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Connected devices: {}.", communications.size());
 
     for (auto &communication : communications)
     {
         auto device = power_strip_factory::create(std::move(communication));
         if (!device)
         {
-            SPDLOG_ERROR("Failed creating the device - name {}, serial number {}, at port {}!",
+            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+                "Failed creating the device - name {}, serial number {}, at port {}!",
                 communication->information().name, communication->information().serial_number,
                 communication->information().port);
             continue;
@@ -356,12 +368,13 @@ auto sokketter::device(const std::string &serial_number)
             continue;
         }
 
-        SPDLOG_DEBUG("{}: device was succesfully created!", device->to_string());
+        SPDLOG_LOGGER_DEBUG(
+            SOKKETTER_LOGGER, "{}: device was succesfully created!", device->to_string());
 
         return device;
     }
 
-    SPDLOG_ERROR("No device was created.");
+    SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "No device was created.");
 
     return nullptr;
 }

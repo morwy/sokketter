@@ -1,5 +1,6 @@
 #include "energenie_eg_pms2.h"
 
+#include <sokketter_core.h>
 #include <spdlog/spdlog.h>
 
 energenie_eg_pms2::energenie_eg_pms2(std::unique_ptr<kommpot::device_communication> communication)
@@ -12,7 +13,7 @@ energenie_eg_pms2::energenie_eg_pms2(std::unique_ptr<kommpot::device_communicati
     configuration.id = m_serial_number;
     configuration.address = std::string("USB:") + m_communication->information().port;
 
-    SPDLOG_DEBUG("{}: construction.", this->to_string());
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: construction.", this->to_string());
 
     this->configure(configuration);
 
@@ -33,7 +34,7 @@ energenie_eg_pms2::energenie_eg_pms2(std::unique_ptr<kommpot::device_communicati
 
 energenie_eg_pms2::~energenie_eg_pms2()
 {
-    SPDLOG_DEBUG("{}: destruction.", this->to_string());
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: destruction.", this->to_string());
 }
 
 auto energenie_eg_pms2::identification() -> const kommpot::device_identification

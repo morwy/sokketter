@@ -1,6 +1,7 @@
 #include "test_device.h"
 
 #include <map>
+#include <sokketter_core.h>
 #include <spdlog/spdlog.h>
 
 static std::map<std::string, std::vector<sokketter::socket>> gs_sockets;
@@ -18,7 +19,7 @@ test_device::test_device(const size_t &index)
     basic_configuration.address = "TEST_ADDRESS_" + std::to_string(m_index);
     configure(basic_configuration);
 
-    SPDLOG_DEBUG("{}: construction.", this->to_string());
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: construction.", this->to_string());
 
     if (gs_socket_states[m_serial_number].size() != m_socket_number)
     {
@@ -39,7 +40,7 @@ test_device::test_device(const size_t &index)
 
 test_device::~test_device()
 {
-    SPDLOG_DEBUG("{}: destruction.", this->to_string());
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: destruction.", this->to_string());
 }
 
 auto test_device::is_connected() const -> bool
@@ -57,8 +58,8 @@ auto test_device::socket(const size_t &index)
 {
     if (index >= gs_sockets[m_serial_number].size())
     {
-        SPDLOG_ERROR("{}: index {} is out of range 0-{}!", this->to_string(), index,
-            gs_sockets[m_serial_number].size());
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "{}: index {} is out of range 0-{}!",
+            this->to_string(), index, gs_sockets[m_serial_number].size());
         return std::nullopt;
     }
 
@@ -67,13 +68,15 @@ auto test_device::socket(const size_t &index)
 
 auto test_device::power_socket(size_t index, bool is_toggled) -> bool
 {
-    SPDLOG_DEBUG("{}: powering socket {} {}.", this->to_string(), index, is_toggled ? "on" : "off");
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: powering socket {} {}.", this->to_string(), index,
+        is_toggled ? "on" : "off");
     gs_socket_states[m_serial_number][index - 1] = is_toggled;
     return true;
 }
 
 auto test_device::socket_status(size_t index) -> bool
 {
-    SPDLOG_DEBUG("{}: checking socket {} status.", this->to_string(), index);
+    SPDLOG_LOGGER_DEBUG(
+        SOKKETTER_LOGGER, "{}: checking socket {} status.", this->to_string(), index);
     return gs_socket_states[m_serial_number][index - 1];
 }
