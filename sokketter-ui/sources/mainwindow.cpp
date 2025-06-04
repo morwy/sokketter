@@ -3,6 +3,7 @@
 #include "ui_mainwindow.h"
 
 #include <app_logger.h>
+#include <app_settings.h>
 #include <empty_power_strip_list_item.h>
 #include <power_strip_list_item.h>
 #include <socket_list_item.h>
@@ -22,6 +23,7 @@
 #include <QScrollBar>
 #include <QTimer>
 #include <QUrl>
+#include <fstream>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -30,6 +32,8 @@ MainWindow::MainWindow(QWidget *parent)
     initialize_app_logger();
 
     m_ui->setupUi(this);
+
+    loadSettings();
 
     SPDLOG_LOGGER_DEBUG(APP_LOGGER, "sokketter-ui has started.");
 
@@ -104,6 +108,12 @@ MainWindow::~MainWindow()
     delete m_ui;
     SPDLOG_LOGGER_DEBUG(APP_LOGGER, "sokketter-ui has finished.");
     deinitialize_app_logger();
+}
+
+auto MainWindow::closeEvent(QCloseEvent *event) -> void
+{
+    saveSettings();
+    QMainWindow::closeEvent(event);
 }
 
 auto MainWindow::initialize_about_page() -> void
@@ -215,6 +225,58 @@ auto MainWindow::onSocketClicked(QListWidgetItem *item) -> void
     }
 
     socket_item->set_state(socket.is_powered_on());
+}
+
+auto MainWindow::settingsFilePath() const -> std::filesystem::path
+{
+    return sokketter::storage_path() / "sokketter-ui.json";
+}
+
+auto MainWindow::saveSettings() -> void
+{
+    SPDLOG_LOGGER_DEBUG(
+        APP_LOGGER, "Saving the application settings to '{}' file.", settingsFilePath().string());
+
+    app_settings settings;
+    settings.window = {this->x(), this->y(), this->width(), this->height()};
+
+    std::ofstream file(settingsFilePath().string());
+    if (!file.is_open())
+    {
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed saving the application settings!");
+        return;
+    }
+
+    nlohmann::json j = settings;
+    file << j.dump(4);
+}
+
+auto MainWindow::loadSettings() -> void
+{
+    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Restoring the application settings from '{}' file.",
+        settingsFilePath().string());
+
+    QFileInfo fileInfo(settingsFilePath());
+    if (!fileInfo.exists())
+    {
+        SPDLOG_LOGGER_INFO(
+            APP_LOGGER, "No application settings file was found, skipping restoring.");
+        return;
+    }
+
+    std::ifstream file(settingsFilePath().string());
+    if (!file.is_open())
+    {
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed restoring the application settings!");
+        return;
+    }
+
+    nlohmann::json j;
+    file >> j;
+
+    app_settings settings = j.get<app_settings>();
+    this->setGeometry(
+        settings.window.x, settings.window.y, settings.window.width, settings.window.height);
 }
 
 auto MainWindow::event(QEvent *event) -> bool
