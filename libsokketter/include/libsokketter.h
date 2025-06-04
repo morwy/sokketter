@@ -15,6 +15,66 @@
 
 namespace sokketter {
     /**
+     * @brief path to the folder where all related files are stored.
+     * @return std::filesystem::path.
+     */
+    auto EXPORTED storage_path() -> std::filesystem::path;
+
+    /**
+     * @brief path to the folder where all logs are stored.
+     * @return std::filesystem::path.
+     */
+    auto EXPORTED logs_path() -> std::filesystem::path;
+
+    /**
+     * @brief states levels of logging.
+     */
+    enum class logging_level : uint8_t
+    {
+        TRACE = 0,
+        DEBUG = 1,
+        INFO = 2,
+        WARN = 3,
+        ERR = 4,
+        CRIT = 5,
+        OFF = 6
+    };
+
+    /**
+     * @brief
+     */
+    struct EXPORTED callback_response_structure
+    {
+        sokketter::logging_level level = sokketter::logging_level::ERR;
+        const char *file = nullptr;
+        int line = 0;
+        const char *function = nullptr;
+        std::string message = "";
+    };
+
+    /**
+     * @brief
+     */
+    struct EXPORTED settings_structure
+    {
+        sokketter::logging_level logging_level = sokketter::logging_level::ERR;
+        std::function<void(callback_response_structure)> logging_callback = nullptr;
+        std::string logging_pattern = "%+";
+    };
+
+    /**
+     * @brief gets current settings of kommpot library.
+     * @return settings structure.
+     */
+    auto EXPORTED settings() noexcept -> settings_structure;
+
+    /**
+     * @brief sets the new settings of kommpot library.
+     * @param settings structure.
+     */
+    auto EXPORTED set_settings(const settings_structure &settings) noexcept -> void;
+
+    /**
      * @brief structure containing version of sokketter library.
      */
     struct EXPORTED version_information
@@ -57,21 +117,6 @@ namespace sokketter {
      * @return version structure.
      */
     auto EXPORTED version() noexcept -> version_information;
-
-    /**
-     * @brief structure containing settings of sokketter library.
-     */
-    struct EXPORTED settings_information
-    {
-        std::filesystem::path database_path;
-        std::string database_password = "";
-    };
-
-    /**
-     * @brief gets current settings of sokketter library.
-     * @return settings structure.
-     */
-    auto EXPORTED settings() noexcept -> settings_information;
 
     /**
      * @brief structure containing configuration parameters of the specific socket.

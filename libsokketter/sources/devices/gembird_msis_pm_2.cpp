@@ -1,5 +1,8 @@
 #include "gembird_msis_pm_2.h"
 
+#include <sokketter_core.h>
+#include <spdlog/spdlog.h>
+
 gembird_msis_pm_2::gembird_msis_pm_2(std::unique_ptr<kommpot::device_communication> communication)
     : energenie_eg_base(std::move(communication))
 {
@@ -9,6 +12,8 @@ gembird_msis_pm_2::gembird_msis_pm_2(std::unique_ptr<kommpot::device_communicati
     configuration.type = sokketter::power_strip_type::GEMBIRD_MSIS_PM_2;
     configuration.id = m_serial_number;
     configuration.address = std::string("USB:") + m_communication->information().port;
+
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: construction.", this->to_string());
 
     this->configure(configuration);
 
@@ -25,6 +30,11 @@ gembird_msis_pm_2::gembird_msis_pm_2(std::unique_ptr<kommpot::device_communicati
             std::bind(&gembird_msis_pm_2::socket_status, this, std::placeholders::_1));
         m_sockets.push_back(socket);
     }
+}
+
+gembird_msis_pm_2::~gembird_msis_pm_2()
+{
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: destruction.", this->to_string());
 }
 
 auto gembird_msis_pm_2::identification() -> const kommpot::device_identification

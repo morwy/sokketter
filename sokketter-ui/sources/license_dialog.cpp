@@ -1,6 +1,7 @@
 #include "license_dialog.h"
 #include "ui_license_dialog.h"
 
+#include <spdlog/spdlog.h>
 #include <theme_stylesheets.h>
 
 #ifdef Q_OS_WIN
@@ -30,6 +31,7 @@ auto license_dialog::event(QEvent *event) -> bool
 {
     if (event->type() == QEvent::ThemeChange)
     {
+        SPDLOG_DEBUG("Detected mode change to {}.", isDarkMode() ? "dark" : "light");
         setThemeAccordingToMode();
         return true;
     }
@@ -41,6 +43,6 @@ auto license_dialog::setThemeAccordingToMode() -> void
 {
     this->setStyleSheet(isDarkMode() ? dark_theme : light_theme);
 #ifdef Q_OS_WIN
-    toggleDarkTitlebar(winId(), isDarkMode());
+    toggle_dark_titlebar(winId(), isDarkMode());
 #endif
 }

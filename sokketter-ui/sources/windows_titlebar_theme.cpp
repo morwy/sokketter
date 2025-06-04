@@ -4,23 +4,33 @@
 
 #    include <Windows.h>
 #    include <dwmapi.h>
+#    include <spdlog/spdlog.h>
 
 #    pragma comment(lib, "Dwmapi.lib")
 
-void toggleDarkTitlebar(WId window_id, const bool enabled)
+void toggle_dark_titlebar(WId window_id, const bool enabled)
 {
     HWND window_handle = reinterpret_cast<HWND>(window_id);
-    BOOL useDarkMode = enabled ? TRUE : FALSE;
+    BOOL use_dark_mode = enabled ? TRUE : FALSE;
 
     const DWORD DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
     const DWORD DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 = 19;
 
-    HRESULT hr = DwmSetWindowAttribute(
-        window_handle, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDarkMode, sizeof(useDarkMode));
-    if (FAILED(hr))
+    HRESULT result = DwmSetWindowAttribute(
+        window_handle, DWMWA_USE_IMMERSIVE_DARK_MODE, &use_dark_mode, sizeof(use_dark_mode));
+    if (FAILED(result))
     {
-        hr = DwmSetWindowAttribute(window_handle, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1,
-            &useDarkMode, sizeof(useDarkMode));
+        SPDLOG_ERROR(
+            "DwmSetWindowAttribute() failed with error code {}, retrying with older version.",
+            result);
+
+        result = DwmSetWindowAttribute(window_handle, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1,
+            &use_dark_mode, sizeof(use_dark_mode));
+        if (FAILED(result))
+        {
+            SPDLOG_ERROR(
+                "DwmSetWindowAttribute() with older version failed with error code {}.", result);
+        }
     }
 }
 

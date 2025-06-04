@@ -7,7 +7,7 @@
 #include <QtGlobal>
 
 #ifdef Q_OS_WIN
-void toggleDarkTitlebar(WId window_id, const bool enabled);
+void toggle_dark_titlebar(WId window_id, const bool enabled);
 #endif
 
 #endif // WINDOWS_TITLEBAR_THEME_H

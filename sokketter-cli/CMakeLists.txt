@@ -1,6 +1,8 @@
 set(PROJECT_NAME "sokketter-cli")
 project(${PROJECT_NAME} LANGUAGES CXX)
 
+add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
+
 find_package(Threads REQUIRED)
 
 include_directories(${CMAKE_CURRENT_LIST_DIR}/sources)

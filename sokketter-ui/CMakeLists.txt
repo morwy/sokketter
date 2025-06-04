@@ -1,6 +1,8 @@
 set(PROJECT_NAME "sokketter-ui")
 project(${PROJECT_NAME} LANGUAGES CXX)
 
+add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
+
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)

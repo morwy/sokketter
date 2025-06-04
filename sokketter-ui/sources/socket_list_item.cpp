@@ -1,6 +1,7 @@
 #include "socket_list_item.h"
 #include "ui_socket_list_item.h"
 
+#include <spdlog/spdlog.h>
 #include <theme_stylesheets.h>
 
 #include <QStyleHints>
@@ -49,6 +50,7 @@ auto socket_list_item::event(QEvent *event) -> bool
 {
     if (event->type() == QEvent::ThemeChange || event->type() == QEvent::PaletteChange)
     {
+        SPDLOG_DEBUG("Detected mode change to {}.", isDarkMode() ? "dark" : "light");
         setThemeAccordingToMode();
         return true;
     }

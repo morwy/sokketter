@@ -2,26 +2,36 @@
 #include "license_dialog.h"
 #include "ui_mainwindow.h"
 
+#include <app_logger.h>
 #include <empty_power_strip_list_item.h>
 #include <power_strip_list_item.h>
 #include <socket_list_item.h>
+#include <spdlog/sinks/daily_file_sink.h>
+#include <spdlog/spdlog.h>
 #include <theme_stylesheets.h>
-
-#include <ClickableLabel.h>
-#include <QApplication>
-#include <QListWidgetItem>
-#include <QScrollBar>
-#include <QTimer>
 
 #ifdef Q_OS_WIN
 #    include <windows_titlebar_theme.h>
 #endif
 
+#include <ClickableLabel.h>
+#include <QApplication>
+#include <QDesktopServices>
+#include <QFileInfo>
+#include <QListWidgetItem>
+#include <QScrollBar>
+#include <QTimer>
+#include <QUrl>
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , m_ui(new Ui::MainWindow)
 {
+    initialize_app_logger();
+
     m_ui->setupUi(this);
+
+    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "sokketter-ui has started.");
 
     setThemeAccordingToMode();
 
@@ -30,17 +40,32 @@ MainWindow::MainWindow(QWidget *parent)
      */
     m_ui->stackedWidget->setSpeed(500);
 
+    m_ui->settings_data_path_label->setText(
+        QString::fromStdString(sokketter::storage_path().string()));
+    m_ui->settings_data_path_label->setToolTip(
+        QString::fromStdString(sokketter::storage_path().string()));
+
     /**
      * @brief connect the signals to the slots.
      */
     QObject::connect(m_ui->power_strip_list_widget, &QListWidget::itemClicked, this,
         &MainWindow::onPowerStripClicked);
 
+    QObject::connect(
+        m_ui->socket_list_widget, &QListWidget::itemClicked, this, &MainWindow::onSocketClicked);
+
     QObject::connect(m_ui->power_strip_list_refresh_label, &ClickableLabel::clicked,
         [this]() { repopulate_device_list(); });
 
-    QObject::connect(
-        m_ui->socket_list_widget, &QListWidget::itemClicked, this, &MainWindow::onSocketClicked);
+    QObject::connect(m_ui->power_strip_settings_label, &ClickableLabel::clicked, [this]() {
+        const int &index = m_ui->stackedWidget->indexOf(m_ui->settings_page);
+        m_ui->stackedWidget->slideInIdx(index);
+    });
+
+    QObject::connect(m_ui->power_strip_about_label, &ClickableLabel::clicked, [this]() {
+        const int &index = m_ui->stackedWidget->indexOf(m_ui->about_page);
+        m_ui->stackedWidget->slideInIdx(index);
+    });
 
     QObject::connect(m_ui->socket_list_back_label, &ClickableLabel::clicked, [this]() {
         const int &index = m_ui->stackedWidget->indexOf(m_ui->power_strip_list_page);
@@ -48,9 +73,25 @@ MainWindow::MainWindow(QWidget *parent)
         redraw_device_list();
     });
 
-    QObject::connect(m_ui->power_strip_about_button, &ClickableLabel::clicked, [this]() {
-        const int &index = m_ui->stackedWidget->indexOf(m_ui->about_page);
+    QObject::connect(m_ui->settings_open_data_label, &ClickableLabel::clicked, [this]() {
+        const QString &path = m_ui->settings_data_path_label->text();
+        QFileInfo pathInfo(path);
+
+        if (!pathInfo.exists())
+        {
+            SPDLOG_LOGGER_ERROR(
+                APP_LOGGER, "Data storage path '{}' does not exist!", path.toStdString());
+            return;
+        }
+
+        QDesktopServices::openUrl(
+            QUrl(QUrl::fromLocalFile(pathInfo.absoluteFilePath()).toString()));
+    });
+
+    QObject::connect(m_ui->settings_back_label, &ClickableLabel::clicked, [this]() {
+        const int &index = m_ui->stackedWidget->indexOf(m_ui->power_strip_list_page);
         m_ui->stackedWidget->slideInIdx(index);
+        redraw_device_list();
     });
 
     initialize_about_page();
@@ -61,6 +102,8 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     delete m_ui;
+    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "sokketter-ui has finished.");
+    deinitialize_app_logger();
 }
 
 auto MainWindow::initialize_about_page() -> void
@@ -114,12 +157,15 @@ auto MainWindow::initialize_about_page() -> void
 
 auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
 {
+    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Detected onPowerStripClicked() signal.");
+
     /**
      * @brief ignore click if it's a empty_power_strip_list_item.
      */
     QWidget *widget = m_ui->power_strip_list_widget->itemWidget(item);
     if (qobject_cast<empty_power_strip_list_item *>(widget))
     {
+        SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Ignoring click on empty power strip item.");
         return;
     }
 
@@ -135,9 +181,12 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
 
 auto MainWindow::onSocketClicked(QListWidgetItem *item) -> void
 {
+    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Detected onSocketClicked() signal.");
+
     auto socket_item = dynamic_cast<socket_list_item *>(m_ui->socket_list_widget->itemWidget(item));
     if (socket_item == nullptr)
     {
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed getting a socket from the UI list!");
         return;
     }
 
@@ -154,12 +203,14 @@ auto MainWindow::onSocketClicked(QListWidgetItem *item) -> void
     const auto &socket_opt = device->socket(index);
     if (!socket_opt.has_value())
     {
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed getting a socket from device!");
         return;
     }
 
     const auto &socket = socket_opt->get();
     if (!socket.toggle())
     {
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed toggling a socket!");
         return;
     }
 
@@ -170,6 +221,8 @@ auto MainWindow::event(QEvent *event) -> bool
 {
     if (event->type() == QEvent::ThemeChange)
     {
+        SPDLOG_LOGGER_DEBUG(
+            APP_LOGGER, "Detected mode change to {}.", isDarkMode() ? "dark" : "light");
         setThemeAccordingToMode();
         return true;
     }
@@ -179,6 +232,8 @@ auto MainWindow::event(QEvent *event) -> bool
 
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
+    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Detected resize event.");
+
     QMainWindow::resizeEvent(event);
 
     redraw_device_list();
@@ -189,6 +244,8 @@ void MainWindow::redraw_device_list()
 {
     if (m_ui->power_strip_list_widget->isVisible())
     {
+        SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Re-drawing power strip list.");
+
         int visibleWidth = m_ui->power_strip_list_widget->width();
         if (m_ui->power_strip_list_widget->verticalScrollBar()->isVisible())
         {
@@ -233,6 +290,8 @@ void MainWindow::redraw_socket_list()
 {
     if (m_ui->socket_list_widget->isVisible())
     {
+        SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Re-drawing socket list.");
+
         int visibleWidth = m_ui->socket_list_widget->width();
         if (m_ui->socket_list_widget->verticalScrollBar()->isVisible())
         {
@@ -259,12 +318,14 @@ void MainWindow::setThemeAccordingToMode()
 {
     qApp->setStyleSheet(isDarkMode() ? dark_theme : light_theme);
 #ifdef Q_OS_WIN
-    toggleDarkTitlebar(winId(), isDarkMode());
+    toggle_dark_titlebar(winId(), isDarkMode());
 #endif
 }
 
 auto MainWindow::repopulate_device_list() -> void
 {
+    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Repopulating power strip list.");
+
     while (m_ui->power_strip_list_widget->count() > 0)
     {
         m_ui->power_strip_list_widget->takeItem(0);
@@ -312,6 +373,8 @@ auto MainWindow::repopulate_device_list() -> void
 auto MainWindow::repopulate_socket_list(const sokketter::power_strip_configuration &configuration)
     -> void
 {
+    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Repopulating socket list.");
+
     while (m_ui->socket_list_widget->count() > 0)
     {
         m_ui->socket_list_widget->takeItem(0);

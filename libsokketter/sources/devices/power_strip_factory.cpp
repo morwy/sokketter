@@ -5,6 +5,8 @@
 #include <devices/gembird_msis_pm.h>
 #include <devices/gembird_msis_pm_2.h>
 #include <devices/gembird_sis_pm.h>
+#include <sokketter_core.h>
+#include <spdlog/spdlog.h>
 
 auto power_strip_factory::create(std::unique_ptr<kommpot::device_communication> communication)
     -> std::unique_ptr<sokketter::power_strip>
@@ -53,6 +55,11 @@ auto power_strip_factory::create(std::unique_ptr<kommpot::device_communication> 
     {
         return std::make_unique<energenie_eg_pms2>(std::move(communication));
     }
+
+    SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+        "Provided communication is not supported: {}, VID{}:PID{}, at port {}!",
+        communication->information().name, communication->information().vendor_id,
+        communication->information().product_id, communication->information().port);
 
     return nullptr;
 }

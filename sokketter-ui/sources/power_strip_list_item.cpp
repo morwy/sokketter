@@ -1,13 +1,13 @@
 #include "power_strip_list_item.h"
 #include "ui_power_strip_list_item.h"
 
+#include <libsokketter.h>
+#include <spdlog/spdlog.h>
 #include <theme_stylesheets.h>
 
 #include <QPainter>
 #include <QPixmap>
 #include <QStyleHints>
-
-#include <libsokketter.h>
 
 power_strip_list_item::power_strip_list_item(
     const sokketter::power_strip_configuration &configuration, QWidget *parent)
@@ -47,6 +47,7 @@ auto power_strip_list_item::event(QEvent *event) -> bool
 {
     if (event->type() == QEvent::ThemeChange || event->type() == QEvent::PaletteChange)
     {
+        SPDLOG_DEBUG("Detected mode change to {}.", isDarkMode() ? "dark" : "light");
         setThemeAccordingToMode();
         return true;
     }
