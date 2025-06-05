@@ -34,7 +34,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
 struct app_settings
 {
     window_settings window;
-    socket_toggle_type socket_toggle_type = socket_toggle_type::ST_SINGLE_CLICK;
+    socket_toggle_type socket_toggle = socket_toggle_type::ST_SINGLE_CLICK;
 };
 
 void to_json(nlohmann::json &j, const app_settings &s);

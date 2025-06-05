@@ -105,7 +105,7 @@ auto MainWindow::initialize_settings_page() -> void
         QString::fromStdString(sokketter::storage_path().string()));
     m_ui->settings_data_path_label->setToolTip(
         QString::fromStdString(sokketter::storage_path().string()));
-    m_ui->settings_socket_activation_combobox->setCurrentIndex(int(settings.socket_toggle_type));
+    m_ui->settings_socket_activation_combobox->setCurrentIndex(int(settings.socket_toggle));
 
     QObject::connect(m_ui->settings_open_data_label, &ClickableLabel::clicked, [this]() {
         const QString &path = m_ui->settings_data_path_label->text();
@@ -130,7 +130,7 @@ auto MainWindow::initialize_settings_page() -> void
 
     QObject::connect(
         m_ui->settings_socket_activation_combobox, &QComboBox::currentIndexChanged, [&](int index) {
-            settings.socket_toggle_type = socket_toggle_type(index);
+            settings.socket_toggle = socket_toggle_type(index);
 
             app_settings_storage::instance().save();
 
@@ -194,13 +194,13 @@ auto MainWindow::connect_socket_list_on_click() -> void
         m_ui->socket_list_widget, &QListWidget::itemDoubleClicked, nullptr, nullptr);
 
     auto &settings = app_settings_storage::instance().get();
-    if (settings.socket_toggle_type == socket_toggle_type::ST_SINGLE_CLICK)
+    if (settings.socket_toggle == socket_toggle_type::ST_SINGLE_CLICK)
     {
         SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Using single-click for socket activation.");
         QObject::connect(m_ui->socket_list_widget, &QListWidget::itemClicked, this,
             &MainWindow::onSocketClicked);
     }
-    else if (settings.socket_toggle_type == socket_toggle_type::ST_DOUBLE_CLICK)
+    else if (settings.socket_toggle == socket_toggle_type::ST_DOUBLE_CLICK)
     {
         SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Using double-click for socket activation.");
         QObject::connect(m_ui->socket_list_widget, &QListWidget::itemDoubleClicked, this,
@@ -210,7 +210,7 @@ auto MainWindow::connect_socket_list_on_click() -> void
     {
         SPDLOG_LOGGER_WARN(APP_LOGGER,
             "Unsupported socket activation type provided {}, defaulting to single-click.",
-            int(settings.socket_toggle_type));
+            int(settings.socket_toggle));
         QObject::connect(m_ui->socket_list_widget, &QListWidget::itemClicked, this,
             &MainWindow::onSocketClicked);
     }
