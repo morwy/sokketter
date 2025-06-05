@@ -32,7 +32,7 @@ auto sokketter::storage_path() -> std::filesystem::path
 #elif __APPLE__
     return "/Users/Shared/sokketter";
 #else
-    return "~/.local/share/sokketter";
+    return std::string(getenv("HOME")) + "/.local/share/sokketter";
 #endif
 }
 
