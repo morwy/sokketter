@@ -160,6 +160,38 @@ const QString light_theme = base_theme + R"(
         padding: 5px 10px;
         border-radius: 5px;
     }
+
+    QComboBox {
+        outline: 0;
+        background-color: #FFFFFF;
+        color: #21201C;
+        border: 1px solid #FFEDA4;
+        padding: 3px;
+    }
+
+    QComboBox::drop-down {
+        subcontrol-origin: padding;
+        subcontrol-position: top right;
+        background-color: #FFFFFF;
+        color: #21201C;
+    }
+
+    QComboBox QAbstractItemView {
+        outline: 0;
+        background-color: #FFFFFF;
+        color: #21201C;
+        selection-background-color: #FFC53D;
+    }
+
+    QComboBox QAbstractItemView::item:hover {
+        background-color: #FFC53D;
+        color: #26241C;
+    }
+
+    QComboBox QAbstractItemView::item:selected {
+        background-color: #FFC53D;
+        color: #26241C;
+    }
 )";
 
 const QString dark_theme = base_theme + R"(
@@ -297,6 +329,38 @@ const QString dark_theme = base_theme + R"(
         border: none;
         padding: 5px 10px;
         border-radius: 5px;
+    }
+
+    QComboBox {
+        outline: 0;
+        background-color: #191918;
+        color: #EEEEEC;
+        border: 1px solid #382715;
+        padding: 3px;
+    }
+
+    QComboBox::drop-down {
+        subcontrol-origin: padding;
+        subcontrol-position: top right;
+        background-color: #191918;
+        color: #EEEEEC;
+    }
+
+    QComboBox QAbstractItemView {
+        outline: 0;
+        background-color: #191918;
+        color: #EEEEEC;
+        selection-background-color: #FFC53D;
+    }
+
+    QComboBox QAbstractItemView::item:hover {
+        background-color: #FFC53D;
+        color: #26241C;
+    }
+
+    QComboBox QAbstractItemView::item:selected {
+        background-color: #FFC53D;
+        color: #26241C;
     }
 )";
 
