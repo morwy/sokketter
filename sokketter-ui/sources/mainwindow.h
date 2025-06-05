@@ -32,7 +32,10 @@ private slots:
 private:
     Ui::MainWindow *m_ui;
 
+    auto initialize_settings_page() -> void;
     auto initialize_about_page() -> void;
+
+    auto connect_socket_list_on_click() -> void;
 
     auto event(QEvent *event) -> bool override;
     auto resizeEvent(QResizeEvent *event) -> void override;

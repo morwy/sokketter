@@ -7,18 +7,19 @@ void to_json(nlohmann::json &j, const window_settings &ws)
 
 void from_json(const nlohmann::json &j, window_settings &ws)
 {
-    j.at("x").get_to(ws.x);
-    j.at("y").get_to(ws.y);
-    j.at("width").get_to(ws.width);
-    j.at("height").get_to(ws.height);
+    ws.x = j.value("x", 0);
+    ws.y = j.value("y", 0);
+    ws.width = j.value("width", 450);
+    ws.height = j.value("height", 475);
 }
 
 void to_json(nlohmann::json &j, const app_settings &s)
 {
-    j = nlohmann::json{{"window", s.window}};
+    j = nlohmann::json{{"window", s.window}, {"socket_toggle_type", s.socket_toggle_type}};
 }
 
 void from_json(const nlohmann::json &j, app_settings &s)
 {
-    j.at("window").get_to(s.window);
+    s.window = j.value("window", window_settings());
+    s.socket_toggle_type = j.value("socket_toggle_type", socket_toggle_type::ST_SINGLE_CLICK);
 }

@@ -47,19 +47,13 @@ MainWindow::MainWindow(QWidget *parent)
      */
     m_ui->stackedWidget->setSpeed(500);
 
-    m_ui->settings_data_path_label->setText(
-        QString::fromStdString(sokketter::storage_path().string()));
-    m_ui->settings_data_path_label->setToolTip(
-        QString::fromStdString(sokketter::storage_path().string()));
-
     /**
      * @brief connect the signals to the slots.
      */
     QObject::connect(m_ui->power_strip_list_widget, &QListWidget::itemClicked, this,
         &MainWindow::onPowerStripClicked);
 
-    QObject::connect(
-        m_ui->socket_list_widget, &QListWidget::itemClicked, this, &MainWindow::onSocketClicked);
+    connect_socket_list_on_click();
 
     QObject::connect(m_ui->power_strip_list_refresh_label, &ClickableLabel::clicked,
         [this]() { repopulate_device_list(); });
@@ -79,6 +73,39 @@ MainWindow::MainWindow(QWidget *parent)
         m_ui->stackedWidget->slideInIdx(index);
         redraw_device_list();
     });
+
+    initialize_settings_page();
+    initialize_about_page();
+
+    QTimer::singleShot(25, [this]() { repopulate_device_list(); });
+}
+
+MainWindow::~MainWindow()
+{
+    delete m_ui;
+    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "sokketter-ui has finished.");
+    deinitialize_app_logger();
+}
+
+auto MainWindow::closeEvent(QCloseEvent *event) -> void
+{
+    auto &settings = app_settings_storage::instance().get();
+    settings.window = {this->x(), this->y(), this->width(), this->height()};
+
+    app_settings_storage::instance().save();
+
+    QMainWindow::closeEvent(event);
+}
+
+auto MainWindow::initialize_settings_page() -> void
+{
+    auto &settings = app_settings_storage::instance().get();
+
+    m_ui->settings_data_path_label->setText(
+        QString::fromStdString(sokketter::storage_path().string()));
+    m_ui->settings_data_path_label->setToolTip(
+        QString::fromStdString(sokketter::storage_path().string()));
+    m_ui->settings_socket_activation_combobox->setCurrentIndex(int(settings.socket_toggle_type));
 
     QObject::connect(m_ui->settings_open_data_label, &ClickableLabel::clicked, [this]() {
         const QString &path = m_ui->settings_data_path_label->text();
@@ -101,26 +128,14 @@ MainWindow::MainWindow(QWidget *parent)
         redraw_device_list();
     });
 
-    initialize_about_page();
+    QObject::connect(
+        m_ui->settings_socket_activation_combobox, &QComboBox::currentIndexChanged, [&](int index) {
+            settings.socket_toggle_type = socket_toggle_type(index);
 
-    QTimer::singleShot(25, [this]() { repopulate_device_list(); });
-}
+            app_settings_storage::instance().save();
 
-MainWindow::~MainWindow()
-{
-    delete m_ui;
-    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "sokketter-ui has finished.");
-    deinitialize_app_logger();
-}
-
-auto MainWindow::closeEvent(QCloseEvent *event) -> void
-{
-    auto &settings = app_settings_storage::instance().get();
-    settings.window = {this->x(), this->y(), this->width(), this->height()};
-
-    app_settings_storage::instance().save();
-
-    QMainWindow::closeEvent(event);
+            connect_socket_list_on_click();
+        });
 }
 
 auto MainWindow::initialize_about_page() -> void
@@ -170,6 +185,35 @@ auto MainWindow::initialize_about_page() -> void
 
     licenseInfoText.replace("%QT_VERSION%", qtVersion);
     m_ui->used_components_text->setMarkdown(licenseInfoText);
+}
+
+auto MainWindow::connect_socket_list_on_click() -> void
+{
+    QObject::disconnect(m_ui->socket_list_widget, &QListWidget::itemClicked, nullptr, nullptr);
+    QObject::disconnect(
+        m_ui->socket_list_widget, &QListWidget::itemDoubleClicked, nullptr, nullptr);
+
+    auto &settings = app_settings_storage::instance().get();
+    if (settings.socket_toggle_type == socket_toggle_type::ST_SINGLE_CLICK)
+    {
+        SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Using single-click for socket activation.");
+        QObject::connect(m_ui->socket_list_widget, &QListWidget::itemClicked, this,
+            &MainWindow::onSocketClicked);
+    }
+    else if (settings.socket_toggle_type == socket_toggle_type::ST_DOUBLE_CLICK)
+    {
+        SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Using double-click for socket activation.");
+        QObject::connect(m_ui->socket_list_widget, &QListWidget::itemDoubleClicked, this,
+            &MainWindow::onSocketClicked);
+    }
+    else
+    {
+        SPDLOG_LOGGER_WARN(APP_LOGGER,
+            "Unsupported socket activation type provided {}, defaulting to single-click.",
+            int(settings.socket_toggle_type));
+        QObject::connect(m_ui->socket_list_widget, &QListWidget::itemClicked, this,
+            &MainWindow::onSocketClicked);
+    }
 }
 
 auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void

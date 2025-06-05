@@ -19,22 +19,22 @@ void from_json(const nlohmann::json &j, window_settings &ws);
 
 enum class socket_toggle_type
 {
-    INVALID = -1,
-    SINGLE_CLICK,
-    DOUBLE_CLICK,
+    ST_INVALID = -1,
+    ST_SINGLE_CLICK,
+    ST_DOUBLE_CLICK,
 };
 
 NLOHMANN_JSON_SERIALIZE_ENUM(
     socket_toggle_type, {
-                            {socket_toggle_type::INVALID, nullptr},
-                            {socket_toggle_type::SINGLE_CLICK, "single-click"},
-                            {socket_toggle_type::DOUBLE_CLICK, "double-click"},
+                            {socket_toggle_type::ST_INVALID, nullptr},
+                            {socket_toggle_type::ST_SINGLE_CLICK, "single-click"},
+                            {socket_toggle_type::ST_DOUBLE_CLICK, "double-click"},
                         })
 
 struct app_settings
 {
     window_settings window;
-    socket_toggle_type socket_toggle_type = socket_toggle_type::SINGLE_CLICK;
+    socket_toggle_type socket_toggle_type = socket_toggle_type::ST_SINGLE_CLICK;
 };
 
 void to_json(nlohmann::json &j, const app_settings &s);
