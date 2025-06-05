@@ -32,10 +32,6 @@ private slots:
 private:
     Ui::MainWindow *m_ui;
 
-    auto settingsFilePath() const -> std::filesystem::path;
-    auto saveSettings() -> void;
-    auto loadSettings() -> void;
-
     auto initialize_about_page() -> void;
 
     auto event(QEvent *event) -> bool override;

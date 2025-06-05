@@ -13,32 +13,32 @@ struct window_settings
     int height = 0;
 };
 
-void to_json(nlohmann::json &j, const window_settings &ws)
-{
-    j = nlohmann::json{{"x", ws.x}, {"y", ws.y}, {"width", ws.width}, {"height", ws.height}};
-}
+void to_json(nlohmann::json &j, const window_settings &ws);
 
-void from_json(const nlohmann::json &j, window_settings &ws)
+void from_json(const nlohmann::json &j, window_settings &ws);
+
+enum class socket_toggle_type
 {
-    j.at("x").get_to(ws.x);
-    j.at("y").get_to(ws.y);
-    j.at("width").get_to(ws.width);
-    j.at("height").get_to(ws.height);
-}
+    INVALID = -1,
+    SINGLE_CLICK,
+    DOUBLE_CLICK,
+};
+
+NLOHMANN_JSON_SERIALIZE_ENUM(
+    socket_toggle_type, {
+                            {socket_toggle_type::INVALID, nullptr},
+                            {socket_toggle_type::SINGLE_CLICK, "single-click"},
+                            {socket_toggle_type::DOUBLE_CLICK, "double-click"},
+                        })
 
 struct app_settings
 {
     window_settings window;
+    socket_toggle_type socket_toggle_type = socket_toggle_type::SINGLE_CLICK;
 };
 
-void to_json(nlohmann::json &j, const app_settings &s)
-{
-    j = nlohmann::json{{"window", s.window}};
-}
+void to_json(nlohmann::json &j, const app_settings &s);
 
-void from_json(const nlohmann::json &j, app_settings &s)
-{
-    j.at("window").get_to(s.window);
-}
+void from_json(const nlohmann::json &j, app_settings &s);
 
 #endif // APP_SETTINGS_H
