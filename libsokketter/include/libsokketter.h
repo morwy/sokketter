@@ -287,8 +287,8 @@ namespace sokketter {
      * @param filter settings stating which devices to list.
      * @return vector of power_strip objects.
      */
-    auto EXPORTED devices(const device_filter &filter = {})
-        -> const std::vector<std::unique_ptr<sokketter::power_strip>>;
+    auto devices(const device_filter &filter = {})
+        -> const std::vector<std::unique_ptr<sokketter::power_strip>> &;
 
     /**
      * @brief returns the power strip device by its index.

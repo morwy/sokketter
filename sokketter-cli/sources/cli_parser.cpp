@@ -97,7 +97,7 @@ int cli_parser::parse_and_process(int argc, char *argv[])
      ** ***********************************************************************/
     if (subcommand_list->parsed())
     {
-        const auto devices = sokketter::devices();
+        const auto& devices = sokketter::devices();
         if (devices.empty())
         {
             std::cerr << "No devices found." << std::endl;

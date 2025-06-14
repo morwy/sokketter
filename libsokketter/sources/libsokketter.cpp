@@ -238,17 +238,13 @@ auto sokketter::power_strip::to_string() const noexcept -> std::string
 }
 
 auto sokketter::devices(const device_filter &filter)
-    -> const std::vector<std::unique_ptr<sokketter::power_strip>>
+    -> const std::vector<std::unique_ptr<sokketter::power_strip>> &
 {
-    database_storage::instance().load();
-
-    auto &database = database_storage::instance().get();
-
-    std::vector<std::unique_ptr<sokketter::power_strip>> devices;
-
     auto requested_test_device_number = get_requested_test_device_number();
     if (requested_test_device_number > 0)
     {
+        std::vector<std::unique_ptr<sokketter::power_strip>> devices;
+
         SPDLOG_LOGGER_DEBUG(
             SOKKETTER_LOGGER, "Requested debug devices: {}.", requested_test_device_number);
 
@@ -259,6 +255,10 @@ auto sokketter::devices(const device_filter &filter)
 
         return devices;
     }
+
+    database_storage::instance().load();
+
+    auto &database = database_storage::instance().get();
 
     const auto supported_devices = power_strip_factory::supported_devices();
 
@@ -307,26 +307,27 @@ auto sokketter::devices(const device_filter &filter)
             }
 
             baseIt->initialize(baseDevice->extractCommunication());
+
+            SPDLOG_LOGGER_DEBUG(
+                SOKKETTER_LOGGER, "{}: device was succesfully created!", device->to_string());
         }
         else
         {
             /**
              * @brief append basic device configuration if it is a first time.
              */
+            SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
+                "{}: new device was succesfully created and added to database!", device->to_string());
+
             database.push_back(std::move(device));
 
             database_storage::instance().save();
         }
-
-        SPDLOG_LOGGER_DEBUG(
-            SOKKETTER_LOGGER, "{}: device was succesfully created!", device->to_string());
-
-        devices.push_back(std::move(device));
     }
 
-    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Created devices: {}.", devices.size());
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Created devices: {}.", database.size());
 
-    return devices;
+    return database;
 }
 
 auto sokketter::device(const size_t &index) -> const std::unique_ptr<sokketter::power_strip>
