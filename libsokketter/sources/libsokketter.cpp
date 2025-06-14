@@ -4,6 +4,8 @@
 #include <string>
 #include <utility>
 
+#include <database_storage.h>
+#include <devices/power_strip_base.h>
 #include <devices/power_strip_factory.h>
 #include <devices/test_device.h>
 #include <sokketter_core.h>
@@ -212,6 +214,22 @@ auto sokketter::power_strip::configure(const power_strip_configuration &configur
     m_configuration = configuration;
 }
 
+auto sokketter::power_strip::is_connected() const -> bool
+{
+    return false;
+}
+
+auto sokketter::power_strip::sockets() const -> const std::vector<sokketter::socket> &
+{
+    return {};
+}
+
+auto sokketter::power_strip::socket(const size_t &index)
+    -> const std::optional<std::reference_wrapper<sokketter::socket>>
+{
+    return std::nullopt;
+}
+
 auto sokketter::power_strip::to_string() const noexcept -> std::string
 {
     return this->configuration().name + " (" +
@@ -222,6 +240,10 @@ auto sokketter::power_strip::to_string() const noexcept -> std::string
 auto sokketter::devices(const device_filter &filter)
     -> const std::vector<std::unique_ptr<sokketter::power_strip>>
 {
+    database_storage::instance().load();
+
+    auto &database = database_storage::instance().get();
+
     std::vector<std::unique_ptr<sokketter::power_strip>> devices;
 
     auto requested_test_device_number = get_requested_test_device_number();
@@ -256,6 +278,44 @@ auto sokketter::devices(const device_filter &filter)
                 communication->information().name, communication->information().serial_number,
                 communication->information().port);
             continue;
+        }
+
+        auto baseDevice = dynamic_cast<power_strip_base *>(device.get());
+        if (baseDevice == nullptr)
+        {
+            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+                "{}: failed casting the device to power_strip_base!", device->to_string());
+            continue;
+        }
+
+        /**
+         * @brief looks for saved configuration of this device.
+         */
+        auto it = std::find_if(database.begin(), database.end(),
+            [&](const std::unique_ptr<sokketter::power_strip> &item) {
+                return item->configuration().id == device->configuration().id;
+            });
+
+        if (it != database.end())
+        {
+            auto baseIt = dynamic_cast<power_strip_base *>(it->get());
+            if (baseIt == nullptr)
+            {
+                SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+                    "{}: failed casting the device to power_strip_base!", device->to_string());
+                continue;
+            }
+
+            baseIt->initialize(baseDevice->extractCommunication());
+        }
+        else
+        {
+            /**
+             * @brief append basic device configuration if it is a first time.
+             */
+            database.push_back(std::move(device));
+
+            database_storage::instance().save();
         }
 
         SPDLOG_LOGGER_DEBUG(

@@ -224,17 +224,11 @@ namespace sokketter {
         power_strip() = default;
         virtual ~power_strip() = default;
 
-        /**
-         * @warning states class is non-copyable.
-         */
-        power_strip(const power_strip &obj) = delete;
-        auto operator=(const power_strip &obj) -> power_strip & = delete;
+        power_strip(const power_strip &obj) = default;
+        auto operator=(const power_strip &obj) -> power_strip & = default;
 
-        /**
-         * @warning states class is non-movable.
-         */
-        power_strip(power_strip &&obj) = delete;
-        auto operator=(power_strip &&obj) -> power_strip & = delete;
+        power_strip(power_strip &&obj) = default;
+        auto operator=(power_strip &&obj) -> power_strip & = default;
 
         /**
          * @brief gets current configuration of the power strip.
@@ -252,13 +246,13 @@ namespace sokketter {
          * @brief gets connection stateo of the power strip.
          * @return bool if device is connected, false if device is not connected.
          */
-        [[nodiscard]] virtual auto is_connected() const -> bool = 0;
+        [[nodiscard]] virtual auto is_connected() const -> bool;
 
         /**
          * @brief gets list of sockets controlled by the power strip.
          * @return vector of socket objects.
          */
-        [[nodiscard]] virtual auto sockets() -> const std::vector<socket> & = 0;
+        [[nodiscard]] virtual auto sockets() const -> const std::vector<socket> &;
 
         /**
          * @brief gets a specific socket controlled by the power strip.
@@ -267,7 +261,7 @@ namespace sokketter {
          * failure.
          */
         [[nodiscard]] virtual auto socket(const size_t &index)
-            -> const std::optional<std::reference_wrapper<socket>> = 0;
+            -> const std::optional<std::reference_wrapper<socket>>;
 
         /**
          * @brief creates string based on power strip parameters

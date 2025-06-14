@@ -8,8 +8,10 @@
 class gembird_msis_pm : public energenie_eg_base
 {
 public:
-    explicit gembird_msis_pm(std::unique_ptr<kommpot::device_communication> communication);
+    gembird_msis_pm();
     ~gembird_msis_pm();
+
+    auto initialize(std::unique_ptr<kommpot::device_communication> communication) -> bool override;
 
     static auto identification() -> const kommpot::device_identification;
 };

@@ -48,7 +48,7 @@ auto test_device::is_connected() const -> bool
     return true;
 }
 
-auto test_device::sockets() -> const std::vector<sokketter::socket> &
+auto test_device::sockets() const -> const std::vector<sokketter::socket> &
 {
     return gs_sockets[m_serial_number];
 }
