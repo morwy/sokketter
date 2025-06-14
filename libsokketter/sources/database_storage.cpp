@@ -9,21 +9,16 @@
 #include <spdlog/spdlog.h>
 
 namespace sokketter {
-    void to_json(nlohmann::json &j, const sokketter::socket &s)
+    void to_json(nlohmann::json &j, const sokketter::socket_configuration &s)
     {
-        j = nlohmann::json{{"id", s.configuration().id}, {"name", s.configuration().name},
-            {"description", s.configuration().description}};
+        j = nlohmann::json{{"id", s.id}, {"name", s.name}, {"description", s.description}};
     }
 
-    void from_json(const nlohmann::json &j, sokketter::socket &s)
+    void from_json(const nlohmann::json &j, sokketter::socket_configuration &s)
     {
-        auto configuration = s.configuration();
-
-        configuration.id = j.value("id", "");
-        configuration.name = j.value("name", "");
-        configuration.description = j.value("description", "");
-
-        s.configure(configuration);
+        s.id = j.value("id", "");
+        s.name = j.value("name", "");
+        s.description = j.value("description", "");
     }
 
     NLOHMANN_JSON_SERIALIZE_ENUM(sokketter::power_strip_type,
@@ -39,9 +34,15 @@ namespace sokketter {
 
     void to_json(nlohmann::json &j, const sokketter::power_strip &ps)
     {
+        std::vector<sokketter::socket_configuration> sockets = {};
+        for (const auto &socket : ps.sockets())
+        {
+            sockets.push_back(socket.configuration());
+        }
+
         j = nlohmann::json{{"type", ps.configuration().type}, {"id", ps.configuration().id},
             {"name", ps.configuration().name}, {"description", ps.configuration().description},
-            {"sockets", ps.sockets()}};
+            {"sockets", sockets}};
     }
 
     void from_json(const nlohmann::json &j, sokketter::power_strip &ps)
@@ -55,7 +56,22 @@ namespace sokketter {
 
         ps.configure(configuration);
 
-        // ps. j.value("sockets", {});
+        const auto &socket_configurations =
+            j.value("sockets", std::vector<sokketter::socket_configuration>());
+        if (socket_configurations.empty())
+        {
+            SPDLOG_LOGGER_ERROR(
+                SOKKETTER_LOGGER, "{}: Saved socket configuration is empty!", ps.to_string());
+            return;
+        }
+
+        auto &sockets = ps.sockets();
+
+        for (size_t index = 0; index < socket_configurations.size(); index++)
+        {
+            auto socket = sokketter::socket(socket_configurations[index]);
+            sockets.push_back(socket);
+        }
     }
 
     void to_json(nlohmann::json &j, const std::unique_ptr<sokketter::power_strip> &ptr)
@@ -78,9 +94,17 @@ namespace sokketter {
         }
         else
         {
-            // ptr = std::make_unique<power_strip_base>(j.get<power_strip_base>());
             const auto &power_strip = j.get<sokketter::power_strip>();
             ptr = power_strip_factory::create(power_strip.configuration().type);
+            if (auto *basePtr = dynamic_cast<power_strip_base *>(ptr.get()))
+            {
+                basePtr->copyFrom(power_strip);
+            }
+            else
+            {
+                SPDLOG_LOGGER_ERROR(
+                    SOKKETTER_LOGGER, "Failed casting power_strip to power_strip_base.");
+            }
         }
     }
 } // namespace sokketter

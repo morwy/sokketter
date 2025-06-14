@@ -16,7 +16,7 @@ public:
 
     virtual bool initialize(std::unique_ptr<kommpot::device_communication> communication);
 
-    [[nodiscard]] auto sockets() const -> const std::vector<sokketter::socket> & override;
+    bool copyFrom(const sokketter::power_strip &other);
 
     [[nodiscard]] auto socket(const size_t &index)
         -> const std::optional<std::reference_wrapper<sokketter::socket>> override;
@@ -27,7 +27,6 @@ public:
 
 protected:
     std::unique_ptr<kommpot::device_communication> m_communication = nullptr;
-    std::vector<sokketter::socket> m_sockets;
 };
 
 #endif // POWER_STRIP_BASE_H

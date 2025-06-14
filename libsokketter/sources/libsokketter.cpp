@@ -112,6 +112,11 @@ auto sokketter::version() noexcept -> sokketter::version_information
         SOKKETTER_VERSION_NANO, SOKKETTER_VERSION_SHA};
 }
 
+sokketter::socket::socket(const socket_configuration &configuration)
+{
+    m_configuration = configuration;
+}
+
 sokketter::socket::socket(const size_t index, std::function<bool(size_t, bool)> power_cb,
     std::function<bool(size_t)> status_cb)
     : m_index(index)
@@ -219,9 +224,14 @@ auto sokketter::power_strip::is_connected() const -> bool
     return false;
 }
 
+auto sokketter::power_strip::sockets() -> std::vector<sokketter::socket> &
+{
+    return m_sockets;
+}
+
 auto sokketter::power_strip::sockets() const -> const std::vector<sokketter::socket> &
 {
-    return {};
+    return m_sockets;
 }
 
 auto sokketter::power_strip::socket(const size_t &index)
@@ -289,7 +299,7 @@ auto sokketter::devices(const device_filter &filter)
         }
 
         /**
-         * @brief looks for saved configuration of this device.
+         * @brief look for saved configuration of this device.
          */
         auto it = std::find_if(database.begin(), database.end(),
             [&](const std::unique_ptr<sokketter::power_strip> &item) {
@@ -317,7 +327,8 @@ auto sokketter::devices(const device_filter &filter)
              * @brief append basic device configuration if it is a first time.
              */
             SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
-                "{}: new device was succesfully created and added to database!", device->to_string());
+                "{}: new device was succesfully created and added to database!",
+                device->to_string());
 
             database.push_back(std::move(device));
 

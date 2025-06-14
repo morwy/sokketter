@@ -15,9 +15,19 @@ bool power_strip_base::initialize(std::unique_ptr<kommpot::device_communication>
     return true;
 }
 
-auto power_strip_base::sockets() const -> const std::vector<sokketter::socket> &
+bool power_strip_base::copyFrom(const power_strip &other)
 {
-    return m_sockets;
+    configure(other.configuration());
+
+    const auto &other_sockets = other.sockets();
+
+    const size_t min_number_of_sockets = std::min(m_sockets.size(), other_sockets.size());
+    for (size_t index = 0; index < min_number_of_sockets; index++)
+    {
+        m_sockets[index].configure(other_sockets[index].configuration());
+    }
+
+    return true;
 }
 
 auto power_strip_base::socket(const size_t &index)

@@ -134,6 +134,7 @@ namespace sokketter {
     class EXPORTED socket
     {
     public:
+        socket(const socket_configuration &configuration);
         socket(const size_t index, std::function<bool(size_t, bool)> power_cb,
             std::function<bool(size_t)> status_cb);
 
@@ -252,6 +253,12 @@ namespace sokketter {
          * @brief gets list of sockets controlled by the power strip.
          * @return vector of socket objects.
          */
+        [[nodiscard]] virtual auto sockets() -> std::vector<socket> &;
+
+        /**
+         * @brief gets list of sockets controlled by the power strip.
+         * @return vector of socket objects.
+         */
         [[nodiscard]] virtual auto sockets() const -> const std::vector<socket> &;
 
         /**
@@ -268,6 +275,9 @@ namespace sokketter {
          * @return string in format "POWER_STRIP_NAME (TYPE, ID, located at ADDRESS)".
          */
         [[nodiscard]] auto to_string() const noexcept -> std::string;
+
+    protected:
+        std::vector<sokketter::socket> m_sockets;
 
     private:
         power_strip_configuration m_configuration;
@@ -287,7 +297,7 @@ namespace sokketter {
      * @param filter settings stating which devices to list.
      * @return vector of power_strip objects.
      */
-    auto devices(const device_filter &filter = {})
+    auto EXPORTED devices(const device_filter &filter = {})
         -> const std::vector<std::unique_ptr<sokketter::power_strip>> &;
 
     /**

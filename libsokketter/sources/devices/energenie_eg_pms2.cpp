@@ -5,30 +5,15 @@
 
 energenie_eg_pms2::energenie_eg_pms2()
 {
-    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: construction.", __FUNCTION__);
-}
-
-energenie_eg_pms2::~energenie_eg_pms2()
-{
-    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: destruction.", this->to_string());
-}
-
-auto energenie_eg_pms2::initialize(std::unique_ptr<kommpot::device_communication> communication)
-    -> bool
-{
-    if (!energenie_eg_base::initialize(std::move(communication)))
-    {
-        return false;
-    }
+    SPDLOG_LOGGER_DEBUG(
+        SOKKETTER_LOGGER, "{}: constructed object {}.", __FUNCTION__, static_cast<void *>(this));
 
     sokketter::power_strip_configuration configuration;
+    configuration.type = sokketter::power_strip_type::ENERGENIE_EG_PMS2;
     configuration.name = "Unnamed power strip";
     configuration.description = "";
-    configuration.type = sokketter::power_strip_type::ENERGENIE_EG_PMS2;
-    configuration.id = m_serial_number;
-    configuration.address = std::string("USB:") + m_communication->information().port;
-
-    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: initialization.", this->to_string());
+    configuration.id = "";
+    configuration.address = "";
 
     this->configure(configuration);
 
@@ -45,6 +30,30 @@ auto energenie_eg_pms2::initialize(std::unique_ptr<kommpot::device_communication
             std::bind(&energenie_eg_pms2::socket_status, this, std::placeholders::_1));
         m_sockets.push_back(socket);
     }
+}
+
+energenie_eg_pms2::~energenie_eg_pms2()
+{
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: destructed object {}.", this->to_string(),
+        static_cast<void *>(this));
+}
+
+auto energenie_eg_pms2::initialize(std::unique_ptr<kommpot::device_communication> communication)
+    -> bool
+{
+    if (!energenie_eg_base::initialize(std::move(communication)))
+    {
+        return false;
+    }
+
+    auto configuration = this->configuration();
+
+    configuration.id = m_serial_number;
+    configuration.address = std::string("USB:") + m_communication->information().port;
+
+    this->configure(configuration);
+
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: initialization.", this->to_string());
 
     return true;
 }
