@@ -34,6 +34,14 @@ namespace sokketter {
 
     void to_json(nlohmann::json &j, const sokketter::power_strip &ps)
     {
+        /**
+         * @attention skip saving test devices.
+         */
+        if (ps.configuration().type == sokketter::power_strip_type::TEST_DEVICE)
+        {
+            return;
+        }
+
         std::vector<sokketter::socket_configuration> sockets = {};
         for (const auto &socket : ps.sockets())
         {
