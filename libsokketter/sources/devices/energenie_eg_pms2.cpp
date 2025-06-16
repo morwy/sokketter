@@ -10,11 +10,6 @@ energenie_eg_pms2::energenie_eg_pms2()
 
     sokketter::power_strip_configuration configuration;
     configuration.type = sokketter::power_strip_type::ENERGENIE_EG_PMS2;
-    configuration.name = "Unnamed power strip";
-    configuration.description = "";
-    configuration.id = "";
-    configuration.address = "";
-
     this->configure(configuration);
 
     /**

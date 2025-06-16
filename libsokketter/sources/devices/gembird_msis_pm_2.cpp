@@ -10,11 +10,6 @@ gembird_msis_pm_2::gembird_msis_pm_2()
 
     sokketter::power_strip_configuration configuration;
     configuration.type = sokketter::power_strip_type::GEMBIRD_MSIS_PM_2;
-    configuration.name = "Unnamed power strip";
-    configuration.description = "";
-    configuration.id = "";
-    configuration.address = "";
-
     this->configure(configuration);
 
     /**
