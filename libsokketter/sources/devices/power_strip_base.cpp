@@ -3,14 +3,14 @@
 #include <sokketter_core.h>
 #include <spdlog/spdlog.h>
 
-bool power_strip_base::initialize(std::unique_ptr<kommpot::device_communication> communication)
+bool power_strip_base::initialize(std::shared_ptr<kommpot::device_communication> communication)
 {
     if (communication == nullptr)
     {
         return false;
     }
 
-    m_communication = std::move(communication);
+    m_communication = communication;
 
     return true;
 }
@@ -46,9 +46,4 @@ auto power_strip_base::socket(const size_t &index)
 auto power_strip_base::is_connected() const -> bool
 {
     return m_communication != nullptr;
-}
-
-auto power_strip_base::extractCommunication() -> std::unique_ptr<kommpot::device_communication>
-{
-    return std::move(m_communication);
 }

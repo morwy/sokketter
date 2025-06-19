@@ -33,10 +33,10 @@ energenie_eg_pms2::~energenie_eg_pms2()
         static_cast<void *>(this));
 }
 
-auto energenie_eg_pms2::initialize(std::unique_ptr<kommpot::device_communication> communication)
+auto energenie_eg_pms2::initialize(std::shared_ptr<kommpot::device_communication> communication)
     -> bool
 {
-    if (!energenie_eg_base::initialize(std::move(communication)))
+    if (!energenie_eg_base::initialize(communication))
     {
         return false;
     }

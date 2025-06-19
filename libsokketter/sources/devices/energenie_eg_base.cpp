@@ -9,10 +9,10 @@
  * @attention interaction with device is based on the protocol described in pysispm project.
  * @link https://github.com/xypron/pysispm/blob/master/sispm/__init__.py
  */
-auto energenie_eg_base::initialize(std::unique_ptr<kommpot::device_communication> communication)
+auto energenie_eg_base::initialize(std::shared_ptr<kommpot::device_communication> communication)
     -> bool
 {
-    if (!power_strip_base::initialize(std::move(communication)))
+    if (!power_strip_base::initialize(communication))
     {
         return false;
     }

@@ -14,7 +14,7 @@ class power_strip_base : public sokketter::power_strip
 public:
     power_strip_base() = default;
 
-    virtual bool initialize(std::unique_ptr<kommpot::device_communication> communication);
+    virtual bool initialize(std::shared_ptr<kommpot::device_communication> communication);
 
     bool copyFrom(const sokketter::power_strip &other);
 
@@ -23,10 +23,8 @@ public:
 
     [[nodiscard]] auto is_connected() const -> bool override;
 
-    [[nodiscard]] auto extractCommunication() -> std::unique_ptr<kommpot::device_communication>;
-
 protected:
-    std::unique_ptr<kommpot::device_communication> m_communication = nullptr;
+    std::shared_ptr<kommpot::device_communication> m_communication = nullptr;
 };
 
 #endif // POWER_STRIP_BASE_H

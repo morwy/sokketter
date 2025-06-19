@@ -148,17 +148,15 @@ int cli_parser::parse_and_process(int argc, char *argv[])
             return EXIT_FAILURE;
         }
 
-        std::unique_ptr<sokketter::power_strip> device;
+        std::shared_ptr<sokketter::power_strip> device;
 
         if (option_device_index->count() > 0)
         {
-            auto tmp_device = sokketter::device(device_index);
-            device = std::move(tmp_device);
+            device = sokketter::device(device_index);
         }
         else if (option_device_serial->count() > 0)
         {
-            auto tmp_device = sokketter::device(device_serial);
-            device = std::move(tmp_device);
+            device = sokketter::device(device_serial);
         }
 
         if (device == nullptr)

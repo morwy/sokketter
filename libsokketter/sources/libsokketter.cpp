@@ -132,6 +132,7 @@ auto sokketter::socket::configuration() const noexcept -> const socket_configura
 auto sokketter::socket::configure(const socket_configuration &configuration) -> void
 {
     m_configuration = configuration;
+    database_storage::instance().save();
 }
 
 auto sokketter::socket::power(const bool &on) const noexcept -> bool
@@ -217,6 +218,7 @@ auto sokketter::power_strip::configuration() const noexcept -> const power_strip
 auto sokketter::power_strip::configure(const power_strip_configuration &configuration) -> void
 {
     m_configuration = configuration;
+    database_storage::instance().save();
 }
 
 auto sokketter::power_strip::is_connected() const -> bool
@@ -248,7 +250,7 @@ auto sokketter::power_strip::to_string() const noexcept -> std::string
 }
 
 auto sokketter::devices(const device_filter &filter)
-    -> const std::vector<std::unique_ptr<sokketter::power_strip>> &
+    -> const std::vector<std::shared_ptr<sokketter::power_strip>> &
 {
     database_storage::instance().load();
 
@@ -262,7 +264,7 @@ auto sokketter::devices(const device_filter &filter)
 
         for (size_t device_index = 0; device_index < requested_test_device_number; ++device_index)
         {
-            database.push_back(std::make_unique<test_device>(device_index));
+            database.push_back(std::make_shared<test_device>(device_index));
         }
 
         return database;
@@ -278,7 +280,7 @@ auto sokketter::devices(const device_filter &filter)
 
     for (auto &communication : communications)
     {
-        auto device = power_strip_factory::create(std::move(communication));
+        auto device = power_strip_factory::create(communication);
         if (!device)
         {
             SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
@@ -300,7 +302,7 @@ auto sokketter::devices(const device_filter &filter)
          * @brief look for saved configuration of this device.
          */
         auto it = std::find_if(database.begin(), database.end(),
-            [&](const std::unique_ptr<sokketter::power_strip> &item) {
+            [&](const std::shared_ptr<sokketter::power_strip> &item) {
                 return item->configuration().id == device->configuration().id;
             });
 
@@ -314,7 +316,7 @@ auto sokketter::devices(const device_filter &filter)
                 continue;
             }
 
-            baseIt->initialize(baseDevice->extractCommunication());
+            baseIt->initialize(communication);
 
             SPDLOG_LOGGER_DEBUG(
                 SOKKETTER_LOGGER, "{}: device was succesfully created!", device->to_string());
@@ -328,7 +330,7 @@ auto sokketter::devices(const device_filter &filter)
                 "{}: new device was succesfully created and added to database!",
                 device->to_string());
 
-            database.push_back(std::move(device));
+            database.push_back(device);
 
             database_storage::instance().save();
         }
@@ -339,7 +341,7 @@ auto sokketter::devices(const device_filter &filter)
     return database;
 }
 
-auto sokketter::device(const size_t &index) -> const std::unique_ptr<sokketter::power_strip>
+auto sokketter::device(const size_t &index) -> std::shared_ptr<sokketter::power_strip>
 {
     database_storage::instance().load();
 
@@ -348,7 +350,7 @@ auto sokketter::device(const size_t &index) -> const std::unique_ptr<sokketter::
     if (get_requested_test_device_number())
     {
         SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Creating debug device at index {}.", index);
-        return std::make_unique<test_device>(index);
+        return std::make_shared<test_device>(index);
     }
 
     const auto supported_devices = power_strip_factory::supported_devices();
@@ -367,7 +369,7 @@ auto sokketter::device(const size_t &index) -> const std::unique_ptr<sokketter::
     }
 
     auto &communication = communications[index];
-    auto device = power_strip_factory::create(std::move(communication));
+    auto device = power_strip_factory::create(communication);
     if (!device)
     {
         SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
@@ -389,7 +391,7 @@ auto sokketter::device(const size_t &index) -> const std::unique_ptr<sokketter::
      * @brief look for saved configuration of this device.
      */
     auto it = std::find_if(
-        database.begin(), database.end(), [&](const std::unique_ptr<sokketter::power_strip> &item) {
+        database.begin(), database.end(), [&](const std::shared_ptr<sokketter::power_strip> &item) {
             return item->configuration().id == device->configuration().id;
         });
 
@@ -403,9 +405,9 @@ auto sokketter::device(const size_t &index) -> const std::unique_ptr<sokketter::
             return nullptr;
         }
 
-        baseIt->initialize(baseDevice->extractCommunication());
+        baseIt->initialize(communication);
 
-        return std::move(*it);
+        return *it;
     }
 
     SPDLOG_LOGGER_DEBUG(
@@ -414,8 +416,7 @@ auto sokketter::device(const size_t &index) -> const std::unique_ptr<sokketter::
     return device;
 }
 
-auto sokketter::device(const std::string &serial_number)
-    -> const std::unique_ptr<sokketter::power_strip>
+auto sokketter::device(const std::string &serial_number) -> std::shared_ptr<sokketter::power_strip>
 {
     if (get_requested_test_device_number())
     {
@@ -425,7 +426,7 @@ auto sokketter::device(const std::string &serial_number)
             try
             {
                 size_t index = std::stoul(serial_number.substr(test_device_prefix.length()));
-                return std::make_unique<test_device>(index);
+                return std::make_shared<test_device>(index);
             }
             catch (const std::invalid_argument &)
             {
@@ -462,7 +463,7 @@ auto sokketter::device(const std::string &serial_number)
 
     for (auto &communication : communications)
     {
-        auto device = power_strip_factory::create(std::move(communication));
+        auto device = power_strip_factory::create(communication);
         if (!device)
         {
             SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
@@ -489,7 +490,7 @@ auto sokketter::device(const std::string &serial_number)
          * @brief look for saved configuration of this device.
          */
         auto it = std::find_if(database.begin(), database.end(),
-            [&](const std::unique_ptr<sokketter::power_strip> &item) {
+            [&](const std::shared_ptr<sokketter::power_strip> &item) {
                 return item->configuration().id == device->configuration().id;
             });
 
@@ -503,9 +504,9 @@ auto sokketter::device(const std::string &serial_number)
                 return nullptr;
             }
 
-            baseIt->initialize(baseDevice->extractCommunication());
+            baseIt->initialize(communication);
 
-            return std::move(*it);
+            return *it;
         }
 
         SPDLOG_LOGGER_DEBUG(

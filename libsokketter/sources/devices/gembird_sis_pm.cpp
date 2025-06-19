@@ -33,10 +33,10 @@ gembird_sis_pm::~gembird_sis_pm()
         static_cast<void *>(this));
 }
 
-auto gembird_sis_pm::initialize(std::unique_ptr<kommpot::device_communication> communication)
+auto gembird_sis_pm::initialize(std::shared_ptr<kommpot::device_communication> communication)
     -> bool
 {
-    if (!energenie_eg_base::initialize(std::move(communication)))
+    if (!energenie_eg_base::initialize(communication))
     {
         return false;
     }

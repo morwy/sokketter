@@ -19,7 +19,7 @@ public:
     database_storage(const database_storage &) = delete;
     auto operator=(const database_storage &) -> void = delete;
 
-    auto get() -> std::vector<std::unique_ptr<sokketter::power_strip>> &;
+    auto get() -> std::vector<std::shared_ptr<sokketter::power_strip>> &;
 
     auto save() const -> void;
     auto load() -> void;
@@ -27,7 +27,7 @@ public:
     auto path() const -> std::filesystem::path;
 
 private:
-    std::vector<std::unique_ptr<sokketter::power_strip>> m_database;
+    std::vector<std::shared_ptr<sokketter::power_strip>> m_database;
 
     database_storage() = default;
     ~database_storage() = default;

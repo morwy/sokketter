@@ -9,7 +9,7 @@
 class energenie_eg_base : public power_strip_base
 {
 public:
-    auto initialize(std::unique_ptr<kommpot::device_communication> communication) -> bool override;
+    auto initialize(std::shared_ptr<kommpot::device_communication> communication) -> bool override;
 
 protected:
     std::string m_serial_number = "";

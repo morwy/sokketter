@@ -82,7 +82,7 @@ namespace sokketter {
         }
     }
 
-    void to_json(nlohmann::json &j, const std::unique_ptr<sokketter::power_strip> &ptr)
+    void to_json(nlohmann::json &j, const std::shared_ptr<sokketter::power_strip> &ptr)
     {
         if (ptr)
         {
@@ -94,7 +94,7 @@ namespace sokketter {
         }
     }
 
-    void from_json(const nlohmann::json &j, std::unique_ptr<sokketter::power_strip> &ptr)
+    void from_json(const nlohmann::json &j, std::shared_ptr<sokketter::power_strip> &ptr)
     {
         if (j.is_null())
         {
@@ -117,7 +117,7 @@ namespace sokketter {
     }
 } // namespace sokketter
 
-auto database_storage::get() -> std::vector<std::unique_ptr<sokketter::power_strip>> &
+auto database_storage::get() -> std::vector<std::shared_ptr<sokketter::power_strip>> &
 {
     return m_database;
 }
@@ -160,7 +160,7 @@ auto database_storage::load() -> void
     nlohmann::json j;
     file >> j;
 
-    m_database = j.get<std::vector<std::unique_ptr<sokketter::power_strip>>>();
+    m_database = j.get<std::vector<std::shared_ptr<sokketter::power_strip>>>();
 }
 
 auto database_storage::path() const -> std::filesystem::path

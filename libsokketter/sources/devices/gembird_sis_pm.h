@@ -11,7 +11,7 @@ public:
     gembird_sis_pm();
     ~gembird_sis_pm();
 
-    auto initialize(std::unique_ptr<kommpot::device_communication> communication) -> bool override;
+    auto initialize(std::shared_ptr<kommpot::device_communication> communication) -> bool override;
 
     static auto identification() -> const kommpot::device_identification;
 };

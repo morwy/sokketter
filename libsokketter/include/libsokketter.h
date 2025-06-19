@@ -298,14 +298,14 @@ namespace sokketter {
      * @return vector of power_strip objects.
      */
     auto EXPORTED devices(const device_filter &filter = {})
-        -> const std::vector<std::unique_ptr<sokketter::power_strip>> &;
+        -> const std::vector<std::shared_ptr<sokketter::power_strip>> &;
 
     /**
      * @brief returns the power strip device by its index.
      * @param index of the device.
      * @return unique pointer to power_strip object or nullptr in case of any failure.
      */
-    auto EXPORTED device(const size_t &index) -> const std::unique_ptr<sokketter::power_strip>;
+    auto EXPORTED device(const size_t &index) -> std::shared_ptr<sokketter::power_strip>;
 
     /**
      * @brief returns the power strip device by its serial number.
@@ -313,7 +313,7 @@ namespace sokketter {
      * @return unique pointer to power_strip object or nullptr in case of any failure.
      */
     auto EXPORTED device(const std::string &serial_number)
-        -> const std::unique_ptr<sokketter::power_strip>;
+        -> std::shared_ptr<sokketter::power_strip>;
 } // namespace sokketter
 
 #endif // LIBSOKKETTER_H
