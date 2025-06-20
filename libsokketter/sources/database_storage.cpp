@@ -119,7 +119,7 @@ namespace sokketter {
 
 auto database_storage::get() -> std::vector<std::shared_ptr<sokketter::power_strip>> &
 {
-    return m_database;
+    return m_devices;
 }
 
 auto database_storage::save() const -> void
@@ -134,7 +134,7 @@ auto database_storage::save() const -> void
         return;
     }
 
-    nlohmann::json j = m_database;
+    nlohmann::json j = m_devices;
     file << j.dump(4);
 }
 
@@ -160,7 +160,16 @@ auto database_storage::load() -> void
     nlohmann::json j;
     file >> j;
 
-    m_database = j.get<std::vector<std::shared_ptr<sokketter::power_strip>>>();
+    m_devices = j.get<std::vector<std::shared_ptr<sokketter::power_strip>>>();
+}
+
+auto database_storage::release_resources() -> void
+{
+    for (auto &device : m_devices)
+    {
+        device.reset();
+        device = nullptr;
+    }
 }
 
 auto database_storage::path() const -> std::filesystem::path

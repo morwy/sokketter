@@ -14,6 +14,9 @@
 #include <vector>
 
 namespace sokketter {
+    auto EXPORTED initialize() -> bool;
+    auto EXPORTED deinitialize() -> bool;
+
     /**
      * @brief path to the folder where all related files are stored.
      * @return std::filesystem::path.

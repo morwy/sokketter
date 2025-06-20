@@ -9,13 +9,18 @@
 #include <devices/power_strip_factory.h>
 #include <devices/test_device.h>
 #include <sokketter_core.h>
-#include <sokketter_initializer.h>
 #include <spdlog/spdlog.h>
 #include <third-party/kommpot/libkommpot/include/libkommpot.h>
 
-namespace sokketter {
-    extern sokketter_initializer s_library_initializer;
-} // namespace sokketter
+auto sokketter::initialize() -> bool
+{
+    return sokketter_core::instance().initialize();
+}
+
+auto sokketter::deinitialize() -> bool
+{
+    return sokketter_core::instance().deinitialize();
+}
 
 auto sokketter::settings() noexcept -> sokketter::settings_structure
 {
@@ -132,7 +137,6 @@ auto sokketter::socket::configuration() const noexcept -> const socket_configura
 auto sokketter::socket::configure(const socket_configuration &configuration) -> void
 {
     m_configuration = configuration;
-    database_storage::instance().save();
 }
 
 auto sokketter::socket::power(const bool &on) const noexcept -> bool
@@ -218,7 +222,6 @@ auto sokketter::power_strip::configuration() const noexcept -> const power_strip
 auto sokketter::power_strip::configure(const power_strip_configuration &configuration) -> void
 {
     m_configuration = configuration;
-    database_storage::instance().save();
 }
 
 auto sokketter::power_strip::is_connected() const -> bool
@@ -252,9 +255,7 @@ auto sokketter::power_strip::to_string() const noexcept -> std::string
 auto sokketter::devices(const device_filter &filter)
     -> const std::vector<std::shared_ptr<sokketter::power_strip>> &
 {
-    database_storage::instance().load();
-
-    auto &database = database_storage::instance().get();
+    auto &database = sokketter_core::instance().database().get();
 
     auto requested_test_device_number = get_requested_test_device_number();
     if (requested_test_device_number > 0)
@@ -332,7 +333,7 @@ auto sokketter::devices(const device_filter &filter)
 
             database.push_back(device);
 
-            database_storage::instance().save();
+            sokketter_core::instance().database().save();
         }
     }
 
@@ -343,9 +344,7 @@ auto sokketter::devices(const device_filter &filter)
 
 auto sokketter::device(const size_t &index) -> std::shared_ptr<sokketter::power_strip>
 {
-    database_storage::instance().load();
-
-    auto &database = database_storage::instance().get();
+    auto &database = sokketter_core::instance().database().get();
 
     if (get_requested_test_device_number())
     {
@@ -449,9 +448,7 @@ auto sokketter::device(const std::string &serial_number) -> std::shared_ptr<sokk
         return nullptr;
     }
 
-    database_storage::instance().load();
-
-    auto &database = database_storage::instance().get();
+    auto &database = sokketter_core::instance().database().get();
 
     const auto supported_devices = power_strip_factory::supported_devices();
 
