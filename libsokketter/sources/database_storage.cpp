@@ -130,7 +130,8 @@ auto database_storage::save() const -> void
     std::ofstream file(path().string());
     if (!file.is_open())
     {
-        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "Failed saving the device database!");
+        SPDLOG_LOGGER_ERROR(
+            SOKKETTER_LOGGER, "Failed opening the device database file for writing!");
         return;
     }
 
@@ -153,7 +154,8 @@ auto database_storage::load() -> void
     std::ifstream file(path().string());
     if (!file.is_open())
     {
-        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "Failed restoring the device database!");
+        SPDLOG_LOGGER_ERROR(
+            SOKKETTER_LOGGER, "Failed opening the device database file for reading!");
         return;
     }
 
@@ -165,6 +167,8 @@ auto database_storage::load() -> void
 
 auto database_storage::release_resources() -> void
 {
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Releasing device database resources.");
+
     for (auto &device : m_devices)
     {
         device.reset();
