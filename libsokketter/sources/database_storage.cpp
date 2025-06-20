@@ -11,12 +11,11 @@
 namespace sokketter {
     void to_json(nlohmann::json &j, const sokketter::socket_configuration &s)
     {
-        j = nlohmann::json{{"id", s.id}, {"name", s.name}, {"description", s.description}};
+        j = nlohmann::json{{"name", s.name}, {"description", s.description}};
     }
 
     void from_json(const nlohmann::json &j, sokketter::socket_configuration &s)
     {
-        s.id = j.value("id", "");
         s.name = j.value("name", "");
         s.description = j.value("description", "");
     }

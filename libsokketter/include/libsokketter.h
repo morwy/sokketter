@@ -137,7 +137,6 @@ namespace sokketter {
      */
     struct EXPORTED socket_configuration
     {
-        std::string id = "";
         std::string name = "Unnamed socket";
         std::string description = "";
     };

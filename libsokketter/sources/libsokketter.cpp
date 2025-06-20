@@ -144,8 +144,8 @@ auto sokketter::socket::power(const bool &on) const noexcept -> bool
     if (m_power_cb == nullptr)
     {
         SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER,
-            "Trying to change state of socket {} at index {} to {} without set callback!",
-            this->configuration().name, this->configuration().id, on ? "on" : "off");
+            "Trying to change state of socket {} to {} without set callback!",
+            this->configuration().name, on ? "on" : "off");
         return false;
     }
 
@@ -157,8 +157,8 @@ auto sokketter::socket::toggle() const noexcept -> bool
     if (m_power_cb == nullptr)
     {
         SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER,
-            "Trying to change state of socket {} at index {} without set callback!",
-            this->configuration().name, this->configuration().id);
+            "Trying to change state of socket {} without set callback!",
+            this->configuration().name);
         return false;
     }
 
@@ -172,8 +172,8 @@ auto sokketter::socket::is_powered_on() const noexcept -> bool
     if (m_status_cb == nullptr)
     {
         SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER,
-            "Trying to check status of socket {} at index {} without set callback!",
-            this->configuration().name, this->configuration().id);
+            "Trying to check status of socket {} without set callback!",
+            this->configuration().name);
         return false;
     }
 
