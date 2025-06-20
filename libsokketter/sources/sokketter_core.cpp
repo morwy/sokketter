@@ -53,6 +53,12 @@ auto sokketter_core::initialize() -> bool
 
     initialize_logger();
 
+    if (!kommpot::initialize())
+    {
+        SPDLOG_CRITICAL("Failed initializing kommpot library!");
+        return false;
+    }
+
     m_database.load();
 
     return true;
@@ -62,6 +68,8 @@ auto sokketter_core::deinitialize() -> bool
 {
     m_database.save();
     m_database.release_resources();
+
+    kommpot::deinitialize();
 
     deinitialize_logger();
 
