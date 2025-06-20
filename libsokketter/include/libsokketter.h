@@ -14,7 +14,18 @@
 #include <vector>
 
 namespace sokketter {
+    /**
+     * @brief initializes sokketter library.
+     * @return true in case of success, false in case of any failure.
+     * @attention This function should be called before any other functions of the library.
+     */
     auto EXPORTED initialize() -> bool;
+
+    /**
+     * @brief deinitializes sokketter library.
+     * @return true in case of success, false in case of any failure.
+     * @attention This function should be called after all other functions of the library.
+     */
     auto EXPORTED deinitialize() -> bool;
 
     /**

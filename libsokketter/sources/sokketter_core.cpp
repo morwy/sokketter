@@ -28,8 +28,8 @@ auto sokketter_core::initialize() -> bool
         std::error_code error_code;
         if (!std::filesystem::create_directories(shared_data_folder_path, error_code))
         {
-            SPDLOG_CRITICAL(
-                "Failed creating storage directory at '{}'!", shared_data_folder_path.string());
+            SPDLOG_CRITICAL("Failed creating storage directory at '{}' with error '{}'!",
+                shared_data_folder_path.string(), error_code.message());
             return false;
         }
 
@@ -44,7 +44,8 @@ auto sokketter_core::initialize() -> bool
         std::error_code error_code;
         if (!std::filesystem::create_directories(logs_folder_path, error_code))
         {
-            SPDLOG_CRITICAL("Failed creating logs directory at '{}'!", logs_folder_path.string());
+            SPDLOG_CRITICAL("Failed creating logs directory at '{}' with error '{}'!",
+                logs_folder_path.string(), error_code.message());
             return false;
         }
 
