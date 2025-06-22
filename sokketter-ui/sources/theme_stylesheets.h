@@ -70,11 +70,11 @@ const QString light_theme = base_theme + R"(
         background-color: #F0F0EE;
     }
 
-    QListWidget::item:hover {
+    HoverableListWidget::item:hover {
         background-color: #F1F0EF;
     }
 
-    QListWidget::item:selected {
+    HoverableListWidget::item:selected {
         background-color: #E9E8E6;
     }
 
@@ -246,11 +246,11 @@ const QString dark_theme = base_theme + R"(
         background-color: #21211F;
     }
 
-    QListWidget::item:hover {
+    HoverableListWidget::item:hover {
         background-color: #222325;
     }
 
-    QListWidget::item:selected {
+    HoverableListWidget::item:selected {
         background-color: #292A2E;
     }
 

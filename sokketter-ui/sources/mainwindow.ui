@@ -578,7 +578,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
          </widget>
         </item>
         <item>
-         <widget class="QListWidget" name="power_strip_list_widget">
+         <widget class="HoverableListWidget" name="power_strip_list_widget">
           <property name="autoFillBackground">
            <bool>true</bool>
           </property>
@@ -702,7 +702,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
          </widget>
         </item>
         <item>
-         <widget class="QListWidget" name="socket_list_widget">
+         <widget class="HoverableListWidget" name="socket_list_widget">
           <property name="autoFillBackground">
            <bool>true</bool>
           </property>
@@ -953,6 +953,11 @@ li.checked::marker { content: &quot;\2612&quot;; }
    <class>Title2Label</class>
    <extends>QLabel</extends>
    <header>Title2Label.h</header>
+  </customwidget>
+  <customwidget>
+   <class>HoverableListWidget</class>
+   <extends>QListWidget</extends>
+   <header>HoverableListWidget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
