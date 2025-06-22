@@ -192,6 +192,18 @@ const QString light_theme = base_theme + R"(
         background-color: #FFC53D;
         color: #26241C;
     }
+
+    QLineEdit {
+        border: 1px solid #CFCECA;
+        border-radius: 5px;
+        padding: 4px;
+        background-color: #FFFFFF;
+        color: #82827C;
+    }
+
+    QLineEdit:focus {
+        border: 2px solid #E2A336;
+    }
 )";
 
 const QString dark_theme = base_theme + R"(
@@ -361,6 +373,18 @@ const QString dark_theme = base_theme + R"(
     QComboBox QAbstractItemView::item:selected {
         background-color: #FFC53D;
         color: #26241C;
+    }
+
+    QLineEdit {
+        border: 1px solid #4F4E4A;
+        border-radius: 5px;
+        padding: 4px;
+        background-color: #131312;
+        color: #7d7c75;
+    }
+
+    QLineEdit:focus {
+        border: 2px solid #8F6424;
     }
 )";
 
