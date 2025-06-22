@@ -224,6 +224,11 @@ auto sokketter::power_strip::configure(const power_strip_configuration &configur
     m_configuration = configuration;
 }
 
+void sokketter::power_strip::save()
+{
+    sokketter_core::instance().database().save();
+}
+
 auto sokketter::power_strip::is_connected() const -> bool
 {
     return false;

@@ -257,7 +257,12 @@ namespace sokketter {
         auto configure(const power_strip_configuration &configuration) -> void;
 
         /**
-         * @brief gets connection stateo of the power strip.
+         * @brief saves current configuration of the power strip to the storage.
+         */
+        auto save() -> void;
+
+        /**
+         * @brief gets connection state of the power strip.
          * @return bool if device is connected, false if device is not connected.
          */
         [[nodiscard]] virtual auto is_connected() const -> bool;
