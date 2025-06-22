@@ -1,6 +1,5 @@
 #include "sokketter_core.h"
 
-#include <iostream>
 #include <spdlog/sinks/callback_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
@@ -18,7 +17,7 @@
 #    include <spdlog/sinks/syslog_sink.h>
 #endif
 
-sokketter_core::sokketter_core()
+auto sokketter_core::initialize() -> bool
 {
     const auto &shared_data_folder_path = sokketter::storage_path();
     if (!std::filesystem::exists(shared_data_folder_path))
@@ -29,9 +28,9 @@ sokketter_core::sokketter_core()
         std::error_code error_code;
         if (!std::filesystem::create_directories(shared_data_folder_path, error_code))
         {
-            SPDLOG_CRITICAL(
-                "Failed creating storage directory at '{}'!", shared_data_folder_path.string());
-            return;
+            SPDLOG_CRITICAL("Failed creating storage directory at '{}' with error '{}'!",
+                shared_data_folder_path.string(), error_code.message());
+            return false;
         }
 
         SPDLOG_DEBUG("Folder was created.");
@@ -45,19 +44,37 @@ sokketter_core::sokketter_core()
         std::error_code error_code;
         if (!std::filesystem::create_directories(logs_folder_path, error_code))
         {
-            SPDLOG_CRITICAL("Failed creating logs directory at '{}'!", logs_folder_path.string());
-            return;
+            SPDLOG_CRITICAL("Failed creating logs directory at '{}' with error '{}'!",
+                logs_folder_path.string(), error_code.message());
+            return false;
         }
 
         SPDLOG_DEBUG("Folder was created.");
     }
 
     initialize_logger();
+
+    if (!kommpot::initialize())
+    {
+        SPDLOG_CRITICAL("Failed initializing kommpot library!");
+        return false;
+    }
+
+    m_database.load();
+
+    return true;
 }
 
-sokketter_core::~sokketter_core()
+auto sokketter_core::deinitialize() -> bool
 {
+    m_database.save();
+    m_database.release_resources();
+
+    kommpot::deinitialize();
+
     deinitialize_logger();
+
+    return true;
 }
 
 auto sokketter_core::settings() noexcept -> sokketter::settings_structure
@@ -77,6 +94,11 @@ auto sokketter_core::set_settings(const sokketter::settings_structure &settings)
     {
         initialize_logger();
     }
+}
+
+auto sokketter_core::database() -> database_storage &
+{
+    return m_database;
 }
 
 auto sokketter_core::initialize_logger() -> void
@@ -174,6 +196,11 @@ auto sokketter_core::deinitialize_logger() -> void
 
 auto sokketter_core::logging_callback(const kommpot::callback_response_structure &response) -> void
 {
+    if (SOKKETTER_LOGGER == nullptr)
+    {
+        return;
+    }
+
     SOKKETTER_LOGGER->log(spdlog::source_loc{response.file, response.line, response.function},
         spdlog::level::level_enum(response.level), response.message);
 }

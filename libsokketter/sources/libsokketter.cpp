@@ -4,16 +4,23 @@
 #include <string>
 #include <utility>
 
+#include <database_storage.h>
+#include <devices/power_strip_base.h>
 #include <devices/power_strip_factory.h>
 #include <devices/test_device.h>
 #include <sokketter_core.h>
-#include <sokketter_initializer.h>
 #include <spdlog/spdlog.h>
 #include <third-party/kommpot/libkommpot/include/libkommpot.h>
 
-namespace sokketter {
-    extern sokketter_initializer s_library_initializer;
-} // namespace sokketter
+auto sokketter::initialize() -> bool
+{
+    return sokketter_core::instance().initialize();
+}
+
+auto sokketter::deinitialize() -> bool
+{
+    return sokketter_core::instance().deinitialize();
+}
 
 auto sokketter::settings() noexcept -> sokketter::settings_structure
 {
@@ -110,6 +117,11 @@ auto sokketter::version() noexcept -> sokketter::version_information
         SOKKETTER_VERSION_NANO, SOKKETTER_VERSION_SHA};
 }
 
+sokketter::socket::socket(const socket_configuration &configuration)
+{
+    m_configuration = configuration;
+}
+
 sokketter::socket::socket(const size_t index, std::function<bool(size_t, bool)> power_cb,
     std::function<bool(size_t)> status_cb)
     : m_index(index)
@@ -132,8 +144,8 @@ auto sokketter::socket::power(const bool &on) const noexcept -> bool
     if (m_power_cb == nullptr)
     {
         SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER,
-            "Trying to change state of socket {} at index {} to {} without set callback!",
-            this->configuration().name, this->configuration().id, on ? "on" : "off");
+            "Trying to change state of socket {} to {} without set callback!",
+            this->configuration().name, on ? "on" : "off");
         return false;
     }
 
@@ -145,8 +157,8 @@ auto sokketter::socket::toggle() const noexcept -> bool
     if (m_power_cb == nullptr)
     {
         SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER,
-            "Trying to change state of socket {} at index {} without set callback!",
-            this->configuration().name, this->configuration().id);
+            "Trying to change state of socket {} without set callback!",
+            this->configuration().name);
         return false;
     }
 
@@ -160,8 +172,8 @@ auto sokketter::socket::is_powered_on() const noexcept -> bool
     if (m_status_cb == nullptr)
     {
         SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER,
-            "Trying to check status of socket {} at index {} without set callback!",
-            this->configuration().name, this->configuration().id);
+            "Trying to check status of socket {} without set callback!",
+            this->configuration().name);
         return false;
     }
 
@@ -212,6 +224,32 @@ auto sokketter::power_strip::configure(const power_strip_configuration &configur
     m_configuration = configuration;
 }
 
+void sokketter::power_strip::save()
+{
+    sokketter_core::instance().database().save();
+}
+
+auto sokketter::power_strip::is_connected() const -> bool
+{
+    return false;
+}
+
+auto sokketter::power_strip::sockets() -> std::vector<sokketter::socket> &
+{
+    return m_sockets;
+}
+
+auto sokketter::power_strip::sockets() const -> const std::vector<sokketter::socket> &
+{
+    return m_sockets;
+}
+
+auto sokketter::power_strip::socket(const size_t &index)
+    -> const std::optional<std::reference_wrapper<sokketter::socket>>
+{
+    return std::nullopt;
+}
+
 auto sokketter::power_strip::to_string() const noexcept -> std::string
 {
     return this->configuration().name + " (" +
@@ -220,9 +258,9 @@ auto sokketter::power_strip::to_string() const noexcept -> std::string
 }
 
 auto sokketter::devices(const device_filter &filter)
-    -> const std::vector<std::unique_ptr<sokketter::power_strip>>
+    -> const std::vector<std::shared_ptr<sokketter::power_strip>> &
 {
-    std::vector<std::unique_ptr<sokketter::power_strip>> devices;
+    auto &database = sokketter_core::instance().database().get();
 
     auto requested_test_device_number = get_requested_test_device_number();
     if (requested_test_device_number > 0)
@@ -232,10 +270,10 @@ auto sokketter::devices(const device_filter &filter)
 
         for (size_t device_index = 0; device_index < requested_test_device_number; ++device_index)
         {
-            devices.push_back(std::make_unique<test_device>(device_index));
+            database.push_back(std::make_shared<test_device>(device_index));
         }
 
-        return devices;
+        return database;
     }
 
     const auto supported_devices = power_strip_factory::supported_devices();
@@ -248,7 +286,7 @@ auto sokketter::devices(const device_filter &filter)
 
     for (auto &communication : communications)
     {
-        auto device = power_strip_factory::create(std::move(communication));
+        auto device = power_strip_factory::create(communication);
         if (!device)
         {
             SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
@@ -258,23 +296,65 @@ auto sokketter::devices(const device_filter &filter)
             continue;
         }
 
-        SPDLOG_LOGGER_DEBUG(
-            SOKKETTER_LOGGER, "{}: device was succesfully created!", device->to_string());
+        auto baseDevice = dynamic_cast<power_strip_base *>(device.get());
+        if (baseDevice == nullptr)
+        {
+            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+                "{}: failed casting the device to power_strip_base!", device->to_string());
+            continue;
+        }
 
-        devices.push_back(std::move(device));
+        /**
+         * @brief look for saved configuration of this device.
+         */
+        auto it = std::find_if(database.begin(), database.end(),
+            [&](const std::shared_ptr<sokketter::power_strip> &item) {
+                return item->configuration().id == device->configuration().id;
+            });
+
+        if (it != database.end())
+        {
+            auto baseIt = dynamic_cast<power_strip_base *>(it->get());
+            if (baseIt == nullptr)
+            {
+                SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+                    "{}: failed casting the device to power_strip_base!", device->to_string());
+                continue;
+            }
+
+            baseIt->initialize(communication);
+
+            SPDLOG_LOGGER_DEBUG(
+                SOKKETTER_LOGGER, "{}: device was succesfully created!", device->to_string());
+        }
+        else
+        {
+            /**
+             * @brief append basic device configuration if it is a first time.
+             */
+            SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
+                "{}: new device was succesfully created and added to database!",
+                device->to_string());
+
+            database.push_back(device);
+
+            sokketter_core::instance().database().save();
+        }
     }
 
-    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Created devices: {}.", devices.size());
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Created devices: {}.", database.size());
 
-    return devices;
+    return database;
 }
 
-auto sokketter::device(const size_t &index) -> const std::unique_ptr<sokketter::power_strip>
+auto sokketter::device(const size_t &index) -> std::shared_ptr<sokketter::power_strip>
 {
+    auto &database = sokketter_core::instance().database().get();
+
     if (get_requested_test_device_number())
     {
         SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Creating debug device at index {}.", index);
-        return std::make_unique<test_device>(index);
+        return std::make_shared<test_device>(index);
     }
 
     const auto supported_devices = power_strip_factory::supported_devices();
@@ -293,7 +373,7 @@ auto sokketter::device(const size_t &index) -> const std::unique_ptr<sokketter::
     }
 
     auto &communication = communications[index];
-    auto device = power_strip_factory::create(std::move(communication));
+    auto device = power_strip_factory::create(communication);
     if (!device)
     {
         SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
@@ -303,14 +383,44 @@ auto sokketter::device(const size_t &index) -> const std::unique_ptr<sokketter::
         return nullptr;
     }
 
+    auto baseDevice = dynamic_cast<power_strip_base *>(device.get());
+    if (baseDevice == nullptr)
+    {
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "{}: failed casting the device to power_strip_base!",
+            device->to_string());
+        return nullptr;
+    }
+
+    /**
+     * @brief look for saved configuration of this device.
+     */
+    auto it = std::find_if(
+        database.begin(), database.end(), [&](const std::shared_ptr<sokketter::power_strip> &item) {
+            return item->configuration().id == device->configuration().id;
+        });
+
+    if (it != database.end())
+    {
+        auto baseIt = dynamic_cast<power_strip_base *>(it->get());
+        if (baseIt == nullptr)
+        {
+            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+                "{}: failed casting the device to power_strip_base!", device->to_string());
+            return nullptr;
+        }
+
+        baseIt->initialize(communication);
+
+        return *it;
+    }
+
     SPDLOG_LOGGER_DEBUG(
         SOKKETTER_LOGGER, "{}: device was succesfully created!", device->to_string());
 
     return device;
 }
 
-auto sokketter::device(const std::string &serial_number)
-    -> const std::unique_ptr<sokketter::power_strip>
+auto sokketter::device(const std::string &serial_number) -> std::shared_ptr<sokketter::power_strip>
 {
     if (get_requested_test_device_number())
     {
@@ -320,7 +430,7 @@ auto sokketter::device(const std::string &serial_number)
             try
             {
                 size_t index = std::stoul(serial_number.substr(test_device_prefix.length()));
-                return std::make_unique<test_device>(index);
+                return std::make_shared<test_device>(index);
             }
             catch (const std::invalid_argument &)
             {
@@ -343,6 +453,8 @@ auto sokketter::device(const std::string &serial_number)
         return nullptr;
     }
 
+    auto &database = sokketter_core::instance().database().get();
+
     const auto supported_devices = power_strip_factory::supported_devices();
 
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Supported devices: {}.", supported_devices.size());
@@ -353,7 +465,7 @@ auto sokketter::device(const std::string &serial_number)
 
     for (auto &communication : communications)
     {
-        auto device = power_strip_factory::create(std::move(communication));
+        auto device = power_strip_factory::create(communication);
         if (!device)
         {
             SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
@@ -366,6 +478,37 @@ auto sokketter::device(const std::string &serial_number)
         if (device->configuration().id != serial_number)
         {
             continue;
+        }
+
+        auto baseDevice = dynamic_cast<power_strip_base *>(device.get());
+        if (baseDevice == nullptr)
+        {
+            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+                "{}: failed casting the device to power_strip_base!", device->to_string());
+            return nullptr;
+        }
+
+        /**
+         * @brief look for saved configuration of this device.
+         */
+        auto it = std::find_if(database.begin(), database.end(),
+            [&](const std::shared_ptr<sokketter::power_strip> &item) {
+                return item->configuration().id == device->configuration().id;
+            });
+
+        if (it != database.end())
+        {
+            auto baseIt = dynamic_cast<power_strip_base *>(it->get());
+            if (baseIt == nullptr)
+            {
+                SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+                    "{}: failed casting the device to power_strip_base!", device->to_string());
+                return nullptr;
+            }
+
+            baseIt->initialize(communication);
+
+            return *it;
         }
 
         SPDLOG_LOGGER_DEBUG(

@@ -8,8 +8,10 @@
 class energenie_eg_pms2 : public energenie_eg_base
 {
 public:
-    explicit energenie_eg_pms2(std::unique_ptr<kommpot::device_communication> communication);
+    energenie_eg_pms2();
     ~energenie_eg_pms2();
+
+    auto initialize(std::shared_ptr<kommpot::device_communication> communication) -> bool override;
 
     static auto identification() -> const kommpot::device_identification;
 };

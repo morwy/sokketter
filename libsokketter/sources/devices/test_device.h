@@ -16,7 +16,7 @@ public:
 
     [[nodiscard]] auto is_connected() const -> bool override;
 
-    [[nodiscard]] auto sockets() -> const std::vector<sokketter::socket> & override;
+    [[nodiscard]] auto sockets() const -> const std::vector<sokketter::socket> & override;
 
     [[nodiscard]] auto socket(const size_t &index)
         -> const std::optional<std::reference_wrapper<sokketter::socket>> override;

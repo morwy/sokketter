@@ -22,6 +22,20 @@ const QString base_theme = R"(
         background: transparent;
         color: black;
     }
+
+    TitleLabel {
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+    Title2Label {
+        font-size: 14px;
+        font-weight: bold;
+    }
+
+    BoldLabel {
+        font-weight: bold;
+    }
 )";
 
 const QString light_theme = base_theme + R"(
@@ -56,11 +70,11 @@ const QString light_theme = base_theme + R"(
         background-color: #F0F0EE;
     }
 
-    QListWidget::item:hover {
+    HoverableListWidget::item:hover {
         background-color: #F1F0EF;
     }
 
-    QListWidget::item:selected {
+    HoverableListWidget::item:selected {
         background-color: #E9E8E6;
     }
 
@@ -127,12 +141,6 @@ const QString light_theme = base_theme + R"(
         background: none;
     }
 
-    TitleLabel {
-        color: #21201C;
-        font-size: 16px;
-        font-weight: bold;
-    }
-
     ButtonLabel {
         color: #AB6400;
     }
@@ -192,6 +200,18 @@ const QString light_theme = base_theme + R"(
         background-color: #FFC53D;
         color: #26241C;
     }
+
+    QLineEdit {
+        border: 1px solid #CFCECA;
+        border-radius: 5px;
+        padding: 4px;
+        background-color: #FFFFFF;
+        color: #82827C;
+    }
+
+    QLineEdit:focus {
+        border: 2px solid #E2A336;
+    }
 )";
 
 const QString dark_theme = base_theme + R"(
@@ -226,11 +246,11 @@ const QString dark_theme = base_theme + R"(
         background-color: #21211F;
     }
 
-    QListWidget::item:hover {
+    HoverableListWidget::item:hover {
         background-color: #222325;
     }
 
-    QListWidget::item:selected {
+    HoverableListWidget::item:selected {
         background-color: #292A2E;
     }
 
@@ -297,12 +317,6 @@ const QString dark_theme = base_theme + R"(
         background: none;
     }
 
-    TitleLabel {
-        color: #EEEEEC;
-        font-size: 16px;
-        font-weight: bold;
-    }
-
     ButtonLabel {
         color: #EDBC15;
     }
@@ -361,6 +375,18 @@ const QString dark_theme = base_theme + R"(
     QComboBox QAbstractItemView::item:selected {
         background-color: #FFC53D;
         color: #26241C;
+    }
+
+    QLineEdit {
+        border: 1px solid #4F4E4A;
+        border-radius: 5px;
+        padding: 4px;
+        background-color: #131312;
+        color: #7d7c75;
+    }
+
+    QLineEdit:focus {
+        border: 2px solid #8F6424;
     }
 )";
 

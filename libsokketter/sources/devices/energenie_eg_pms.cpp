@@ -3,18 +3,13 @@
 #include <sokketter_core.h>
 #include <spdlog/spdlog.h>
 
-energenie_eg_pms::energenie_eg_pms(std::unique_ptr<kommpot::device_communication> communication)
-    : energenie_eg_base(std::move(communication))
+energenie_eg_pms::energenie_eg_pms()
 {
+    SPDLOG_LOGGER_DEBUG(
+        SOKKETTER_LOGGER, "{}: constructed object {}.", __FUNCTION__, static_cast<void *>(this));
+
     sokketter::power_strip_configuration configuration;
-    configuration.name = "Unnamed power strip";
-    configuration.description = "";
     configuration.type = sokketter::power_strip_type::ENERGENIE_EG_PMS;
-    configuration.id = m_serial_number;
-    configuration.address = std::string("USB:") + m_communication->information().port;
-
-    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: construction.", this->to_string());
-
     this->configure(configuration);
 
     /**
@@ -34,7 +29,28 @@ energenie_eg_pms::energenie_eg_pms(std::unique_ptr<kommpot::device_communication
 
 energenie_eg_pms::~energenie_eg_pms()
 {
-    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: destruction.", this->to_string());
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: destructed object {}.", this->to_string(),
+        static_cast<void *>(this));
+}
+
+auto energenie_eg_pms::initialize(std::shared_ptr<kommpot::device_communication> communication)
+    -> bool
+{
+    if (!energenie_eg_base::initialize(communication))
+    {
+        return false;
+    }
+
+    auto configuration = this->configuration();
+
+    configuration.id = m_serial_number;
+    configuration.address = std::string("USB:") + m_communication->information().port;
+
+    this->configure(configuration);
+
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: initialization.", this->to_string());
+
+    return true;
 }
 
 auto energenie_eg_pms::identification() -> const kommpot::device_identification

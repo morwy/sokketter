@@ -15,6 +15,20 @@
 
 namespace sokketter {
     /**
+     * @brief initializes sokketter library.
+     * @return true in case of success, false in case of any failure.
+     * @attention This function should be called before any other functions of the library.
+     */
+    auto EXPORTED initialize() -> bool;
+
+    /**
+     * @brief deinitializes sokketter library.
+     * @return true in case of success, false in case of any failure.
+     * @attention This function should be called after all other functions of the library.
+     */
+    auto EXPORTED deinitialize() -> bool;
+
+    /**
      * @brief path to the folder where all related files are stored.
      * @return std::filesystem::path.
      */
@@ -123,7 +137,6 @@ namespace sokketter {
      */
     struct EXPORTED socket_configuration
     {
-        std::string id = "";
         std::string name = "Unnamed socket";
         std::string description = "";
     };
@@ -134,6 +147,7 @@ namespace sokketter {
     class EXPORTED socket
     {
     public:
+        socket(const socket_configuration &configuration);
         socket(const size_t index, std::function<bool(size_t, bool)> power_cb,
             std::function<bool(size_t)> status_cb);
 
@@ -224,17 +238,11 @@ namespace sokketter {
         power_strip() = default;
         virtual ~power_strip() = default;
 
-        /**
-         * @warning states class is non-copyable.
-         */
-        power_strip(const power_strip &obj) = delete;
-        auto operator=(const power_strip &obj) -> power_strip & = delete;
+        power_strip(const power_strip &obj) = default;
+        auto operator=(const power_strip &obj) -> power_strip & = default;
 
-        /**
-         * @warning states class is non-movable.
-         */
-        power_strip(power_strip &&obj) = delete;
-        auto operator=(power_strip &&obj) -> power_strip & = delete;
+        power_strip(power_strip &&obj) = default;
+        auto operator=(power_strip &&obj) -> power_strip & = default;
 
         /**
          * @brief gets current configuration of the power strip.
@@ -249,16 +257,27 @@ namespace sokketter {
         auto configure(const power_strip_configuration &configuration) -> void;
 
         /**
-         * @brief gets connection stateo of the power strip.
+         * @brief saves current configuration of the power strip to the storage.
+         */
+        auto save() -> void;
+
+        /**
+         * @brief gets connection state of the power strip.
          * @return bool if device is connected, false if device is not connected.
          */
-        [[nodiscard]] virtual auto is_connected() const -> bool = 0;
+        [[nodiscard]] virtual auto is_connected() const -> bool;
 
         /**
          * @brief gets list of sockets controlled by the power strip.
          * @return vector of socket objects.
          */
-        [[nodiscard]] virtual auto sockets() -> const std::vector<socket> & = 0;
+        [[nodiscard]] virtual auto sockets() -> std::vector<socket> &;
+
+        /**
+         * @brief gets list of sockets controlled by the power strip.
+         * @return vector of socket objects.
+         */
+        [[nodiscard]] virtual auto sockets() const -> const std::vector<socket> &;
 
         /**
          * @brief gets a specific socket controlled by the power strip.
@@ -267,13 +286,16 @@ namespace sokketter {
          * failure.
          */
         [[nodiscard]] virtual auto socket(const size_t &index)
-            -> const std::optional<std::reference_wrapper<socket>> = 0;
+            -> const std::optional<std::reference_wrapper<socket>>;
 
         /**
          * @brief creates string based on power strip parameters
          * @return string in format "POWER_STRIP_NAME (TYPE, ID, located at ADDRESS)".
          */
         [[nodiscard]] auto to_string() const noexcept -> std::string;
+
+    protected:
+        std::vector<sokketter::socket> m_sockets;
 
     private:
         power_strip_configuration m_configuration;
@@ -294,14 +316,14 @@ namespace sokketter {
      * @return vector of power_strip objects.
      */
     auto EXPORTED devices(const device_filter &filter = {})
-        -> const std::vector<std::unique_ptr<sokketter::power_strip>>;
+        -> const std::vector<std::shared_ptr<sokketter::power_strip>> &;
 
     /**
      * @brief returns the power strip device by its index.
      * @param index of the device.
      * @return unique pointer to power_strip object or nullptr in case of any failure.
      */
-    auto EXPORTED device(const size_t &index) -> const std::unique_ptr<sokketter::power_strip>;
+    auto EXPORTED device(const size_t &index) -> std::shared_ptr<sokketter::power_strip>;
 
     /**
      * @brief returns the power strip device by its serial number.
@@ -309,7 +331,7 @@ namespace sokketter {
      * @return unique pointer to power_strip object or nullptr in case of any failure.
      */
     auto EXPORTED device(const std::string &serial_number)
-        -> const std::unique_ptr<sokketter::power_strip>;
+        -> std::shared_ptr<sokketter::power_strip>;
 } // namespace sokketter
 
 #endif // LIBSOKKETTER_H

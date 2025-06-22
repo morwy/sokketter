@@ -9,9 +9,14 @@
  * @attention interaction with device is based on the protocol described in pysispm project.
  * @link https://github.com/xypron/pysispm/blob/master/sispm/__init__.py
  */
-energenie_eg_base::energenie_eg_base(std::unique_ptr<kommpot::device_communication> communication)
-    : power_strip_base(std::move(communication))
+auto energenie_eg_base::initialize(std::shared_ptr<kommpot::device_communication> communication)
+    -> bool
 {
+    if (!power_strip_base::initialize(communication))
+    {
+        return false;
+    }
+
     /**
      * Read device serial number from device since it is not available in USB descriptor.
      */
@@ -19,6 +24,7 @@ energenie_eg_base::energenie_eg_base(std::unique_ptr<kommpot::device_communicati
     {
         SPDLOG_LOGGER_ERROR(
             SOKKETTER_LOGGER, "{}: failed opening the device communication!", this->to_string());
+        return false;
     }
 
     kommpot::control_transfer_configuration configuration;
@@ -33,6 +39,7 @@ energenie_eg_base::energenie_eg_base(std::unique_ptr<kommpot::device_communicati
     {
         SPDLOG_LOGGER_ERROR(
             SOKKETTER_LOGGER, "{}: failed reading the device serial number!", this->to_string());
+        return false;
     }
 
     m_communication->close();
@@ -48,24 +55,8 @@ energenie_eg_base::energenie_eg_base(std::unique_ptr<kommpot::device_communicati
     }
 
     m_serial_number = serial_number.str();
-}
 
-auto energenie_eg_base::sockets() -> const std::vector<sokketter::socket> &
-{
-    return m_sockets;
-}
-
-auto energenie_eg_base::socket(const size_t &index)
-    -> const std::optional<std::reference_wrapper<sokketter::socket>>
-{
-    if (index >= m_sockets.size())
-    {
-        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "{}: index {} is out of range 0-{}!",
-            this->to_string(), index, m_sockets.size());
-        return std::nullopt;
-    }
-
-    return m_sockets[index];
+    return true;
 }
 
 auto energenie_eg_base::power_socket(size_t index, bool is_toggled) -> bool
