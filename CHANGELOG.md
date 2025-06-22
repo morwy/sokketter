@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.3.0] - 2025-06-22
+
+### 🚀 Features
+
+- Added more detailed and descriptive logging (#9) by @morwy
+- Added saving and restoring of windows geometry between launches (#10) by @morwy
+- Added possibility to select how to activate a socket - via single or double click (#11) by @morwy
+- Added possibility to rename power strips and sockets (#13) by @morwy
+
+### 🐛 Bug Fixes
+
+- Corrected displayed file name on shortcut on Windows (#6) by @morwy
+- Fixed issue with incorrect version used during release (#7) by @morwy
+- Fixed incorrect theme used on license information dialog on Windows (#8) by @morwy
+- Fixed a sokketter data storage path mistake on Ubuntu (#12) by @morwy
+
 ## [1.2.0] - 2025-05-18
 
 ### 🚀 Features
