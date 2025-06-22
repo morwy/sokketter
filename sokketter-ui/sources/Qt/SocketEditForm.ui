@@ -40,7 +40,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QLabel" name="socket_name_label">
+    <widget class="BoldLabel" name="socket_name_label">
      <property name="text">
       <string>Name</string>
      </property>
@@ -57,7 +57,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QLabel" name="socket_description_label">
+    <widget class="BoldLabel" name="socket_description_label">
      <property name="text">
       <string>Description</string>
      </property>
@@ -75,6 +75,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>BoldLabel</class>
+   <extends>QLabel</extends>
+   <header>BoldLabel.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

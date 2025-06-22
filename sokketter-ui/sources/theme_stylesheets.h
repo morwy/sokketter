@@ -22,6 +22,10 @@ const QString base_theme = R"(
         background: transparent;
         color: black;
     }
+
+    BoldLabel {
+        font-weight: bold;
+    }
 )";
 
 const QString light_theme = base_theme + R"(
