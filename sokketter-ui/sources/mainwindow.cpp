@@ -2,11 +2,11 @@
 #include "license_dialog.h"
 #include "ui_mainwindow.h"
 
+#include <Qt/SocketEditForm.h>
 #include <app_logger.h>
 #include <app_settings_storage.h>
 #include <empty_power_strip_list_item.h>
 #include <power_strip_list_item.h>
-#include <qt/SocketEditForm.h>
 #include <socket_list_item.h>
 #include <spdlog/sinks/daily_file_sink.h>
 #include <spdlog/spdlog.h>
