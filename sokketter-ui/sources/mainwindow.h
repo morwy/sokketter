@@ -31,6 +31,11 @@ private slots:
 
 private:
     Ui::MainWindow *m_ui;
+    std::shared_ptr<sokketter::power_strip> m_device = nullptr;
+
+    auto repopulate_configure_list() -> void;
+    auto redraw_configure_list() -> void;
+    auto save_new_configuration() -> void;
 
     auto initialize_settings_page() -> void;
     auto initialize_about_page() -> void;

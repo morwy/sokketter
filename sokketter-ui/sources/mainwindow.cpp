@@ -6,6 +6,7 @@
 #include <app_settings_storage.h>
 #include <empty_power_strip_list_item.h>
 #include <power_strip_list_item.h>
+#include <qt/SocketEditForm.h>
 #include <socket_list_item.h>
 #include <spdlog/sinks/daily_file_sink.h>
 #include <spdlog/spdlog.h>
@@ -19,6 +20,8 @@
 #include <QApplication>
 #include <QDesktopServices>
 #include <QFileInfo>
+#include <QLabel>
+#include <QLineEdit>
 #include <QListWidgetItem>
 #include <QScrollBar>
 #include <QTimer>
@@ -30,6 +33,8 @@ MainWindow::MainWindow(QWidget *parent)
 {
     initialize_app_logger();
 
+    sokketter::initialize();
+
     m_ui->setupUi(this);
 
     app_settings_storage::instance().load();
@@ -38,9 +43,9 @@ MainWindow::MainWindow(QWidget *parent)
     this->setGeometry(
         settings.window.x, settings.window.y, settings.window.width, settings.window.height);
 
-    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "sokketter-ui has started.");
-
     setThemeAccordingToMode();
+
+    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "sokketter-ui has started.");
 
     /**
      * @brief set the speed of the sliding stacked widget to 500 ms.
@@ -68,11 +73,25 @@ MainWindow::MainWindow(QWidget *parent)
         m_ui->stackedWidget->slideInIdx(index);
     });
 
+    QObject::connect(m_ui->socket_list_edit_label, &ClickableLabel::clicked, [this]() {
+        const int &index = m_ui->stackedWidget->indexOf(m_ui->device_configure_page);
+        m_ui->stackedWidget->slideInIdx(index);
+        repopulate_configure_list();
+    });
+
     QObject::connect(m_ui->socket_list_back_label, &ClickableLabel::clicked, [this]() {
         const int &index = m_ui->stackedWidget->indexOf(m_ui->power_strip_list_page);
         m_ui->stackedWidget->slideInIdx(index);
         redraw_device_list();
     });
+
+    QObject::connect(m_ui->configure_back_label, &ClickableLabel::clicked, [this]() {
+        const int &index = m_ui->stackedWidget->indexOf(m_ui->socket_list_page);
+        m_ui->stackedWidget->slideInIdx(index);
+    });
+
+    QObject::connect(m_ui->configure_save_label, &ClickableLabel::clicked,
+        [this]() { save_new_configuration(); });
 
     initialize_settings_page();
     initialize_about_page();
@@ -82,8 +101,18 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    if (m_device != nullptr)
+    {
+        m_device.reset();
+        m_device = nullptr;
+    }
+
     delete m_ui;
+
     SPDLOG_LOGGER_DEBUG(APP_LOGGER, "sokketter-ui has finished.");
+
+    sokketter::deinitialize();
+
     deinitialize_app_logger();
 }
 
@@ -95,6 +124,132 @@ auto MainWindow::closeEvent(QCloseEvent *event) -> void
     app_settings_storage::instance().save();
 
     QMainWindow::closeEvent(event);
+}
+
+auto MainWindow::repopulate_configure_list() -> void
+{
+    if (m_device == nullptr)
+    {
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "No currently saved device pointer is present!");
+        return;
+    }
+
+    while (m_ui->configure_socket_list_widget->count() > 0)
+    {
+        m_ui->configure_socket_list_widget->takeItem(0);
+    }
+
+    m_ui->configure_device_name_line_edit->setText(
+        QString::fromStdString(m_device->configuration().name));
+    m_ui->configure_device_description_line_edit->setText(
+        QString::fromStdString(m_device->configuration().description));
+
+    auto &sockets = m_device->sockets();
+    for (size_t socket_index = 0; socket_index < sockets.size(); socket_index++)
+    {
+        const auto &socket = sockets[socket_index];
+
+        const auto title = QString("Socket %1").arg(socket_index + 1);
+
+        auto *form = new SocketEditForm(title, socket.configuration(), this);
+        const auto &size_hint = form->sizeHint();
+
+        auto *item = new QListWidgetItem();
+        item->setSizeHint(QSize(size_hint.width(), size_hint.height()));
+
+        m_ui->configure_socket_list_widget->addItem(item);
+        m_ui->configure_socket_list_widget->setItemWidget(item, form);
+    }
+
+    redraw_configure_list();
+}
+
+auto MainWindow::redraw_configure_list() -> void
+{
+    if (m_ui->device_configure_page->isVisible())
+    {
+        SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Re-drawing device configuration list.");
+
+        int visible_width = m_ui->configure_socket_list_widget->width();
+        if (m_ui->configure_socket_list_widget->verticalScrollBar()->isVisible())
+        {
+            visible_width -= (m_ui->configure_socket_list_widget->verticalScrollBar()->width() * 2);
+        }
+
+        const int &item_count = m_ui->configure_socket_list_widget->count();
+        for (int i = 0; i < item_count; ++i)
+        {
+            auto *list_widget = m_ui->configure_socket_list_widget->item(i);
+            if (list_widget == nullptr)
+            {
+                SPDLOG_LOGGER_ERROR(APP_LOGGER,
+                    "Failed getting list widget item from the socket configuration form!");
+                continue;
+            }
+
+            auto *widget = m_ui->configure_socket_list_widget->itemWidget(list_widget);
+            if (widget == nullptr)
+            {
+                SPDLOG_LOGGER_ERROR(
+                    APP_LOGGER, "Failed getting display widget item from the list widget!");
+                continue;
+            }
+
+            widget->setMaximumWidth(visible_width);
+
+            const auto &size_hint = widget->sizeHint();
+            list_widget->setSizeHint(
+                QSize(std::max(size_hint.width(), visible_width), size_hint.height()));
+        }
+    }
+}
+
+auto MainWindow::save_new_configuration() -> void
+{
+    if (m_device == nullptr)
+    {
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "No currently saved device pointer is present!");
+        return;
+    }
+
+    auto configuration = m_device->configuration();
+
+    configuration.name = m_ui->configure_device_name_line_edit->text().toStdString();
+    configuration.description = m_ui->configure_device_description_line_edit->text().toStdString();
+
+    m_device->configure(configuration);
+
+    auto &sockets = m_device->sockets();
+    for (int item_index = 0; item_index < m_ui->configure_socket_list_widget->count(); item_index++)
+    {
+        auto *list_widget = m_ui->configure_socket_list_widget->item(item_index);
+        if (list_widget == nullptr)
+        {
+            SPDLOG_LOGGER_ERROR(
+                APP_LOGGER, "Failed getting list widget item from the socket configuration form!");
+            continue;
+        }
+
+        auto *widget = m_ui->configure_socket_list_widget->itemWidget(list_widget);
+        if (widget == nullptr)
+        {
+            SPDLOG_LOGGER_ERROR(
+                APP_LOGGER, "Failed getting display widget item from the list widget!");
+            continue;
+        }
+
+        if (qobject_cast<SocketEditForm *>(widget) == nullptr)
+        {
+            SPDLOG_LOGGER_ERROR(APP_LOGGER, "Display widget item is not a SocketEditForm!");
+            continue;
+        }
+
+        const auto *form = qobject_cast<SocketEditForm *>(
+            m_ui->configure_socket_list_widget->itemWidget(list_widget));
+        sockets[item_index].configure(form->configuration());
+    }
+
+    m_device->save();
 }
 
 auto MainWindow::initialize_settings_page() -> void
@@ -237,6 +392,18 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
         dynamic_cast<power_strip_list_item *>(m_ui->power_strip_list_widget->itemWidget(item))
             ->configuration();
 
+    if (m_device != nullptr)
+    {
+        m_device.reset();
+        m_device = nullptr;
+    }
+
+    m_device = sokketter::device(configuration.id);
+    if (m_device == nullptr)
+    {
+        return;
+    }
+
     repopulate_socket_list(configuration);
 }
 
@@ -291,7 +458,7 @@ auto MainWindow::event(QEvent *event) -> bool
     return QWidget::event(event);
 }
 
-void MainWindow::resizeEvent(QResizeEvent *event)
+auto MainWindow::resizeEvent(QResizeEvent *event) -> void
 {
     SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Detected resize event.");
 
@@ -299,9 +466,10 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 
     redraw_device_list();
     redraw_socket_list();
+    redraw_configure_list();
 }
 
-void MainWindow::redraw_device_list()
+auto MainWindow::redraw_device_list() -> void
 {
     if (m_ui->power_strip_list_widget->isVisible())
     {
@@ -347,7 +515,7 @@ void MainWindow::redraw_device_list()
     }
 }
 
-void MainWindow::redraw_socket_list()
+auto MainWindow::redraw_socket_list() -> void
 {
     if (m_ui->socket_list_widget->isVisible())
     {
@@ -375,7 +543,7 @@ void MainWindow::redraw_socket_list()
     }
 }
 
-void MainWindow::setThemeAccordingToMode()
+auto MainWindow::setThemeAccordingToMode() -> void
 {
     qApp->setStyleSheet(isDarkMode() ? dark_theme : light_theme);
 #ifdef Q_OS_WIN
@@ -441,31 +609,25 @@ auto MainWindow::repopulate_socket_list(const sokketter::power_strip_configurati
         m_ui->socket_list_widget->takeItem(0);
     }
 
-    const auto &device = sokketter::device(configuration.id);
-    if (device == nullptr)
-    {
-        return;
-    }
-
-    int visibleWidth = m_ui->socket_list_widget->width();
+    int visible_width = m_ui->socket_list_widget->width();
     if (m_ui->socket_list_widget->verticalScrollBar()->isVisible())
     {
-        visibleWidth -= m_ui->socket_list_widget->verticalScrollBar()->width();
+        visible_width -= m_ui->socket_list_widget->verticalScrollBar()->width();
     }
 
     size_t socket_index = 1;
 
-    const auto &sockets = device->sockets();
+    const auto &sockets = m_device->sockets();
     for (const auto &socket : sockets)
     {
         auto *socket_item =
             new socket_list_item(configuration, socket.configuration(), socket_index);
-        socket_item->setMaximumWidth(visibleWidth);
+        socket_item->setMaximumWidth(visible_width);
         socket_item->set_state(socket.is_powered_on());
 
         auto *item = new QListWidgetItem();
         const auto &size_hint = socket_item->sizeHint();
-        item->setSizeHint(QSize(std::max(size_hint.width(), visibleWidth), size_hint.height()));
+        item->setSizeHint(QSize(std::max(size_hint.width(), visible_width), size_hint.height()));
         m_ui->socket_list_widget->addItem(item);
         m_ui->socket_list_widget->setItemWidget(item, socket_item);
 
