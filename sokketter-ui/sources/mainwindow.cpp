@@ -90,8 +90,11 @@ MainWindow::MainWindow(QWidget *parent)
         m_ui->stackedWidget->slideInIdx(index);
     });
 
-    QObject::connect(m_ui->configure_save_label, &ClickableLabel::clicked,
-        [this]() { save_new_configuration(); });
+    QObject::connect(m_ui->configure_save_label, &ClickableLabel::clicked, [this]() {
+        save_new_configuration();
+        repopulate_device_list();
+        repopulate_socket_list();
+    });
 
     initialize_settings_page();
     initialize_about_page();
@@ -124,6 +127,186 @@ auto MainWindow::closeEvent(QCloseEvent *event) -> void
     app_settings_storage::instance().save();
 
     QMainWindow::closeEvent(event);
+}
+
+auto MainWindow::repopulate_device_list() -> void
+{
+    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Repopulating power strip list.");
+
+    while (m_ui->power_strip_list_widget->count() > 0)
+    {
+        m_ui->power_strip_list_widget->takeItem(0);
+    }
+
+    int visible_width = m_ui->power_strip_list_widget->width();
+    if (m_ui->power_strip_list_widget->verticalScrollBar()->isVisible())
+    {
+        visible_width -= (m_ui->power_strip_list_widget->verticalScrollBar()->width() * 2);
+    }
+
+    int visible_height = m_ui->power_strip_list_widget->height();
+    if (m_ui->power_strip_list_widget->horizontalScrollBar()->isVisible())
+    {
+        visible_height -= (m_ui->power_strip_list_widget->horizontalScrollBar()->height() * 2);
+    }
+
+    const auto &power_strips = sokketter::devices();
+    for (const auto &power_strip : power_strips)
+    {
+        auto *power_strip_item = new power_strip_list_item(power_strip->configuration());
+        power_strip_item->setMaximumWidth(visible_width);
+        power_strip_item->set_state(power_strip->is_connected());
+
+        auto *item = new QListWidgetItem();
+        const auto &size_hint = power_strip_item->sizeHint();
+        item->setSizeHint(QSize(std::max(size_hint.width(), visible_width), size_hint.height()));
+
+        m_ui->power_strip_list_widget->addItem(item);
+        m_ui->power_strip_list_widget->setItemWidget(item, power_strip_item);
+    }
+
+    if (power_strips.empty())
+    {
+        auto *empty_item = new empty_power_strip_list_item();
+        empty_item->setMaximumHeight(visible_height);
+        empty_item->setMaximumWidth(visible_width);
+
+        auto *item = new QListWidgetItem();
+        item->setSizeHint(QSize(visible_width, visible_height));
+
+        m_ui->power_strip_list_widget->addItem(item);
+        m_ui->power_strip_list_widget->setItemWidget(item, empty_item);
+    }
+
+    redraw_device_list();
+}
+
+auto MainWindow::redraw_device_list() -> void
+{
+    if (m_ui->power_strip_list_widget->isVisible())
+    {
+        SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Re-drawing power strip list.");
+
+        int visible_width = m_ui->power_strip_list_widget->width();
+        if (m_ui->power_strip_list_widget->verticalScrollBar()->isVisible())
+        {
+            visible_width -= (m_ui->power_strip_list_widget->verticalScrollBar()->width() * 2);
+        }
+
+        int visible_height = m_ui->power_strip_list_widget->height();
+        if (m_ui->power_strip_list_widget->horizontalScrollBar()->isVisible())
+        {
+            visible_height -= (m_ui->power_strip_list_widget->horizontalScrollBar()->height() * 2);
+        }
+
+        const int &item_count = m_ui->power_strip_list_widget->count();
+        for (int item_index = 0; item_index < item_count; ++item_index)
+        {
+            auto *list_widget = m_ui->power_strip_list_widget->item(item_index);
+            if (list_widget == nullptr)
+            {
+                SPDLOG_LOGGER_ERROR(
+                    APP_LOGGER, "Failed getting list widget item from the device list!");
+                continue;
+            }
+
+            auto *widget = m_ui->power_strip_list_widget->itemWidget(list_widget);
+            if (widget == nullptr)
+            {
+                SPDLOG_LOGGER_ERROR(
+                    APP_LOGGER, "Failed getting display widget item from the device list!");
+                continue;
+            }
+
+            if (qobject_cast<empty_power_strip_list_item *>(widget))
+            {
+                widget->setMaximumWidth(visible_width);
+
+                const auto &size_hint = widget->sizeHint();
+                list_widget->setSizeHint(QSize(std::max(size_hint.width(), visible_width),
+                    std::max(size_hint.width(), visible_height)));
+            }
+            else if (qobject_cast<power_strip_list_item *>(widget))
+            {
+                widget->setMaximumWidth(visible_width);
+
+                const auto &size_hint = widget->sizeHint();
+                list_widget->setSizeHint(
+                    QSize(std::max(size_hint.width(), visible_width), size_hint.height()));
+            }
+        }
+    }
+}
+
+auto MainWindow::repopulate_socket_list() -> void
+{
+    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Repopulating socket list.");
+
+    while (m_ui->socket_list_widget->count() > 0)
+    {
+        m_ui->socket_list_widget->takeItem(0);
+    }
+
+    const auto &configuration = m_device->configuration();
+
+    const auto &sockets = m_device->sockets();
+    for (size_t socket_index = 0; socket_index < sockets.size(); socket_index++)
+    {
+        const auto &socket = sockets[socket_index];
+
+        auto *socket_item =
+            new socket_list_item(configuration, socket.configuration(), socket_index + 1);
+        socket_item->set_state(socket.is_powered_on());
+        const auto &size_hint = socket_item->sizeHint();
+
+        auto *item = new QListWidgetItem();
+        item->setSizeHint(QSize(size_hint.width(), size_hint.height()));
+
+        m_ui->socket_list_widget->addItem(item);
+        m_ui->socket_list_widget->setItemWidget(item, socket_item);
+    }
+
+    redraw_socket_list();
+}
+
+auto MainWindow::redraw_socket_list() -> void
+{
+    if (m_ui->socket_list_widget->isVisible())
+    {
+        SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Re-drawing socket list.");
+
+        int visible_width = m_ui->socket_list_widget->width();
+        if (m_ui->socket_list_widget->verticalScrollBar()->isVisible())
+        {
+            visible_width -= (m_ui->socket_list_widget->verticalScrollBar()->width() * 2);
+        }
+
+        const int &item_count = m_ui->socket_list_widget->count();
+        for (int item_index = 0; item_index < item_count; ++item_index)
+        {
+            auto *list_widget = m_ui->socket_list_widget->item(item_index);
+            if (list_widget == nullptr)
+            {
+                SPDLOG_LOGGER_ERROR(
+                    APP_LOGGER, "Failed getting list widget item from the socket list!");
+                continue;
+            }
+
+            auto *widget = m_ui->socket_list_widget->itemWidget(list_widget);
+            if (widget == nullptr)
+            {
+                SPDLOG_LOGGER_ERROR(
+                    APP_LOGGER, "Failed getting display widget item from the socket list!");
+                continue;
+            }
+
+            widget->setMaximumWidth(visible_width);
+
+            const auto &size_hint = widget->sizeHint();
+            list_widget->setSizeHint(
+                QSize(std::max(size_hint.width(), visible_width), size_hint.height()));
+        }
+    }
 }
 
 auto MainWindow::repopulate_configure_list() -> void
@@ -177,9 +360,9 @@ auto MainWindow::redraw_configure_list() -> void
         }
 
         const int &item_count = m_ui->configure_socket_list_widget->count();
-        for (int i = 0; i < item_count; ++i)
+        for (int item_index = 0; item_index < item_count; ++item_index)
         {
-            auto *list_widget = m_ui->configure_socket_list_widget->item(i);
+            auto *list_widget = m_ui->configure_socket_list_widget->item(item_index);
             if (list_widget == nullptr)
             {
                 SPDLOG_LOGGER_ERROR(APP_LOGGER,
@@ -404,7 +587,7 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
         return;
     }
 
-    repopulate_socket_list(configuration);
+    repopulate_socket_list();
 }
 
 auto MainWindow::onSocketClicked(QListWidgetItem *item) -> void
@@ -469,168 +652,10 @@ auto MainWindow::resizeEvent(QResizeEvent *event) -> void
     redraw_configure_list();
 }
 
-auto MainWindow::redraw_device_list() -> void
-{
-    if (m_ui->power_strip_list_widget->isVisible())
-    {
-        SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Re-drawing power strip list.");
-
-        int visibleWidth = m_ui->power_strip_list_widget->width();
-        if (m_ui->power_strip_list_widget->verticalScrollBar()->isVisible())
-        {
-            visibleWidth -= m_ui->power_strip_list_widget->verticalScrollBar()->width();
-        }
-
-        int visibleHeight = m_ui->power_strip_list_widget->height();
-        if (m_ui->power_strip_list_widget->horizontalScrollBar()->isVisible())
-        {
-            visibleHeight -= m_ui->power_strip_list_widget->horizontalScrollBar()->height();
-        }
-
-        const int &itemCount = m_ui->power_strip_list_widget->count();
-        for (int index = 0; index < itemCount; ++index)
-        {
-            QListWidgetItem *item = m_ui->power_strip_list_widget->item(index);
-            QWidget *widget = m_ui->power_strip_list_widget->itemWidget(item);
-            if (widget == nullptr)
-            {
-                continue;
-            }
-
-            if (qobject_cast<empty_power_strip_list_item *>(widget))
-            {
-                widget->setMaximumWidth(visibleWidth);
-                const auto &size_hint = widget->sizeHint();
-                item->setSizeHint(QSize(std::max(size_hint.width(), visibleWidth),
-                    std::max(size_hint.width(), visibleHeight)));
-            }
-            else if (qobject_cast<power_strip_list_item *>(widget))
-            {
-                widget->setMaximumWidth(visibleWidth);
-                const auto &size_hint = widget->sizeHint();
-                item->setSizeHint(
-                    QSize(std::max(size_hint.width(), visibleWidth), size_hint.height()));
-            }
-        }
-    }
-}
-
-auto MainWindow::redraw_socket_list() -> void
-{
-    if (m_ui->socket_list_widget->isVisible())
-    {
-        SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Re-drawing socket list.");
-
-        int visibleWidth = m_ui->socket_list_widget->width();
-        if (m_ui->socket_list_widget->verticalScrollBar()->isVisible())
-        {
-            visibleWidth -= m_ui->socket_list_widget->verticalScrollBar()->width();
-        }
-
-        const int &itemCount = m_ui->socket_list_widget->count();
-        for (int i = 0; i < itemCount; ++i)
-        {
-            QListWidgetItem *item = m_ui->socket_list_widget->item(i);
-            QWidget *itemWidget = m_ui->socket_list_widget->itemWidget(item);
-            if (itemWidget)
-            {
-                itemWidget->setMaximumWidth(visibleWidth);
-                const auto &size_hint = itemWidget->sizeHint();
-                item->setSizeHint(
-                    QSize(std::max(size_hint.width(), visibleWidth), size_hint.height()));
-            }
-        }
-    }
-}
-
 auto MainWindow::setThemeAccordingToMode() -> void
 {
     qApp->setStyleSheet(isDarkMode() ? dark_theme : light_theme);
 #ifdef Q_OS_WIN
     toggle_dark_titlebar(winId(), isDarkMode());
 #endif
-}
-
-auto MainWindow::repopulate_device_list() -> void
-{
-    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Repopulating power strip list.");
-
-    while (m_ui->power_strip_list_widget->count() > 0)
-    {
-        m_ui->power_strip_list_widget->takeItem(0);
-    }
-
-    int visibleWidth = m_ui->power_strip_list_widget->width();
-    if (m_ui->power_strip_list_widget->verticalScrollBar()->isVisible())
-    {
-        visibleWidth -= m_ui->power_strip_list_widget->verticalScrollBar()->width();
-    }
-
-    int visibleHeight = m_ui->power_strip_list_widget->height();
-    if (m_ui->power_strip_list_widget->horizontalScrollBar()->isVisible())
-    {
-        visibleHeight -= m_ui->power_strip_list_widget->horizontalScrollBar()->height();
-    }
-
-    const auto &power_strips = sokketter::devices();
-    for (const auto &power_strip : power_strips)
-    {
-        auto *power_strip_item = new power_strip_list_item(power_strip->configuration());
-        power_strip_item->setMaximumWidth(visibleWidth);
-        power_strip_item->set_state(power_strip->is_connected());
-
-        auto *item = new QListWidgetItem();
-        const auto &size_hint = power_strip_item->sizeHint();
-        item->setSizeHint(QSize(std::max(size_hint.width(), visibleWidth), size_hint.height()));
-        m_ui->power_strip_list_widget->addItem(item);
-        m_ui->power_strip_list_widget->setItemWidget(item, power_strip_item);
-    }
-
-    if (power_strips.empty())
-    {
-        auto *empty_item = new empty_power_strip_list_item();
-        empty_item->setMaximumHeight(visibleHeight);
-        empty_item->setMaximumWidth(visibleWidth);
-
-        auto *item = new QListWidgetItem();
-        item->setSizeHint(QSize(visibleWidth, visibleHeight));
-        m_ui->power_strip_list_widget->addItem(item);
-        m_ui->power_strip_list_widget->setItemWidget(item, empty_item);
-    }
-}
-
-auto MainWindow::repopulate_socket_list(const sokketter::power_strip_configuration &configuration)
-    -> void
-{
-    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Repopulating socket list.");
-
-    while (m_ui->socket_list_widget->count() > 0)
-    {
-        m_ui->socket_list_widget->takeItem(0);
-    }
-
-    int visible_width = m_ui->socket_list_widget->width();
-    if (m_ui->socket_list_widget->verticalScrollBar()->isVisible())
-    {
-        visible_width -= m_ui->socket_list_widget->verticalScrollBar()->width();
-    }
-
-    size_t socket_index = 1;
-
-    const auto &sockets = m_device->sockets();
-    for (const auto &socket : sockets)
-    {
-        auto *socket_item =
-            new socket_list_item(configuration, socket.configuration(), socket_index);
-        socket_item->setMaximumWidth(visible_width);
-        socket_item->set_state(socket.is_powered_on());
-
-        auto *item = new QListWidgetItem();
-        const auto &size_hint = socket_item->sizeHint();
-        item->setSizeHint(QSize(std::max(size_hint.width(), visible_width), size_hint.height()));
-        m_ui->socket_list_widget->addItem(item);
-        m_ui->socket_list_widget->setItemWidget(item, socket_item);
-
-        socket_index++;
-    }
 }
