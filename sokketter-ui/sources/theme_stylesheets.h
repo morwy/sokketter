@@ -28,6 +28,11 @@ const QString base_theme = R"(
         font-weight: bold;
     }
 
+    Title2Label {
+        font-size: 14px;
+        font-weight: bold;
+    }
+
     BoldLabel {
         font-weight: bold;
     }

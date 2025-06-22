@@ -837,7 +837,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
               <number>0</number>
              </property>
              <item>
-              <widget class="QLabel" name="label_6">
+              <widget class="Title2Label" name="label_6">
                <property name="text">
                 <string>Device</string>
                </property>
@@ -948,6 +948,11 @@ li.checked::marker { content: &quot;\2612&quot;; }
    <class>BoldLabel</class>
    <extends>QLabel</extends>
    <header>BoldLabel.h</header>
+  </customwidget>
+  <customwidget>
+   <class>Title2Label</class>
+   <extends>QLabel</extends>
+   <header>Title2Label.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
