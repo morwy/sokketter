@@ -23,6 +23,11 @@ const QString base_theme = R"(
         color: black;
     }
 
+    TitleLabel {
+        font-size: 16px;
+        font-weight: bold;
+    }
+
     BoldLabel {
         font-weight: bold;
     }
@@ -129,12 +134,6 @@ const QString light_theme = base_theme + R"(
     QScrollBar::add-page:horizontal,
     QScrollBar::sub-page:horizontal {
         background: none;
-    }
-
-    TitleLabel {
-        color: #21201C;
-        font-size: 16px;
-        font-weight: bold;
     }
 
     ButtonLabel {
@@ -311,12 +310,6 @@ const QString dark_theme = base_theme + R"(
     QScrollBar::add-page:horizontal,
     QScrollBar::sub-page:horizontal {
         background: none;
-    }
-
-    TitleLabel {
-        color: #EEEEEC;
-        font-size: 16px;
-        font-weight: bold;
     }
 
     ButtonLabel {
