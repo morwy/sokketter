@@ -342,6 +342,15 @@ auto sokketter::devices(const device_filter &filter)
         }
     }
 
+    /**
+     * Sort the database by device name.
+     */
+    std::sort(database.begin(), database.end(),
+        [](const std::shared_ptr<sokketter::power_strip> &a,
+            const std::shared_ptr<sokketter::power_strip> &b) {
+            return a->configuration().name < b->configuration().name;
+        });
+
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Created devices: {}.", database.size());
 
     return database;
