@@ -19,9 +19,13 @@ power_strip_list_item::power_strip_list_item(
 
     m_ui->name_label->setText(QString::fromStdString(configuration.name));
 
-    const auto &description =
-        QString::fromStdString(sokketter::power_strip_type_to_string(configuration.type)) +
-        " located at " + QString::fromStdString(configuration.address);
+    auto description =
+        QString::fromStdString(sokketter::power_strip_type_to_string(configuration.type));
+    if (!configuration.address.empty())
+    {
+        description += ", located at " + QString::fromStdString(configuration.address);
+    }
+
     m_ui->description_label->setText(description);
 
     setThemeAccordingToMode();
