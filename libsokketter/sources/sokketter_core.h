@@ -31,6 +31,9 @@ public:
 
     auto database() -> database_storage &;
 
+    auto devices(const sokketter::device_filter &filter = {})
+        -> const std::vector<std::shared_ptr<sokketter::power_strip>> &;
+
 private:
     sokketter::settings_structure m_settings;
     std::shared_ptr<spdlog::logger> m_logger = nullptr;

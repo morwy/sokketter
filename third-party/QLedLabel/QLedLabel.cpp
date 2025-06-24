@@ -10,6 +10,9 @@
 #include <QDebug>
 
 static const int SIZE = 8;
+static const QString graySS =
+    QString("color: white;border-radius: %1;background-color: rgba(111, 109, 102, 1.0);")
+        .arg(SIZE / 2);
 static const QString greenSS =
     QString("color: white;border-radius: %1;background-color: rgba(70, 167, 88, 1.0);")
         .arg(SIZE / 2);
@@ -23,7 +26,7 @@ static const QString redSS =
 QLedLabel::QLedLabel(QWidget *parent)
     : QLabel(parent)
 {
-    setState(StateOk);
+    setState(StateUnknown);
     setFixedSize(SIZE, SIZE);
 }
 
@@ -32,6 +35,9 @@ void QLedLabel::setState(State state)
     switch (state)
     {
     default:
+    case StateUnknown:
+        setStyleSheet(graySS);
+        break;
     case StateOk:
         setStyleSheet(greenSS);
         break;
