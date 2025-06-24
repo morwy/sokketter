@@ -247,7 +247,7 @@ auto MainWindow::repopulate_socket_list() -> void
         m_ui->socket_list_widget->takeItem(0);
     }
 
-    const auto &configuration = m_device->configuration();
+    const auto &device_configuration = m_device->configuration();
 
     const auto &sockets = m_device->sockets();
     for (size_t socket_index = 0; socket_index < sockets.size(); socket_index++)
@@ -255,8 +255,12 @@ auto MainWindow::repopulate_socket_list() -> void
         const auto &socket = sockets[socket_index];
 
         auto *socket_item =
-            new socket_list_item(configuration, socket.configuration(), socket_index + 1);
-        socket_item->set_state(socket.is_powered_on());
+            new socket_list_item(device_configuration, socket.configuration(), socket_index + 1);
+        socket_item->setEnabled(m_device->is_connected());
+        if (m_device->is_connected())
+        {
+            socket_item->set_state(socket.is_powered_on());
+        }
         const auto &size_hint = socket_item->sizeHint();
 
         auto *item = new QListWidgetItem();
@@ -265,6 +269,8 @@ auto MainWindow::repopulate_socket_list() -> void
         m_ui->socket_list_widget->addItem(item);
         m_ui->socket_list_widget->setItemWidget(item, socket_item);
     }
+
+    m_ui->socket_list_widget->setEnabled(m_device->is_connected());
 
     redraw_socket_list();
 }

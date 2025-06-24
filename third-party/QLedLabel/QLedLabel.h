@@ -18,6 +18,7 @@ public:
 
     enum State
     {
+        StateUnknown,
         StateOk,
         StateWarning,
         StateError

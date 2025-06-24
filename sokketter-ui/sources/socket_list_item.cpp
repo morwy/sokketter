@@ -16,6 +16,9 @@ socket_list_item::socket_list_item(const sokketter::power_strip_configuration &p
 {
     m_ui->setupUi(this);
 
+    m_ui->status_label->setState(QLedLabel::State::StateUnknown);
+    m_ui->status_label->setToolTip(tr("unknown"));
+
     const auto &index_text = "Socket " + QString::number(socket_index);
 
     m_ui->index_label->setText(index_text);

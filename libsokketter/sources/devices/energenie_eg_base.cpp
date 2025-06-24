@@ -61,6 +61,13 @@ auto energenie_eg_base::initialize(std::shared_ptr<kommpot::device_communication
 
 auto energenie_eg_base::power_socket(size_t index, bool is_toggled) -> bool
 {
+    if (m_communication == nullptr)
+    {
+        SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
+            "{}: skipping powering socket due to disconnected status.", this->to_string(), index);
+        return false;
+    }
+
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: powering socket {} {}.", this->to_string(), index,
         is_toggled ? "on" : "off");
 
@@ -98,6 +105,14 @@ auto energenie_eg_base::power_socket(size_t index, bool is_toggled) -> bool
 
 auto energenie_eg_base::socket_status(size_t index) -> bool
 {
+    if (m_communication == nullptr)
+    {
+        SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
+            "{}: skipping checking socket status due to disconnected status.", this->to_string(),
+            index);
+        return false;
+    }
+
     SPDLOG_LOGGER_DEBUG(
         SOKKETTER_LOGGER, "{}: checking socket {} status.", this->to_string(), index);
 
