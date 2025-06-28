@@ -1,0 +1,161 @@
+#!/usr/bin/env python
+
+# --------------------------------------------------------------------------------------------------
+#
+# Imports.
+#
+# --------------------------------------------------------------------------------------------------
+import logging
+import os
+import platform
+import subprocess
+
+# --------------------------------------------------------------------------------------------------
+#
+# Global variables.
+#
+# --------------------------------------------------------------------------------------------------
+
+
+# --------------------------------------------------------------------------------------------------
+#
+# Class definition.
+#
+# --------------------------------------------------------------------------------------------------
+class Build:
+    """
+    Class to handle the build process.
+    """
+
+    def __init__(self) -> None:
+        """
+        Initialize the build class.
+        """
+        logging.basicConfig(level=logging.INFO)
+        self.logger = logging.getLogger(__name__)
+        self.logger.info("Build class initialized.")
+
+        self.workspace = os.environ.get("GITHUB_WORKSPACE", ".")
+        self.logger.info("GITHUB_WORKSPACE: %s", self.workspace)
+
+        self.build_output_dir = os.path.join(self.workspace, "build")
+        self.logger.info("Build output directory: %s", self.build_output_dir)
+
+        self.binary_output_dir = self.__get_binary_output_dir()
+        self.logger.info("Binary output directory: %s", self.binary_output_dir)
+
+        self.compiler = self.__get_cpp_compiler()
+
+        github_output_path = os.environ.get("GITHUB_OUTPUT")
+        if github_output_path and os.path.exists(github_output_path):
+            with open(file=github_output_path, mode="r", encoding="utf-8") as file:
+                content = file.read()
+                self.logger.info("Contents of GITHUB_OUTPUT file:\n%s", content)
+        else:
+            self.logger.info("GITHUB_OUTPUT file not found.")
+
+    def __get_cpp_compiler(self) -> str:
+        """
+        Get the C++ compiler from the environment variable.
+        """
+        compiler = ""
+
+        if platform.system() == "Windows":
+            compiler = "cl"
+        elif platform.system() == "Linux":
+            compiler = "g++"
+        elif platform.system() == "Darwin":
+            compiler = "clang++"
+        else:
+            self.logger.error("Unsupported platform: %s", platform.system())
+            raise EnvironmentError("Unsupported platform")
+
+        return compiler
+
+    def __get_binary_output_dir(self) -> str:
+        """
+        Get the binary output directory based on the platform.
+        """
+        architecture = "arm64" if os.environ.get("GITHUB_ARCH") == "arm64" else "x86_64"
+
+        if platform.system() == "Windows":
+            return os.path.join(
+                self.build_output_dir, "bin", f"windows_{architecture}", "Release"
+            )
+        elif platform.system() == "Linux":
+            return os.path.join(
+                self.build_output_dir, "bin", f"linux_{architecture}", "Release"
+            )
+        elif platform.system() == "Darwin":
+            return os.path.join(
+                self.build_output_dir, "bin", f"macos_{architecture}", "Release"
+            )
+        else:
+            self.logger.error("Unsupported platform: %s", platform.system())
+            raise EnvironmentError("Unsupported platform")
+
+    def __configure(self) -> None:
+        """
+        Configure the project using CMake.
+        """
+        self.logger.info("Starting the CMake configuration.")
+
+        cmake_command = [
+            "cmake",
+            "-B",
+            self.build_output_dir,
+            f"-DCMAKE_CXX_COMPILER={self.compiler}",
+            "-DIS_COMPILING_STATIC=true",
+            "-DIS_COMPILING_SHARED=false",
+            "-DCMAKE_PREFIX_PATH=$Qt6_DIR",
+        ]
+        try:
+            result = subprocess.run(
+                cmake_command, check=True, capture_output=True, text=True
+            )
+            self.logger.info("Configure output:\n%s", result.stdout)
+        except subprocess.CalledProcessError as e:
+            self.logger.error("Configure failed with error:\n%s", e.stderr)
+            raise
+
+        self.logger.info("CMake configuration completed successfully.")
+
+    def __build(self) -> None:
+        """
+        Build the project using CMake.
+        """
+        self.logger.info("Starting the build process.")
+
+        build_command = [
+            "cmake",
+            "--build",
+            self.build_output_dir,
+            "--config",
+            "Release",
+        ]
+        try:
+            result = subprocess.run(
+                build_command, check=True, capture_output=True, text=True
+            )
+            self.logger.info("Build output:\n%s", result.stdout)
+        except subprocess.CalledProcessError as e:
+            self.logger.error("Build failed with error:\n%s", e.stderr)
+            raise
+
+        self.logger.info("Build completed successfully.")
+
+    def run(self) -> None:
+        """
+        Run the build process.
+        """
+        self.__configure()
+        self.__build()
+
+
+# --------------------------------------------------------------------------------------------------
+#
+# Entry point.
+#
+# --------------------------------------------------------------------------------------------------
+if __name__ == "__main__":
+    Build().run()
