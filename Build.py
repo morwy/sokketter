@@ -299,7 +299,7 @@ class Build:
             ]
             self.__execute_command(packing_command)
         elif platform.system() == "Darwin":
-            shutil.copy(
+            shutil.copytree(
                 os.path.join(self.temp_binary_output_dir, "bin", "sokketter-ui.app"),
                 sokketter_ui_folder,
             )
