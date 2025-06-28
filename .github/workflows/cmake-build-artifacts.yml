@@ -26,7 +26,7 @@ jobs:
         CURRENT_VERSION=$(python -m ProjectVersion GET_VERSION)
         echo "release-version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
         echo "binary-output-dir=${{ github.workspace }}${{ env.path-separator }}bin${{ env.path-separator }}${{ (startsWith(matrix.os, 'ubuntu') && 'linux') || (startsWith(matrix.os, 'windows') && 'windows') || (startsWith(matrix.os, 'macos') && 'macos') || '' }}_${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86_64' }}${{ env.path-separator }}Release" >> "$GITHUB_OUTPUT"
-        echo "results-output-dir=${{ github.workspace }}${{ env.path-separator }}results"
+        echo "results-output-dir=${{ github.workspace }}${{ env.path-separator }}results" >> "$GITHUB_OUTPUT"
         echo "archive-name=libsokketter-$CURRENT_VERSION-${{ matrix.os }}-${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86-64' }}" >> "$GITHUB_OUTPUT"
         echo "sokketter-cli-name=sokketter-cli-$CURRENT_VERSION-${{ matrix.os }}-${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86-64' }}" >> "$GITHUB_OUTPUT"
         echo "sokketter-ui-name=sokketter-ui-$CURRENT_VERSION-${{ matrix.os }}-${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86-64' }}" >> "$GITHUB_OUTPUT"
@@ -85,8 +85,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ${{ steps.strings.outputs.archive-name }}
-        path: |
-          ${{ steps.strings.outputs.results-output-dir }}${{ env.path-separator }}libsokketter
+        path: ${{ steps.strings.outputs.results-output-dir }}${{ env.path-separator }}libsokketter
         if-no-files-found: error
 
     - name: Upload CLI application
