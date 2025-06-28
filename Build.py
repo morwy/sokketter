@@ -305,8 +305,7 @@ class Build:
                 src=os.path.join(
                     self.temp_binary_output_dir, "bin", "sokketter-ui.app"
                 ),
-                dst=sokketter_ui_folder,
-                dirs_exist_ok=True,
+                dst=os.path.join(sokketter_ui_folder, "sokketter-ui.app"),
             )
 
             self.__print_file_tree(self.results_output_dir)
