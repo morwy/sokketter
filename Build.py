@@ -249,8 +249,8 @@ class Build:
             os.path.join(sokketter_lib_folder, "libs"),
         )
         shutil.copytree(
-            os.path.join(self.temp_binary_output_dir, "includes"),
-            os.path.join(sokketter_lib_folder, "includes"),
+            os.path.join(self.temp_binary_output_dir, "include"),
+            os.path.join(sokketter_lib_folder, "include"),
         )
 
         self.logger.info("Library files packaged successfully.")
