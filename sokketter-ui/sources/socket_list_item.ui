@@ -132,7 +132,7 @@
        </spacer>
       </item>
       <item>
-       <widget class="QLabel" name="index_label">
+       <widget class="QLabel" name="name_label">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
           <horstretch>0</horstretch>
@@ -141,16 +141,19 @@
         </property>
         <property name="font">
          <font>
-          <bold>true</bold>
+          <bold>false</bold>
          </font>
         </property>
         <property name="text">
          <string>TextLabel</string>
         </property>
+        <property name="textFormat">
+         <enum>Qt::MarkdownText</enum>
+        </property>
        </widget>
       </item>
       <item>
-       <widget class="QLabel" name="name_label">
+       <widget class="QLabel" name="description_label">
         <property name="enabled">
          <bool>false</bool>
         </property>

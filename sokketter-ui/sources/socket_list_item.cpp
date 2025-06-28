@@ -19,10 +19,19 @@ socket_list_item::socket_list_item(const sokketter::power_strip_configuration &p
     m_ui->status_label->setState(QLedLabel::State::StateUnknown);
     m_ui->status_label->setToolTip(tr("unknown"));
 
-    const auto &index_text = "Socket " + QString::number(socket_index);
+    const auto &title_text =
+        "**Socket " + QString::number(socket_index) + "**: " + QString::fromStdString(socket.name);
 
-    m_ui->index_label->setText(index_text);
-    m_ui->name_label->setText(QString::fromStdString(socket.name));
+    m_ui->name_label->setText(title_text);
+
+    if (!socket.description.empty())
+    {
+        m_ui->description_label->setText(QString::fromStdString(socket.description));
+    }
+    else
+    {
+        m_ui->description_label->hide();
+    }
 
     setThemeAccordingToMode();
 }
