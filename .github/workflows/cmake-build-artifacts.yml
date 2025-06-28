@@ -78,13 +78,6 @@ jobs:
     - name: Run Python build script
       run: python -m Build
 
-    # - name: Configure CMake for static libraries
-    #   run: |
-    #     cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=true -DIS_COMPILING_SHARED=false -DCMAKE_PREFIX_PATH=$Qt6_DIR
-
-    # - name: Build binaries
-    #   run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config Release
-
     #   # This action has bug with wildcards under Windows OS, thus ignore it.
     # - name: Check binaries (non-Windows)
     #   uses: andstor/file-existence-action@v3

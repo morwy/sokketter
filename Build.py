@@ -31,17 +31,20 @@ class Build:
         """
         Initialize the build class.
         """
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        )
         self.logger = logging.getLogger(__name__)
         self.logger.info("Build class initialized.")
 
         self.workspace = os.environ.get("GITHUB_WORKSPACE", ".")
-        self.logger.info("GITHUB_WORKSPACE: %s", self.workspace)
+        self.logger.info("Workspace: %s", self.workspace)
 
         self.build_output_dir = os.path.join(self.workspace, "build")
         self.logger.info("Build output directory: %s", self.build_output_dir)
 
-        self.binary_output_dir = self.__get_binary_output_dir()
+        self.binary_output_dir = self.__construct_binary_output_dir(self.workspace)
         self.logger.info("Binary output directory: %s", self.binary_output_dir)
 
         self.compiler = self.__get_cpp_compiler()
@@ -72,27 +75,45 @@ class Build:
 
         return compiler
 
-    def __get_binary_output_dir(self) -> str:
+    def __construct_binary_output_dir(self, workspace: str) -> str:
         """
         Get the binary output directory based on the platform.
         """
         architecture = "arm64" if os.environ.get("GITHUB_ARCH") == "arm64" else "x86_64"
 
         if platform.system() == "Windows":
-            return os.path.join(
-                self.build_output_dir, "bin", f"windows_{architecture}", "Release"
-            )
+            return os.path.join(workspace, "bin", f"windows_{architecture}", "Release")
         elif platform.system() == "Linux":
-            return os.path.join(
-                self.build_output_dir, "bin", f"linux_{architecture}", "Release"
-            )
+            return os.path.join(workspace, "bin", f"linux_{architecture}", "Release")
         elif platform.system() == "Darwin":
-            return os.path.join(
-                self.build_output_dir, "bin", f"macos_{architecture}", "Release"
-            )
+            return os.path.join(workspace, "bin", f"macos_{architecture}", "Release")
         else:
             self.logger.error("Unsupported platform: %s", platform.system())
             raise EnvironmentError("Unsupported platform")
+
+    def __execute_command(self, cmake_command):
+        try:
+            with subprocess.Popen(
+                cmake_command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            ) as process:
+                if process.stdout is not None:
+                    for line in process.stdout:
+                        self.logger.info(line.rstrip())
+
+                process.wait()
+                if process.returncode != 0:
+                    raise subprocess.CalledProcessError(
+                        process.returncode, cmake_command
+                    )
+
+                self.logger.info("Command output:\n%s", process.stdout)
+
+        except subprocess.CalledProcessError as e:
+            self.logger.error("Command failed with error:\n%s", e.stderr)
+            raise
 
     def __configure(self) -> None:
         """
@@ -109,14 +130,7 @@ class Build:
             "-DIS_COMPILING_SHARED=false",
             "-DCMAKE_PREFIX_PATH=$Qt6_DIR",
         ]
-        try:
-            result = subprocess.run(
-                cmake_command, check=True, capture_output=True, text=True
-            )
-            self.logger.info("Configure output:\n%s", result.stdout)
-        except subprocess.CalledProcessError as e:
-            self.logger.error("Configure failed with error:\n%s", e.stderr)
-            raise
+        self.__execute_command(cmake_command)
 
         self.logger.info("CMake configuration completed successfully.")
 
@@ -133,14 +147,7 @@ class Build:
             "--config",
             "Release",
         ]
-        try:
-            result = subprocess.run(
-                build_command, check=True, capture_output=True, text=True
-            )
-            self.logger.info("Build output:\n%s", result.stdout)
-        except subprocess.CalledProcessError as e:
-            self.logger.error("Build failed with error:\n%s", e.stderr)
-            raise
+        self.__execute_command(build_command)
 
         self.logger.info("Build completed successfully.")
 
