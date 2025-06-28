@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>socket_list_item</class>
- <widget class="QWidget" name="socket_list_item">
+ <class>SocketListItem</class>
+ <widget class="QWidget" name="SocketListItem">
   <property name="geometry">
    <rect>
     <x>0</x>

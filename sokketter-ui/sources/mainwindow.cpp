@@ -3,11 +3,11 @@
 #include "ui_mainwindow.h"
 
 #include <Qt/SocketEditForm.h>
+#include <Qt/SocketListItem.h>
 #include <app_logger.h>
 #include <app_settings_storage.h>
 #include <empty_power_strip_list_item.h>
 #include <power_strip_list_item.h>
-#include <socket_list_item.h>
 #include <spdlog/sinks/daily_file_sink.h>
 #include <spdlog/spdlog.h>
 #include <theme_stylesheets.h>
@@ -255,7 +255,7 @@ auto MainWindow::repopulate_socket_list() -> void
         const auto &socket = sockets[socket_index];
 
         auto *socket_item =
-            new socket_list_item(device_configuration, socket.configuration(), socket_index + 1);
+            new SocketListItem(device_configuration, socket.configuration(), socket_index + 1);
         socket_item->setEnabled(m_device->is_connected());
         if (m_device->is_connected())
         {
@@ -604,7 +604,7 @@ auto MainWindow::onSocketClicked(QListWidgetItem *item) -> void
 {
     SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Detected onSocketClicked() signal.");
 
-    auto socket_item = dynamic_cast<socket_list_item *>(m_ui->socket_list_widget->itemWidget(item));
+    auto socket_item = dynamic_cast<SocketListItem *>(m_ui->socket_list_widget->itemWidget(item));
     if (socket_item == nullptr)
     {
         SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed getting a socket from the UI list!");
