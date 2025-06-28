@@ -85,14 +85,14 @@ jobs:
       with:
         name: ${{ steps.strings.outputs.archive-name }}
         path: |
-          ${{ steps.strings.outputs.results-output-dir }}${{ env.path-separator }}libsokketter
+          ${{ steps.strings.outputs.results-output-dir }}${{ env.path-separator }}libsokketter${{ env.path-separator }}**${{ env.path-separator }}*
         if-no-files-found: error
 
     - name: Upload CLI application
       uses: actions/upload-artifact@v4
       with:
         name: ${{ steps.strings.outputs.sokketter-cli-name }}
-        path: ${{ steps.strings.outputs.results-output-dir }}${{ env.path-separator }}sokketter-cli
+        path: ${{ steps.strings.outputs.results-output-dir }}${{ env.path-separator }}sokketter-cli${{ env.path-separator }}**${{ env.path-separator }}*
         if-no-files-found: error
 
     # - name: Upload sokketter-ui (Windows-only)
