@@ -12,9 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-22.04, windows-2022, macos-13, macos-14]
-        build_type: [Release]
         c_compiler: [gcc, clang, cl]
-        library_type: [static]
         include:
           - os: windows-2022
             c_compiler: cl
@@ -59,7 +57,7 @@ jobs:
         CURRENT_VERSION=$(python -m ProjectVersion GET_VERSION)
         echo "release-version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
         echo "build-output-dir=${{ github.workspace }}${{ env.path-separator }}build" >> "$GITHUB_OUTPUT"
-        echo "binary-output-dir=${{ github.workspace }}${{ env.path-separator }}bin${{ env.path-separator }}${{ (startsWith(matrix.os, 'ubuntu') && 'linux') || (startsWith(matrix.os, 'windows') && 'windows') || (startsWith(matrix.os, 'macos') && 'macos') || '' }}_${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86_64' }}${{ env.path-separator }}${{ matrix.build_type }}" >> "$GITHUB_OUTPUT"
+        echo "binary-output-dir=${{ github.workspace }}${{ env.path-separator }}bin${{ env.path-separator }}${{ (startsWith(matrix.os, 'ubuntu') && 'linux') || (startsWith(matrix.os, 'windows') && 'windows') || (startsWith(matrix.os, 'macos') && 'macos') || '' }}_${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86_64' }}${{ env.path-separator }}Release" >> "$GITHUB_OUTPUT"
         echo "archive-name=libsokketter-$CURRENT_VERSION-${{ matrix.os }}-${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86-64' }}" >> "$GITHUB_OUTPUT"
         echo "sokketter-cli-name=sokketter-cli-$CURRENT_VERSION-${{ matrix.os }}-${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86-64' }}" >> "$GITHUB_OUTPUT"
         echo "sokketter-ui-name=sokketter-ui-$CURRENT_VERSION-${{ matrix.os }}-${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86-64' }}" >> "$GITHUB_OUTPUT"
@@ -80,15 +78,9 @@ jobs:
     - name: Configure CMake for static libraries
       run: |
         cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=true -DIS_COMPILING_SHARED=false -DCMAKE_PREFIX_PATH=$Qt6_DIR
-      if: matrix.library_type == 'static'
-
-    - name: Configure CMake for shared libraries
-      run: |
-        cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=false -DIS_COMPILING_SHARED=true -DCMAKE_PREFIX_PATH=$Qt6_DIR
-      if: matrix.library_type == 'shared'
 
     - name: Build binaries
-      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
+      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config Release
 
       # This action has bug with wildcards under Windows OS, thus ignore it.
     - name: Check binaries (non-Windows)
