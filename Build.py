@@ -54,7 +54,11 @@ class Build:
         self.logger.info("Results output directory: %s", self.results_output_dir)
         os.makedirs(self.temp_build_output_dir, exist_ok=True)
 
+        self.cmake = self.__get_cmake()
+        self.logger.info("CMake executable: %s", self.cmake)
+
         self.compiler = self.__get_cpp_compiler()
+        self.logger.info("C++ compiler: %s", self.compiler)
 
         github_output_path = os.environ.get("GITHUB_OUTPUT")
         if github_output_path and os.path.exists(github_output_path):
@@ -63,6 +67,28 @@ class Build:
                 self.logger.info("Contents of GITHUB_OUTPUT file:\n%s", content)
         else:
             self.logger.info("GITHUB_OUTPUT file not found.")
+
+    def __get_cmake(self) -> str:
+        """
+        Get the CMake executable from the environment variable.
+        """
+        cmake = "cmake"
+        if not shutil.which(cmake):
+            self.logger.error(
+                "CMake executable not found at default location: %s", cmake
+            )
+
+        if platform.system() == "Windows":
+            cmake = "C:\\Qt\\Tools\\CMake_64\\bin\\cmake.exe"
+        elif platform.system() in ["Linux", "Darwin"]:
+            cmake = os.path.join(
+                os.environ.get("HOME", ""), "Qt", "Tools", "CMake", "bin", "cmake"
+            )
+
+        if not os.path.exists(cmake):
+            raise EnvironmentError("CMake executable not found")
+
+        return cmake
 
     def __get_cpp_compiler(self) -> str:
         """
@@ -86,6 +112,7 @@ class Build:
         """
         Get the binary output directory based on the platform.
         """
+        # TODO: wrong on MacOS
         architecture = "arm64" if os.environ.get("GITHUB_ARCH") == "arm64" else "x86_64"
 
         if platform.system() == "Windows":
@@ -98,8 +125,50 @@ class Build:
             self.logger.error("Unsupported platform: %s", platform.system())
             raise EnvironmentError("Unsupported platform")
 
+    def __running_in_github_actions(self) -> bool:
+        return os.getenv("GITHUB_ACTIONS") == "true"
+
+    def __get_vcvarsall_path(self) -> str:
+        """
+        Get the path to the vcvarsall.bat file for Visual Studio.
+        """
+        root_paths = [
+            r"C:\Program Files\Microsoft Visual Studio\2022\Community",
+            r"C:\Program Files\Microsoft Visual Studio\2022\Professional",
+            r"C:\Program Files\Microsoft Visual Studio\2022\Enterprise",
+            r"C:\Program Files\Microsoft Visual Studio\2019\Community",
+            r"C:\Program Files\Microsoft Visual Studio\2019\Professional",
+            r"C:\Program Files\Microsoft Visual Studio\2019\Enterprise",
+            r"C:\Program Files\Microsoft Visual Studio\2017\Community",
+            r"C:\Program Files\Microsoft Visual Studio\2017\Professional",
+            r"C:\Program Files\Microsoft Visual Studio\2017\Enterprise",
+            r"C:\Program Files\Microsoft Visual Studio\2022\BuildTools",
+            r"C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools",
+            r"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools",
+        ]
+
+        for root_path in root_paths:
+            internal_path = os.path.join("VC", "Auxiliary", "Build", "vcvarsall.bat")
+            vcvarsall_path = os.path.join(root_path, internal_path)
+
+            if os.path.exists(vcvarsall_path):
+                self.logger.info("vcvarsall.bat was found at: %s", vcvarsall_path)
+                return vcvarsall_path
+
+        self.logger.error("vcvarsall.bat not found!")
+        raise EnvironmentError("vcvarsall.bat not found!")
+
     def __execute_command(self, cmake_command):
         try:
+            self.logger.info(
+                "Executing command: %s",
+                (
+                    " ".join(cmake_command)
+                    if isinstance(cmake_command, list)
+                    else cmake_command
+                ),
+            )
+
             with subprocess.Popen(
                 cmake_command,
                 stdout=subprocess.PIPE,
@@ -126,16 +195,21 @@ class Build:
         """
         self.logger.info("Starting the CMake configuration.")
 
-        cmake_command = [
-            "cmake",
-            "-B",
-            self.temp_build_output_dir,
-            f"-DCMAKE_CXX_COMPILER={self.compiler}",
-            "-DIS_COMPILING_STATIC=true",
-            "-DIS_COMPILING_SHARED=false",
-            "-DCMAKE_PREFIX_PATH=$Qt6_DIR",
-        ]
-        self.__execute_command(cmake_command)
+        if self.__running_in_github_actions():
+            cmake_command = [
+                self.cmake,
+                "-B",
+                self.temp_build_output_dir,
+                f"-DCMAKE_CXX_COMPILER={self.compiler}",
+                "-DIS_COMPILING_STATIC=true",
+                "-DIS_COMPILING_SHARED=false",
+                "-DCMAKE_PREFIX_PATH=$Qt6_DIR",
+            ]
+            self.__execute_command(cmake_command)
+        else:
+            raise EnvironmentError(
+                "This script is intended to run in GitHub Actions environment only."
+            )
 
         self.logger.info("CMake configuration completed successfully.")
 
@@ -146,7 +220,7 @@ class Build:
         self.logger.info("Starting the build process.")
 
         build_command = [
-            "cmake",
+            self.cmake,
             "--build",
             self.temp_build_output_dir,
             "--config",
@@ -167,11 +241,11 @@ class Build:
 
         shutil.copytree(
             os.path.join(self.temp_binary_output_dir, "libs"),
-            sokketter_lib_folder,
+            sokketter_lib_folder + os.path.sep,
         )
         shutil.copytree(
             os.path.join(self.temp_binary_output_dir, "includes"),
-            sokketter_lib_folder,
+            sokketter_lib_folder + os.path.sep,
         )
 
         self.logger.info("Library files packaged successfully.")
