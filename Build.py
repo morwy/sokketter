@@ -230,6 +230,7 @@ class Build:
             self.temp_build_output_dir,
             "--config",
             "Release",
+            "-j",
         ]
         self.__execute_command(build_command)
 
