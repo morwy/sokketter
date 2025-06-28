@@ -156,6 +156,48 @@ class Build:
 
         self.logger.info("Build completed successfully.")
 
+    def __package_library(self) -> None:
+        """
+        Package the built library files.
+        """
+        self.logger.info("Starting the packaging of library files.")
+
+        sokketter_lib_folder = os.path.join(self.results_output_dir, "libsokketter")
+        os.makedirs(sokketter_lib_folder, exist_ok=True)
+
+        shutil.copytree(
+            os.path.join(self.temp_binary_output_dir, "libs"),
+            sokketter_lib_folder,
+        )
+        shutil.copytree(
+            os.path.join(self.temp_binary_output_dir, "includes"),
+            sokketter_lib_folder,
+        )
+
+        self.logger.info("Library files packaged successfully.")
+
+    def __package_cli(self) -> None:
+        """
+        Package the CLI files.
+        """
+        self.logger.info("Starting the packaging of CLI files.")
+
+        sokketter_cli_folder = os.path.join(self.results_output_dir, "sokketter-cli")
+        os.makedirs(sokketter_cli_folder, exist_ok=True)
+
+        if platform.system() == "Windows":
+            shutil.copy(
+                os.path.join(self.temp_binary_output_dir, "bin", "sokketter-cli.exe"),
+                sokketter_cli_folder,
+            )
+        else:
+            shutil.copy(
+                os.path.join(self.temp_binary_output_dir, "bin", "sokketter-cli"),
+                sokketter_cli_folder,
+            )
+
+        self.logger.info("CLI files packaged successfully.")
+
     def __package_ui(self) -> None:
         """
         Package the UI files.
@@ -185,6 +227,8 @@ class Build:
         """
         self.logger.info("Starting the packaging process.")
 
+        self.__package_library()
+        self.__package_cli()
         self.__package_ui()
 
         self.logger.info("Packaging completed successfully.")
