@@ -298,6 +298,17 @@ class Build:
                 sokketter_ui_folder,
             ]
             self.__execute_command(packing_command)
+        elif platform.system() == "Darwin":
+            shutil.copy(
+                os.path.join(self.temp_binary_output_dir, "bin", "sokketter-ui.app"),
+                sokketter_ui_folder,
+            )
+            packing_command = [
+                "macdeployqt",
+                os.path.join(sokketter_ui_folder, "sokketter-ui.app"),
+                sokketter_ui_folder,
+            ]
+            self.__execute_command(packing_command)
 
         self.logger.info("UI files packaged successfully.")
 

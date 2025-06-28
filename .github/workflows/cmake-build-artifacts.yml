@@ -69,18 +69,6 @@ jobs:
     #       -executable=${{ steps.strings.outputs.sokketter-ui-name }}/usr/bin/sokketter-ui \
     #       -verbose=2
 
-    # - name: Deploy with macdeployqt (MacOS-only)
-    #   if: ${{ startsWith(matrix.os, 'macos') }}
-    #   run: |
-    #     cd ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin
-    #     mv sokketter-ui.app ${{ steps.strings.outputs.sokketter-ui-name }}.app
-    #     APP_PATH=$(find . -name "*.app" -type d | head -n 1)
-    #     APP_NAME=$(find . -name "*.app" -type d | head -n 1 | xargs basename)
-    #     echo "App path found: $APP_PATH"
-    #     echo "App name found: $APP_NAME"
-    #     macdeployqt "$APP_PATH"
-    #     zip -r sokketter-ui.zip "${APP_NAME}"
-
     - name: Upload library files
       uses: actions/upload-artifact@v4
       with:
@@ -95,10 +83,10 @@ jobs:
         path: ${{ steps.strings.outputs.results-output-dir }}${{ env.path-separator }}sokketter-cli
         if-no-files-found: error
 
-    # - name: Upload sokketter-ui (Windows-only)
-    #   if: ${{ startsWith(matrix.os, 'windows') }}
-    #   uses: actions/upload-artifact@v4
-    #   with:
-    #     name: ${{ steps.strings.outputs.sokketter-ui-name }}
-    #     path: ${{ steps.strings.outputs.sokketter-ui-name }}.zip
+    - name: Upload UI application
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.strings.outputs.sokketter-ui-name }}
+        path: ${{ steps.strings.outputs.results-output-dir }}${{ env.path-separator }}sokketter-ui
+        if-no-files-found: error
     
