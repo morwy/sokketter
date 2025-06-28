@@ -8,6 +8,7 @@
 import logging
 import os
 import platform
+import shutil
 import subprocess
 
 # --------------------------------------------------------------------------------------------------
@@ -41,11 +42,17 @@ class Build:
         self.workspace = os.environ.get("GITHUB_WORKSPACE", ".")
         self.logger.info("Workspace: %s", self.workspace)
 
-        self.build_output_dir = os.path.join(self.workspace, "build")
-        self.logger.info("Build output directory: %s", self.build_output_dir)
+        self.temp_build_output_dir = os.path.join(self.workspace, "build")
+        self.logger.info("Temp build output directory: %s", self.temp_build_output_dir)
 
-        self.binary_output_dir = self.__construct_binary_output_dir(self.workspace)
-        self.logger.info("Binary output directory: %s", self.binary_output_dir)
+        self.temp_binary_output_dir = self.__construct_binary_output_dir(self.workspace)
+        self.logger.info(
+            "Temp binary output directory: %s", self.temp_binary_output_dir
+        )
+
+        self.results_output_dir = os.path.join(self.workspace, "results")
+        self.logger.info("Results output directory: %s", self.results_output_dir)
+        os.makedirs(self.temp_build_output_dir, exist_ok=True)
 
         self.compiler = self.__get_cpp_compiler()
 
@@ -109,8 +116,6 @@ class Build:
                         process.returncode, cmake_command
                     )
 
-                self.logger.info("Command output:\n%s", process.stdout)
-
         except subprocess.CalledProcessError as e:
             self.logger.error("Command failed with error:\n%s", e.stderr)
             raise
@@ -124,7 +129,7 @@ class Build:
         cmake_command = [
             "cmake",
             "-B",
-            self.build_output_dir,
+            self.temp_build_output_dir,
             f"-DCMAKE_CXX_COMPILER={self.compiler}",
             "-DIS_COMPILING_STATIC=true",
             "-DIS_COMPILING_SHARED=false",
@@ -143,7 +148,7 @@ class Build:
         build_command = [
             "cmake",
             "--build",
-            self.build_output_dir,
+            self.temp_build_output_dir,
             "--config",
             "Release",
         ]
@@ -151,12 +156,46 @@ class Build:
 
         self.logger.info("Build completed successfully.")
 
+    def __package_ui(self) -> None:
+        """
+        Package the UI files.
+        """
+        self.logger.info("Starting the packaging of UI files.")
+
+        sokketter_ui_folder = os.path.join(self.results_output_dir, "sokketter-ui")
+        os.makedirs(sokketter_ui_folder, exist_ok=True)
+
+        if platform.system() == "Windows":
+            shutil.copy(
+                os.path.join(self.temp_binary_output_dir, "bin", "sokketter-ui.exe"),
+                sokketter_ui_folder,
+            )
+            packing_command = [
+                "windeployqt",
+                os.path.join(sokketter_ui_folder, "sokketter-ui.exe"),
+                sokketter_ui_folder,
+            ]
+            self.__execute_command(packing_command)
+
+        self.logger.info("UI files packaged successfully.")
+
+    def __package(self) -> None:
+        """
+        Package the built binaries.
+        """
+        self.logger.info("Starting the packaging process.")
+
+        self.__package_ui()
+
+        self.logger.info("Packaging completed successfully.")
+
     def run(self) -> None:
         """
         Run the build process.
         """
         self.__configure()
         self.__build()
+        self.__package()
 
 
 # --------------------------------------------------------------------------------------------------
