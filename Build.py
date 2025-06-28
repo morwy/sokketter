@@ -112,8 +112,13 @@ class Build:
         """
         Get the binary output directory based on the platform.
         """
-        # TODO: wrong on MacOS
-        architecture = "arm64" if os.environ.get("GITHUB_ARCH") == "arm64" else "x86_64"
+        machine = platform.machine().lower()
+
+        architecture = ""
+        if machine in ["arm64", "aarch64"]:
+            architecture = "arm64"
+        else:
+            architecture = "x86_64"
 
         if platform.system() == "Windows":
             return os.path.join(workspace, "bin", f"windows_{architecture}", "Release")
