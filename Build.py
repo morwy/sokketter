@@ -73,10 +73,10 @@ class Build:
         Get the CMake executable from the environment variable.
         """
         cmake = "cmake"
-        if not shutil.which(cmake):
-            self.logger.error(
-                "CMake executable not found at default location: %s", cmake
-            )
+        if shutil.which(cmake):
+            return cmake
+
+        self.logger.error("CMake executable not found at default location: %s", cmake)
 
         if platform.system() == "Windows":
             cmake = "C:\\Qt\\Tools\\CMake_64\\bin\\cmake.exe"
