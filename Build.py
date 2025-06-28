@@ -299,6 +299,8 @@ class Build:
             ]
             self.__execute_command(packing_command)
         elif platform.system() == "Darwin":
+            self.__print_file_tree(self.results_output_dir)
+
             shutil.copytree(
                 src=os.path.join(
                     self.temp_binary_output_dir, "bin", "sokketter-ui.app"
@@ -306,6 +308,9 @@ class Build:
                 dst=sokketter_ui_folder,
                 dirs_exist_ok=True,
             )
+
+            self.__print_file_tree(self.results_output_dir)
+
             packing_command = [
                 "macdeployqt",
                 os.path.join(sokketter_ui_folder, "sokketter-ui.app"),
@@ -349,8 +354,6 @@ class Build:
         self.__configure()
         self.__build()
         self.__package()
-
-        self.__print_file_tree(self.results_output_dir)
 
 
 # --------------------------------------------------------------------------------------------------
