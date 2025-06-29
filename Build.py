@@ -351,8 +351,8 @@ class Build:
 
             with open(file=desktop_file_path, mode="w", encoding="utf-8") as file:
                 for line in desktop_file_lines:
-                    if line.startswith("Version="):
-                        file.write(f"Version={self.version}\n")
+                    if line.startswith("X-AppImage-Version="):
+                        file.write(f"X-AppImage-Version={self.version}\n")
                     else:
                         file.write(line)
 
