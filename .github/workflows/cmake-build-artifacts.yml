@@ -56,19 +56,6 @@ jobs:
     #     ignore_case: true
     #     fail: true
 
-    # - name: Deploy with linuxdeployqt (Ubuntu-only)
-    #   if: ${{ startsWith(matrix.os, 'ubuntu') }}
-    #   run: |
-    #     cd ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin
-    #     mkdir -p ${{ steps.strings.outputs.sokketter-ui-name }}/usr/bin
-    #     cp sokketter-ui ${{ steps.strings.outputs.sokketter-ui-name }}/usr/bin/
-    #     cp ${{ github.workspace }}${{ env.path-separator }}sokketter-ui${{ env.path-separator }}resources${{ env.path-separator }}sokketter-ui.desktop ${{ steps.strings.outputs.sokketter-ui-name }}/
-    #     cp ${{ github.workspace }}${{ env.path-separator }}sokketter-ui${{ env.path-separator }}resources${{ env.path-separator }}sokketter-ui-icon.png ${{ steps.strings.outputs.sokketter-ui-name }}/
-    #     sed -i '/^X-AppImage-Version=/c\X-AppImage-Version=${{ steps.strings.outputs.release-version }}' ${{ steps.strings.outputs.sokketter-ui-name }}/sokketter-ui.desktop
-    #     ${{ github.workspace }}${{ env.path-separator }}linuxdeployqt-continuous-x86_64.AppImage ${{ steps.strings.outputs.sokketter-ui-name }}/usr/bin/sokketter-ui -appimage \
-    #       -executable=${{ steps.strings.outputs.sokketter-ui-name }}/usr/bin/sokketter-ui \
-    #       -verbose=2
-
     - name: Upload library files
       uses: actions/upload-artifact@v4
       with:

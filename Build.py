@@ -11,6 +11,8 @@ import platform
 import shutil
 import subprocess
 
+from ProjectVersion import ProjectVersion
+
 # --------------------------------------------------------------------------------------------------
 #
 # Global variables.
@@ -52,13 +54,16 @@ class Build:
 
         self.results_output_dir = os.path.join(self.workspace, "results")
         self.logger.info("Results output directory: %s", self.results_output_dir)
-        os.makedirs(self.temp_build_output_dir, exist_ok=True)
+        os.makedirs(self.results_output_dir, exist_ok=True)
 
         self.cmake = self.__get_cmake()
         self.logger.info("CMake executable: %s", self.cmake)
 
         self.compiler = self.__get_cpp_compiler()
         self.logger.info("C++ compiler: %s", self.compiler)
+
+        self.version = ProjectVersion().get()
+        self.logger.info("Project version: %s", self.version)
 
         github_output_path = os.environ.get("GITHUB_OUTPUT")
         if github_output_path and os.path.exists(github_output_path):
@@ -299,8 +304,6 @@ class Build:
             ]
             self.__execute_command(packing_command)
         elif platform.system() == "Darwin":
-            self.__print_file_tree(self.results_output_dir)
-
             shutil.copytree(
                 src=os.path.join(
                     self.temp_binary_output_dir, "bin", "sokketter-ui.app"
@@ -308,14 +311,67 @@ class Build:
                 dst=os.path.join(sokketter_ui_folder, "sokketter-ui.app"),
             )
 
-            self.__print_file_tree(self.results_output_dir)
-
             packing_command = [
                 "macdeployqt",
                 os.path.join(sokketter_ui_folder, "sokketter-ui.app"),
                 sokketter_ui_folder,
             ]
             self.__execute_command(packing_command)
+
+        elif platform.system() == "Linux":
+            self.__print_file_tree(self.results_output_dir)
+
+            usr_bin_folder = os.path.join(sokketter_ui_folder, "usr", "bin")
+            os.makedirs(usr_bin_folder, exist_ok=True)
+
+            shutil.copy(
+                os.path.join(self.temp_binary_output_dir, "bin", "sokketter-ui"),
+                usr_bin_folder,
+            )
+
+            shutil.copy(
+                os.path.join(
+                    self.workspace, "sokketter-ui", "resources", "sokketter-ui.desktop"
+                ),
+                sokketter_ui_folder,
+            )
+
+            shutil.copy(
+                os.path.join(
+                    self.workspace, "sokketter-ui", "resources", "sokketter-ui-icon.png"
+                ),
+                sokketter_ui_folder,
+            )
+
+            desktop_file_path = os.path.join(
+                sokketter_ui_folder, "sokketter-ui.desktop"
+            )
+            with open(file=desktop_file_path, mode="r", encoding="utf-8") as file:
+                desktop_file_lines = file.readlines()
+
+            with open(file=desktop_file_path, mode="w", encoding="utf-8") as file:
+                for line in desktop_file_lines:
+                    if line.startswith("Version="):
+                        file.write(f"Version={self.version}\n")
+                    else:
+                        file.write(line)
+
+            linuxdeployqt_path = os.path.join(
+                self.workspace, "linuxdeployqt-continuous-x86_64.AppImage"
+            )
+
+            self.__print_file_tree(self.results_output_dir)
+
+            packing_command = [
+                linuxdeployqt_path,
+                os.path.join(usr_bin_folder, "sokketter-ui"),
+                "-appimage",
+                f"-executable={os.path.join(usr_bin_folder, 'sokketter-ui')}",
+                "-verbose=2",
+            ]
+            self.__execute_command(packing_command)
+
+            self.__print_file_tree(self.results_output_dir)
 
         self.logger.info("UI files packaged successfully.")
 
