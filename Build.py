@@ -379,7 +379,7 @@ class Build:
                 self.workspace, "linuxdeployqt-continuous-x86_64.AppImage"
             )
 
-            self.__print_file_tree(self.results_output_dir)
+            self.__print_file_tree(self.workspace)
 
             packing_command = [
                 linuxdeployqt_path,
@@ -390,7 +390,7 @@ class Build:
             ]
             self.__execute_command(packing_command)
 
-            self.__print_file_tree(self.results_output_dir)
+            self.__print_file_tree(self.workspace)
 
         self.logger.info("UI files packaged successfully.")
 
