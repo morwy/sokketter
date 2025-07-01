@@ -62,6 +62,9 @@ class Build:
         self.compiler = self.__get_cpp_compiler()
         self.logger.info("C++ compiler: %s", self.compiler)
 
+        self.architecture = self.__get_architecture()
+        self.logger.info("Architecture: %s", self.architecture)
+
         self.version = ProjectVersion().get()
         self.logger.info("Project version: %s", self.version)
 
@@ -113,24 +116,36 @@ class Build:
 
         return compiler
 
+    def __get_architecture(self) -> str:
+        """
+        Get the architecture of the machine.
+        """
+        machine = platform.machine().lower()
+
+        if machine in ["arm64", "aarch64"]:
+            return "arm64"
+        elif machine in ["x86_64", "amd64"]:
+            return "x86_64"
+        else:
+            self.logger.error("Unsupported architecture: %s", machine)
+            raise EnvironmentError("Unsupported architecture")
+
     def __construct_binary_output_dir(self, workspace: str) -> str:
         """
         Get the binary output directory based on the platform.
         """
-        machine = platform.machine().lower()
-
-        architecture = ""
-        if machine in ["arm64", "aarch64"]:
-            architecture = "arm64"
-        else:
-            architecture = "x86_64"
-
         if platform.system() == "Windows":
-            return os.path.join(workspace, "bin", f"windows_{architecture}", "Release")
+            return os.path.join(
+                workspace, "bin", f"windows_{self.architecture}", "Release"
+            )
         elif platform.system() == "Linux":
-            return os.path.join(workspace, "bin", f"linux_{architecture}", "Release")
+            return os.path.join(
+                workspace, "bin", f"linux_{self.architecture}", "Release"
+            )
         elif platform.system() == "Darwin":
-            return os.path.join(workspace, "bin", f"macos_{architecture}", "Release")
+            return os.path.join(
+                workspace, "bin", f"macos_{self.architecture}", "Release"
+            )
         else:
             self.logger.error("Unsupported platform: %s", platform.system())
             raise EnvironmentError("Unsupported platform")
@@ -303,6 +318,7 @@ class Build:
                 sokketter_ui_folder,
             ]
             self.__execute_command(packing_command)
+
         elif platform.system() == "Darwin":
             shutil.copytree(
                 src=os.path.join(
@@ -319,9 +335,11 @@ class Build:
             self.__execute_command(packing_command)
 
         elif platform.system() == "Linux":
-            self.__print_file_tree(self.results_output_dir)
+            sokketter_ui_app_image_folder = os.path.join(
+                sokketter_ui_folder, f"sokketter-ui-{self.architecture}.AppImage"
+            )
 
-            usr_bin_folder = os.path.join(sokketter_ui_folder, "usr", "bin")
+            usr_bin_folder = os.path.join(sokketter_ui_app_image_folder, "usr", "bin")
             os.makedirs(usr_bin_folder, exist_ok=True)
 
             shutil.copy(
@@ -333,18 +351,18 @@ class Build:
                 os.path.join(
                     self.workspace, "sokketter-ui", "resources", "sokketter-ui.desktop"
                 ),
-                sokketter_ui_folder,
+                sokketter_ui_app_image_folder,
             )
 
             shutil.copy(
                 os.path.join(
                     self.workspace, "sokketter-ui", "resources", "sokketter-ui-icon.png"
                 ),
-                sokketter_ui_folder,
+                sokketter_ui_app_image_folder,
             )
 
             desktop_file_path = os.path.join(
-                sokketter_ui_folder, "sokketter-ui.desktop"
+                sokketter_ui_app_image_folder, "sokketter-ui.desktop"
             )
             with open(file=desktop_file_path, mode="r", encoding="utf-8") as file:
                 desktop_file_lines = file.readlines()
