@@ -41,6 +41,18 @@ class Build:
         self.logger = logging.getLogger(__name__)
         self.logger.info("Build class initialized.")
 
+        self.cmake = self.__get_cmake()
+        self.logger.info("CMake executable: %s", self.cmake)
+
+        self.compiler = self.__get_cpp_compiler()
+        self.logger.info("C++ compiler: %s", self.compiler)
+
+        self.architecture = self.__get_architecture()
+        self.logger.info("Architecture: %s", self.architecture)
+
+        self.version = ProjectVersion().get()
+        self.logger.info("Project version: %s", self.version)
+
         self.workspace = os.environ.get("GITHUB_WORKSPACE", ".")
         self.logger.info("Workspace: %s", self.workspace)
 
@@ -55,18 +67,6 @@ class Build:
         self.results_output_dir = os.path.join(self.workspace, "results")
         self.logger.info("Results output directory: %s", self.results_output_dir)
         os.makedirs(self.results_output_dir, exist_ok=True)
-
-        self.cmake = self.__get_cmake()
-        self.logger.info("CMake executable: %s", self.cmake)
-
-        self.compiler = self.__get_cpp_compiler()
-        self.logger.info("C++ compiler: %s", self.compiler)
-
-        self.architecture = self.__get_architecture()
-        self.logger.info("Architecture: %s", self.architecture)
-
-        self.version = ProjectVersion().get()
-        self.logger.info("Project version: %s", self.version)
 
         github_output_path = os.environ.get("GITHUB_OUTPUT")
         if github_output_path and os.path.exists(github_output_path):
@@ -124,11 +124,12 @@ class Build:
 
         if machine in ["arm64", "aarch64"]:
             return "arm64"
-        elif machine in ["x86_64", "amd64"]:
+
+        if machine in ["x86_64", "amd64"]:
             return "x86_64"
-        else:
-            self.logger.error("Unsupported architecture: %s", machine)
-            raise EnvironmentError("Unsupported architecture")
+
+        self.logger.error("Unsupported architecture: %s", machine)
+        raise EnvironmentError("Unsupported architecture")
 
     def __construct_binary_output_dir(self, workspace: str) -> str:
         """
