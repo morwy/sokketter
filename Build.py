@@ -338,7 +338,12 @@ class Build:
             self.__execute_command(packing_command)
 
         elif platform.system() == "Linux":
-            usr_bin_folder = os.path.join(sokketter_ui_folder, "usr", "bin")
+            sokketter_app_image_folder = os.path.join(
+                self.temp_binary_output_dir, "sokketter-ui.AppImage"
+            )
+            os.makedirs(sokketter_app_image_folder, exist_ok=True)
+
+            usr_bin_folder = os.path.join(sokketter_app_image_folder, "usr", "bin")
             os.makedirs(usr_bin_folder, exist_ok=True)
 
             shutil.copy(
@@ -350,18 +355,18 @@ class Build:
                 os.path.join(
                     self.workspace, "sokketter-ui", "resources", "sokketter-ui.desktop"
                 ),
-                sokketter_ui_folder,
+                sokketter_app_image_folder,
             )
 
             shutil.copy(
                 os.path.join(
                     self.workspace, "sokketter-ui", "resources", "sokketter-ui-icon.png"
                 ),
-                sokketter_ui_folder,
+                sokketter_app_image_folder,
             )
 
             desktop_file_path = os.path.join(
-                sokketter_ui_folder, "sokketter-ui.desktop"
+                sokketter_app_image_folder, "sokketter-ui.desktop"
             )
             with open(file=desktop_file_path, mode="r", encoding="utf-8") as file:
                 desktop_file_lines = file.readlines()
@@ -401,7 +406,7 @@ class Build:
                 self.logger.info("Renamed %s to %s", appimage_file, new_appimage_path)
                 break
 
-            self.__print_file_tree(self.workspace)
+            self.__print_file_tree(self.results_output_dir)
 
         self.logger.info("UI files packaged successfully.")
 
