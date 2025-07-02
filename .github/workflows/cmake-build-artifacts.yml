@@ -24,8 +24,6 @@ jobs:
       shell: bash
       run: |
         CURRENT_VERSION=$(python -m ProjectVersion GET_VERSION)
-        echo "release-version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
-        echo "binary-output-dir=${{ github.workspace }}${{ env.path-separator }}bin${{ env.path-separator }}${{ (startsWith(matrix.os, 'ubuntu') && 'linux') || (startsWith(matrix.os, 'windows') && 'windows') || (startsWith(matrix.os, 'macos') && 'macos') || '' }}_${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86_64' }}${{ env.path-separator }}Release" >> "$GITHUB_OUTPUT"
         echo "results-output-dir=${{ github.workspace }}${{ env.path-separator }}results" >> "$GITHUB_OUTPUT"
         echo "archive-name=libsokketter-$CURRENT_VERSION-${{ matrix.os }}-${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86-64' }}" >> "$GITHUB_OUTPUT"
         echo "sokketter-cli-name=sokketter-cli-$CURRENT_VERSION-${{ matrix.os }}-${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86-64' }}" >> "$GITHUB_OUTPUT"
@@ -46,15 +44,6 @@ jobs:
 
     - name: Run Python build script
       run: python -m Build
-
-    #   # This action has bug with wildcards under Windows OS, thus ignore it.
-    # - name: Check binaries (non-Windows)
-    #   uses: andstor/file-existence-action@v3
-    #   if: ${{ !startsWith(matrix.os, 'windows') }}
-    #   with:
-    #     files: "${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}include${{ env.path-separator }}*, ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}libs${{ env.path-separator }}*, ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin${{ env.path-separator }}*"
-    #     ignore_case: true
-    #     fail: true
 
     - name: Upload library files
       uses: actions/upload-artifact@v4

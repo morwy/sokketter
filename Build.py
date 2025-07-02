@@ -69,14 +69,6 @@ class Build:
         self.logger.info("Results output directory: %s", self.results_output_dir)
         os.makedirs(self.results_output_dir, exist_ok=True)
 
-        github_output_path = os.environ.get("GITHUB_OUTPUT")
-        if github_output_path and os.path.exists(github_output_path):
-            with open(file=github_output_path, mode="r", encoding="utf-8") as file:
-                content = file.read()
-                self.logger.info("Contents of GITHUB_OUTPUT file:\n%s", content)
-        else:
-            self.logger.info("GITHUB_OUTPUT file not found.")
-
     def __get_cmake(self) -> str:
         """
         Get the CMake executable from the environment variable.
@@ -258,6 +250,58 @@ class Build:
         self.__execute_command(build_command)
 
         self.logger.info("Build completed successfully.")
+
+    def __verify_build(self) -> None:
+        """
+        Verify that the build was successful.
+        """
+        if not os.path.exists(self.temp_binary_output_dir):
+            self.logger.error(
+                "Build output directory does not exist: %s", self.temp_binary_output_dir
+            )
+            raise FileNotFoundError("Build output directory does not exist.")
+
+        bin_folder = os.path.join(self.temp_binary_output_dir, "bin")
+        if not os.path.exists(bin_folder):
+            self.logger.error("Binary output directory does not exist: %s", bin_folder)
+            raise FileNotFoundError("Binary output directory does not exist.")
+
+        libs_folder = os.path.join(self.temp_binary_output_dir, "libs")
+        if not os.path.exists(libs_folder):
+            self.logger.error(
+                "Library output directory does not exist: %s", libs_folder
+            )
+            raise FileNotFoundError("Library output directory does not exist.")
+
+        include_folder = os.path.join(self.temp_binary_output_dir, "include")
+        if not os.path.exists(include_folder):
+            self.logger.error(
+                "Include output directory does not exist: %s", include_folder
+            )
+            raise FileNotFoundError("Include output directory does not exist.")
+
+        bin_files = glob.glob(os.path.join(bin_folder, "*"))
+        if not bin_files:
+            self.logger.error("No binary files found in bin directory: %s", bin_folder)
+            raise FileNotFoundError("No binary files found in bin directory.")
+
+        include_files = glob.glob(os.path.join(include_folder, "*.h"))
+        if not include_files:
+            self.logger.error(
+                "No header files found in include directory: %s", include_folder
+            )
+            raise FileNotFoundError("No header files found in include directory.")
+
+        lib_files = glob.glob(os.path.join(libs_folder, "*.a")) + glob.glob(
+            os.path.join(libs_folder, "*.lib")
+        )
+        if not lib_files:
+            self.logger.error(
+                "No library files found in libs directory: %s", libs_folder
+            )
+            raise FileNotFoundError("No library files found in libs directory.")
+
+        self.logger.info("Build verification completed successfully.")
 
     def __package_library(self) -> None:
         """
@@ -441,9 +485,14 @@ class Build:
         """
         Run the build process.
         """
+        self.logger.info("Starting the build process.")
+
         self.__configure()
         self.__build()
+        self.__verify_build()
         self.__package()
+
+        self.logger.info("Build process completed successfully.")
 
 
 # --------------------------------------------------------------------------------------------------
