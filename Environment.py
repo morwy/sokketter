@@ -130,8 +130,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "-a",
-        "--action",
+        dest="action",
         type=str,
         nargs="?",
         metavar="ACTION",
