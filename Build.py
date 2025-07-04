@@ -393,7 +393,7 @@ class Build:
             self.__execute_command(packing_command)
 
             zip_name = shutil.make_archive(
-                base_name=f"sokketter-ui-{self.version}-windows",
+                base_name=f"sokketter-ui-{self.version}-windows-{self.architecture}",
                 format="zip",
                 root_dir=sokketter_ui_zip_folder,
             )
