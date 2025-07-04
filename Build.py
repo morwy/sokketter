@@ -375,12 +375,12 @@ class Build:
         sokketter_ui_folder = os.path.join(self.results_output_dir, "sokketter-ui")
         os.makedirs(sokketter_ui_folder, exist_ok=True)
 
-        if platform.system() == "Windows":
-            sokketter_ui_zip_folder = os.path.join(
-                self.temp_binary_output_dir, "sokketter-ui-zipped"
-            )
-            os.makedirs(sokketter_ui_zip_folder, exist_ok=True)
+        sokketter_ui_zip_folder = os.path.join(
+            self.temp_binary_output_dir, "sokketter-ui-zipped"
+        )
+        os.makedirs(sokketter_ui_zip_folder, exist_ok=True)
 
+        if platform.system() == "Windows":
             shutil.copy(
                 os.path.join(self.temp_binary_output_dir, "bin", "sokketter-ui.exe"),
                 sokketter_ui_zip_folder,
@@ -408,15 +408,26 @@ class Build:
                 src=os.path.join(
                     self.temp_binary_output_dir, "bin", "sokketter-ui.app"
                 ),
-                dst=os.path.join(sokketter_ui_folder, "sokketter-ui.app"),
+                dst=os.path.join(sokketter_ui_zip_folder, "sokketter-ui.app"),
             )
 
             packing_command = [
                 "macdeployqt",
-                os.path.join(sokketter_ui_folder, "sokketter-ui.app"),
-                sokketter_ui_folder,
+                os.path.join(sokketter_ui_zip_folder, "sokketter-ui.app"),
+                sokketter_ui_zip_folder,
             ]
             self.__execute_command(packing_command)
+
+            zip_name = shutil.make_archive(
+                base_name=f"sokketter-ui-{self.version}-macos-{self.architecture}",
+                format="zip",
+                root_dir=sokketter_ui_zip_folder,
+            )
+
+            shutil.move(
+                src=os.path.join(self.workspace, zip_name),
+                dst=sokketter_ui_folder,
+            )
 
         elif platform.system() == "Linux":
             sokketter_app_image_folder = os.path.join(
@@ -471,21 +482,32 @@ class Build:
                 "-verbose=2",
             ]
             self.__execute_command(
-                cmake_command=packing_command, cwd=sokketter_ui_folder
+                cmake_command=packing_command, cwd=sokketter_ui_zip_folder
             )
 
             appimage_pattern = os.path.join(
-                sokketter_ui_folder, "sokketter-ui-*.AppImage"
+                sokketter_ui_zip_folder, "sokketter-ui-*.AppImage"
             )
             appimage_files = glob.glob(appimage_pattern)
 
             for appimage_file in appimage_files:
                 new_appimage_path = os.path.join(
-                    sokketter_ui_folder, "sokketter-ui.AppImage"
+                    sokketter_ui_zip_folder, "sokketter-ui.AppImage"
                 )
                 os.rename(appimage_file, new_appimage_path)
                 self.logger.info("Renamed %s to %s", appimage_file, new_appimage_path)
                 break
+
+            zip_name = shutil.make_archive(
+                base_name=f"sokketter-ui-{self.version}-ubuntu-{self.architecture}",
+                format="zip",
+                root_dir=sokketter_ui_zip_folder,
+            )
+
+            shutil.move(
+                src=os.path.join(self.workspace, zip_name),
+                dst=sokketter_ui_folder,
+            )
 
         self.logger.info("UI files packaged successfully.")
 
