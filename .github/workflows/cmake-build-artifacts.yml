@@ -23,11 +23,14 @@ jobs:
       id: strings
       shell: bash
       run: |
+        OS_NAME=$(python -m Environment GET_OS_NAME)
+        OS_VERSION=$(python -m Environment GET_OS_VERSION)
+        OS_ARCHITECTURE=$(python -m Environment GET_ARCHITECTURE)
         CURRENT_VERSION=$(python -m ProjectVersion GET_VERSION)
         echo "results-output-dir=${{ github.workspace }}${{ env.path-separator }}results" >> "$GITHUB_OUTPUT"
-        echo "archive-name=libsokketter-$CURRENT_VERSION-${{ matrix.os }}-${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86-64' }}" >> "$GITHUB_OUTPUT"
-        echo "sokketter-cli-name=sokketter-cli-$CURRENT_VERSION-${{ matrix.os }}-${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86-64' }}" >> "$GITHUB_OUTPUT"
-        echo "sokketter-ui-name=sokketter-ui-$CURRENT_VERSION-${{ matrix.os }}-${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86-64' }}" >> "$GITHUB_OUTPUT"
+        echo "archive-name=libsokketter-$CURRENT_VERSION-$OS_NAME-$OS_VERSION-$OS_ARCHITECTURE" >> "$GITHUB_OUTPUT"
+        echo "sokketter-cli-name=sokketter-cli-$CURRENT_VERSION-$OS_NAME-$OS_VERSION-$OS_ARCHITECTURE" >> "$GITHUB_OUTPUT"
+        echo "sokketter-ui-name=sokketter-ui-$CURRENT_VERSION-$OS_NAME-$OS_VERSION-$OS_ARCHITECTURE" >> "$GITHUB_OUTPUT"
 
     - name: Install dependencies (Ubuntu-only)
       if: ${{ startsWith(matrix.os, 'ubuntu') }}
