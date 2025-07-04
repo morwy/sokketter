@@ -376,16 +376,32 @@ class Build:
         os.makedirs(sokketter_ui_folder, exist_ok=True)
 
         if platform.system() == "Windows":
+            sokketter_ui_zip_folder = os.path.join(
+                self.temp_binary_output_dir, "sokketter-ui-zipped"
+            )
+            os.makedirs(sokketter_ui_zip_folder, exist_ok=True)
+
             shutil.copy(
                 os.path.join(self.temp_binary_output_dir, "bin", "sokketter-ui.exe"),
-                sokketter_ui_folder,
+                sokketter_ui_zip_folder,
             )
             packing_command = [
                 "windeployqt",
-                os.path.join(sokketter_ui_folder, "sokketter-ui.exe"),
-                sokketter_ui_folder,
+                os.path.join(sokketter_ui_zip_folder, "sokketter-ui.exe"),
+                sokketter_ui_zip_folder,
             ]
             self.__execute_command(packing_command)
+
+            zip_name = shutil.make_archive(
+                base_name=f"sokketter-ui-{self.version}-windows",
+                format="zip",
+                root_dir=sokketter_ui_zip_folder,
+            )
+
+            shutil.move(
+                src=os.path.join(self.workspace, zip_name),
+                dst=sokketter_ui_folder,
+            )
 
         elif platform.system() == "Darwin":
             shutil.copytree(
