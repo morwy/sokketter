@@ -1,52 +1,6 @@
 # Changelog
 
-## [1.3.0] - 2025-07-04
-
-### 🚀 Features
-
-- Sorting power strips by name (#14) by @morwy
-- Added possibility to open disconnected power strip for editing (#15) by @morwy
-
-### 🐛 Bug Fixes
-
-- Corrected mentions of used libraries and their licenses by @morwy
-- Made socket list item to have more detailed information (#16) by @morwy
-
-### 📚 Documentation
-
-- Added mention of used nlohmann/json library by @morwy
-
-### ⚙️ Miscellaneous Tasks
-
-- Removed some redundant parameters
-- Initial build script
-- Running the new build script
-- Some fixes
-- Corrected logging format
-- Added initial packaging
-- More packaging
-- Small fix
-- Small fix for MacOS
-- Small fix for packaging the libraries
-- Building with max cores possible
-- Debug logging
-- Trying to fix the upload
-- Error on no files uploaded
-- Added packaging for MacOS
-- Fixing packaging for MacOS
-- Added packaging for Ubuntu
-- Fixing packaging for Ubuntu
-- Changed UI packing on Ubuntu
-- Small bug fix
-- Added more logging
-- Fixing Ubuntu packaging
-- Added build verification
-- Added stages parameters for controlling build script
-- Zipping UI under Windows
-- Clanup for release script
-- Zip renaming
-
-## [1.3.0] - 2025-07-04
+## [1.3.0] - 2025-06-22
 
 ### 🚀 Features
 
