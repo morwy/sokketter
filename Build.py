@@ -65,6 +65,12 @@ class Build:
         self.compiler = self.__get_cpp_compiler()
         self.logger.info("C++ compiler: %s", self.compiler)
 
+        self.os_name = platform.system()
+        self.logger.info("Operating system: %s", self.os_name)
+
+        self.os_version = platform.release()
+        self.logger.info("Operating system version: %s", self.os_version)
+
         self.architecture = self.__get_architecture()
         self.logger.info("Architecture: %s", self.architecture)
 
@@ -372,7 +378,7 @@ class Build:
             )
 
         zip_name = shutil.make_archive(
-            base_name=f"sokketter-cli-{self.version}-windows-{self.architecture}",
+            base_name=f"sokketter-cli-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}",
             format="zip",
             root_dir=sokketter_cli_zip_folder,
         )
@@ -411,7 +417,7 @@ class Build:
             self.__execute_command(packing_command)
 
             zip_name = shutil.make_archive(
-                base_name=f"sokketter-ui-{self.version}-windows-{self.architecture}",
+                base_name=f"sokketter-ui-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}",
                 format="zip",
                 root_dir=sokketter_ui_zip_folder,
             )
@@ -437,7 +443,7 @@ class Build:
             self.__execute_command(packing_command)
 
             zip_name = shutil.make_archive(
-                base_name=f"sokketter-ui-{self.version}-macos-{self.architecture}",
+                base_name=f"sokketter-ui-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}",
                 format="zip",
                 root_dir=sokketter_ui_zip_folder,
             )
@@ -517,7 +523,7 @@ class Build:
                 break
 
             zip_name = shutil.make_archive(
-                base_name=f"sokketter-ui-{self.version}-ubuntu-{self.architecture}",
+                base_name=f"sokketter-ui-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}",
                 format="zip",
                 root_dir=sokketter_ui_zip_folder,
             )
