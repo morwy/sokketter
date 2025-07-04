@@ -71,7 +71,9 @@ class Build:
         self.version = ProjectVersion().get()
         self.logger.info("Project version: %s", self.version)
 
-        self.workspace = os.environ.get("GITHUB_WORKSPACE", ".")
+        self.workspace = os.environ.get(
+            "GITHUB_WORKSPACE", os.path.dirname(os.path.abspath(__file__))
+        )
         self.logger.info("Workspace: %s", self.workspace)
 
         self.temp_build_output_dir = os.path.join(self.workspace, "build")
