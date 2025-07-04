@@ -10,6 +10,7 @@ import glob
 import logging
 import os
 import platform
+import re
 import shutil
 import subprocess
 from enum import Enum
@@ -65,10 +66,10 @@ class Build:
         self.compiler = self.__get_cpp_compiler()
         self.logger.info("C++ compiler: %s", self.compiler)
 
-        self.os_name = platform.system()
+        self.os_name = self.__get_os_name()
         self.logger.info("Operating system: %s", self.os_name)
 
-        self.os_version = platform.release()
+        self.os_version = self.__get_os_version()
         self.logger.info("Operating system version: %s", self.os_version)
 
         self.architecture = self.__get_architecture()
@@ -133,6 +134,77 @@ class Build:
             raise EnvironmentError("Unsupported platform")
 
         return compiler
+
+    def __get_os_name(self) -> str:
+        """
+        Get the name of the operating system.
+        """
+        os_name = platform.system().lower()
+
+        if os_name == "windows":
+            return "windows"
+
+        if os_name == "linux":
+            try:
+                with open(file="/etc/os-release", mode="r", encoding="utf-8") as file:
+                    os_release = file.read()
+
+                match = re.search(r'^ID="?([^"\n]+)"?', os_release, re.MULTILINE)
+                if not match:
+                    self.logger.error("Unable to determine Linux distribution ID.")
+                    raise EnvironmentError("Unable to determine Linux distribution ID")
+
+                return match.group(1).lower()
+
+            except FileNotFoundError:
+                return "linux"
+
+        if os_name == "darwin":
+            return "macos"
+
+        self.logger.error("Unsupported operating system: %s", os_name)
+        raise EnvironmentError("Unsupported operating system")
+
+    def __get_os_version(self) -> str:
+        """
+        Get the version of the operating system.
+        """
+        os_name = platform.system().lower()
+        os_version = platform.release().lower()
+
+        if os_name == "windows":
+            return platform.release()
+
+        if os_name == "linux":
+            try:
+                with open(file="/etc/os-release", mode="r", encoding="utf-8") as file:
+                    os_release = file.read()
+
+                version_match = re.search(
+                    r'^VERSION_ID="?([^"\n]+)"?', os_release, re.MULTILINE
+                )
+                if not version_match:
+                    self.logger.error("Unable to determine Linux version.")
+                    raise EnvironmentError("Unable to determine Linux version")
+
+                return version_match.group(1)
+
+            except FileNotFoundError:
+                return platform.release()
+
+        if os_name == "darwin":
+            mac_version = platform.mac_ver()[0]
+            if not mac_version:
+                self.logger.error("Unable to determine macOS version.")
+                raise EnvironmentError("Unable to determine macOS version")
+
+            mac_version_parts = mac_version.split(".")
+            version = f"{mac_version_parts[0]}.{mac_version_parts[1]}"
+
+            return version
+
+        self.logger.error("Unsupported OS version: %s", os_version)
+        raise EnvironmentError("Unsupported OS version")
 
     def __get_architecture(self) -> str:
         """
