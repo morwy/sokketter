@@ -5,20 +5,34 @@
 # Imports.
 #
 # --------------------------------------------------------------------------------------------------
+import argparse
 import glob
 import logging
 import os
 import platform
 import shutil
 import subprocess
+from enum import Enum
 
 from ProjectVersion import ProjectVersion
+
 
 # --------------------------------------------------------------------------------------------------
 #
 # Global variables.
 #
 # --------------------------------------------------------------------------------------------------
+class BuildStage(str, Enum):
+    """
+    Enum to define the build stages.
+    """
+
+    ALL = "ALL"
+    CONFIGURE = "CONFIGURE"
+    BUILD = "BUILD"
+    VERIFY = "VERIFY"
+    PACKAGE = "PACKAGE"
+    TEST = "TEST"
 
 
 # --------------------------------------------------------------------------------------------------
@@ -31,7 +45,7 @@ class Build:
     Class to handle the build process.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, stages: list[str]) -> None:
         """
         Initialize the build class.
         """
@@ -41,6 +55,9 @@ class Build:
         )
         self.logger = logging.getLogger(__name__)
         self.logger.info("Build class initialized.")
+
+        self.stages = stages
+        self.logger.info("Build stages: %s", self.stages)
 
         self.cmake = self.__get_cmake()
         self.logger.info("CMake executable: %s", self.cmake)
@@ -225,6 +242,10 @@ class Build:
                 "-DIS_COMPILING_SHARED=false",
                 "-DCMAKE_PREFIX_PATH=$Qt6_DIR",
             ]
+
+            if BuildStage.TEST.value in self.stages and platform.system() != "Windows":
+                cmake_command.append("-DENABLE_TESTING=true")
+
             self.__execute_command(cmake_command)
         else:
             raise EnvironmentError(
@@ -450,8 +471,6 @@ class Build:
                 self.logger.info("Renamed %s to %s", appimage_file, new_appimage_path)
                 break
 
-            self.__print_file_tree(self.results_output_dir)
-
         self.logger.info("UI files packaged successfully.")
 
     def __package(self) -> None:
@@ -466,31 +485,32 @@ class Build:
 
         self.logger.info("Packaging completed successfully.")
 
-    def __print_file_tree(self, folder_path, indent=""):
-        try:
-            items = os.listdir(folder_path)
-        except PermissionError:
-            print(indent + "Permission Denied: " + folder_path)
-            return
-
-        for item in items:
-            item_path = os.path.join(folder_path, item)
-            if os.path.isdir(item_path):
-                print(indent + item + "/")
-                self.__print_file_tree(item_path, indent + "    ")
-            else:
-                print(indent + item)
-
     def run(self) -> None:
         """
         Run the build process.
         """
         self.logger.info("Starting the build process.")
 
-        self.__configure()
-        self.__build()
-        self.__verify_build()
-        self.__package()
+        if (
+            BuildStage.CONFIGURE.value in self.stages
+            or BuildStage.ALL.value in self.stages
+        ):
+            self.__configure()
+
+        if BuildStage.BUILD.value in self.stages or BuildStage.ALL.value in self.stages:
+            self.__build()
+
+        if (
+            BuildStage.VERIFY.value in self.stages
+            or BuildStage.ALL.value in self.stages
+        ):
+            self.__verify_build()
+
+        if (
+            BuildStage.PACKAGE.value in self.stages
+            or BuildStage.ALL.value in self.stages
+        ):
+            self.__package()
 
         self.logger.info("Build process completed successfully.")
 
@@ -501,4 +521,20 @@ class Build:
 #
 # --------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
-    Build().run()
+    parser = argparse.ArgumentParser(
+        description="Build script for the sokketter project."
+    )
+
+    parser.add_argument(
+        "--stages",
+        type=str,
+        nargs="*",
+        metavar="STAGES",
+        default=[BuildStage.ALL],
+        choices=[stage.value for stage in BuildStage],
+        help=f"Stages to run (default: {BuildStage.ALL.name}). Available stages: {', '.join(stage.value for stage in BuildStage)}.",
+    )
+
+    args = parser.parse_args()
+
+    Build(args.stages).run()

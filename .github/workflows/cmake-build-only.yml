@@ -1,8 +1,7 @@
 name: CMake (compile and test)
 
 on:
-  push:
-    branches: [ "main", "*" ]
+  workflow_dispatch:
   pull_request:
     branches: [ "main" ]
 
@@ -16,39 +15,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-22.04, windows-2022, macos-13, macos-14]
-        build_type: [Release]
-        c_compiler: [gcc, clang, cl]
-        library_type: [static]
-        include:
-          - os: windows-2022
-            c_compiler: cl
-            cpp_compiler: cl
-          - os: macos-13
-            c_compiler: clang
-            cpp_compiler: clang++
-          - os: macos-14
-            c_compiler: clang
-            cpp_compiler: clang++
-          - os: ubuntu-22.04
-            c_compiler: gcc
-            cpp_compiler: g++
-        exclude:
-          - os: windows-2022
-            c_compiler: gcc
-          - os: windows-2022
-            c_compiler: clang
-          - os: macos-13
-            c_compiler: cl
-          - os: macos-13
-            c_compiler: gcc
-          - os: macos-14
-            c_compiler: cl
-          - os: macos-14
-            c_compiler: gcc
-          - os: ubuntu-22.04
-            c_compiler: cl
-          - os: ubuntu-22.04
-            c_compiler: clang
 
     steps:
     - name: Checkout repository
@@ -61,50 +27,25 @@ jobs:
       shell: bash
       run: |
         echo "build-output-dir=${{ github.workspace }}${{ env.path-separator }}build" >> "$GITHUB_OUTPUT"
-        echo "binary-output-dir=${{ github.workspace }}${{ env.path-separator }}bin${{ env.path-separator }}${{ (startsWith(matrix.os, 'ubuntu') && 'linux') || (startsWith(matrix.os, 'windows') && 'windows') || (startsWith(matrix.os, 'macos') && 'macos') || '' }}_${{ (startsWith(matrix.os, 'macos-14') && 'arm64') || 'x86_64' }}${{ env.path-separator }}${{ matrix.build_type }}" >> "$GITHUB_OUTPUT"
 
     - name: Install dependencies (Ubuntu only)
+      if: ${{ startsWith(matrix.os, 'ubuntu') }}
       run: |
         sudo apt update
         sudo apt install libfuse2 gcc lcov libudev-dev ninja-build -y
-      if: ${{ startsWith(matrix.os, 'ubuntu') }}
 
     - name: Install dependencies (MacOS only)
+      if: ${{ startsWith(matrix.os, 'macos') }}
       run: |
         brew install lcov
-      if: ${{ startsWith(matrix.os, 'macos') }}
 
-    - name: Configure CMake for static libraries (Windows)
-      run: |
-        cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=true -DIS_COMPILING_SHARED=false
-      if: ${{ matrix.library_type == 'static' && startsWith(matrix.os, 'windows') }}
-
-    - name: Configure CMake for shared libraries (Windows)
-      run: |
-        cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=false -DIS_COMPILING_SHARED=true
-      if: ${{ matrix.library_type == 'shared' && startsWith(matrix.os, 'windows') }}
-
-    - name: Configure CMake for static libraries (non-Windows)
-      run: |
-        cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=true -DIS_COMPILING_SHARED=false -DENABLE_TESTING=true
-      if: ${{ matrix.library_type == 'static' && !startsWith(matrix.os, 'windows') }}
-
-    - name: Configure CMake for shared libraries (non-Windows)
-      run: |
-        cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DIS_COMPILING_STATIC=false -DIS_COMPILING_SHARED=true -DENABLE_TESTING=true
-      if: ${{ matrix.library_type == 'shared' && !startsWith(matrix.os, 'windows') }}
-
-    - name: Build binaries
-      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
-
-      # This action has bug with wildcards under Windows OS, thus ignore it.
-    - name: Check binaries (non-Windows)
-      uses: andstor/file-existence-action@v3
-      if: ${{ !startsWith(matrix.os, 'windows') }}
+    - name: Install Qt6 dependencies
+      uses: jurplel/install-qt-action@v3
       with:
-        files: "${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}include${{ env.path-separator }}*, ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}libs${{ env.path-separator }}*, ${{ steps.strings.outputs.binary-output-dir }}${{ env.path-separator }}bin${{ env.path-separator }}*"
-        ignore_case: true
-        fail: true
+        version: '6.5.*'
+
+    - name: Run Python build script
+      run: python -m Build
 
     - name: Run tests
       run: |
