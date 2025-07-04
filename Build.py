@@ -355,16 +355,32 @@ class Build:
         sokketter_cli_folder = os.path.join(self.results_output_dir, "sokketter-cli")
         os.makedirs(sokketter_cli_folder, exist_ok=True)
 
+        sokketter_cli_zip_folder = os.path.join(
+            self.temp_binary_output_dir, "sokketter-cli-zipped"
+        )
+        os.makedirs(sokketter_cli_zip_folder, exist_ok=True)
+
         if platform.system() == "Windows":
             shutil.copy(
                 os.path.join(self.temp_binary_output_dir, "bin", "sokketter-cli.exe"),
-                sokketter_cli_folder,
+                sokketter_cli_zip_folder,
             )
         else:
             shutil.copy(
                 os.path.join(self.temp_binary_output_dir, "bin", "sokketter-cli"),
-                sokketter_cli_folder,
+                sokketter_cli_zip_folder,
             )
+
+        zip_name = shutil.make_archive(
+            base_name=f"sokketter-cli-{self.version}-windows-{self.architecture}",
+            format="zip",
+            root_dir=sokketter_cli_zip_folder,
+        )
+
+        shutil.move(
+            src=os.path.join(self.workspace, zip_name),
+            dst=sokketter_cli_folder,
+        )
 
         self.logger.info("CLI files packaged successfully.")
 
