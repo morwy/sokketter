@@ -10,11 +10,12 @@ import glob
 import logging
 import os
 import platform
-import re
 import shutil
 import subprocess
+import sys
 from enum import Enum
 
+from Environment import Environment
 from ProjectVersion import ProjectVersion
 
 
@@ -66,13 +67,13 @@ class Build:
         self.compiler = self.__get_cpp_compiler()
         self.logger.info("C++ compiler: %s", self.compiler)
 
-        self.os_name = self.__get_os_name()
+        self.os_name = Environment.get_os_name()
         self.logger.info("Operating system: %s", self.os_name)
 
-        self.os_version = self.__get_os_version()
+        self.os_version = Environment.get_os_version()
         self.logger.info("Operating system version: %s", self.os_version)
 
-        self.architecture = self.__get_architecture()
+        self.architecture = Environment.get_architecture()
         self.logger.info("Architecture: %s", self.architecture)
 
         self.version = ProjectVersion().get()
@@ -134,92 +135,6 @@ class Build:
             raise EnvironmentError("Unsupported platform")
 
         return compiler
-
-    def __get_os_name(self) -> str:
-        """
-        Get the name of the operating system.
-        """
-        os_name = platform.system().lower()
-
-        if os_name == "windows":
-            return "windows"
-
-        if os_name == "linux":
-            try:
-                with open(file="/etc/os-release", mode="r", encoding="utf-8") as file:
-                    os_release = file.read()
-
-                match = re.search(r'^ID="?([^"\n]+)"?', os_release, re.MULTILINE)
-                if not match:
-                    self.logger.error("Unable to determine Linux distribution ID.")
-                    raise EnvironmentError("Unable to determine Linux distribution ID")
-
-                return match.group(1).lower()
-
-            except FileNotFoundError:
-                return "linux"
-
-        if os_name == "darwin":
-            return "macos"
-
-        self.logger.error("Unsupported operating system: %s", os_name)
-        raise EnvironmentError("Unsupported operating system")
-
-    def __get_os_version(self) -> str:
-        """
-        Get the version of the operating system.
-        """
-        os_name = platform.system().lower()
-        os_version = platform.release().lower()
-
-        if os_name == "windows":
-            return platform.release()
-
-        if os_name == "linux":
-            try:
-                with open(file="/etc/os-release", mode="r", encoding="utf-8") as file:
-                    os_release = file.read()
-
-                version_match = re.search(
-                    r'^VERSION_ID="?([^"\n]+)"?', os_release, re.MULTILINE
-                )
-                if not version_match:
-                    self.logger.error("Unable to determine Linux version.")
-                    raise EnvironmentError("Unable to determine Linux version")
-
-                return version_match.group(1)
-
-            except FileNotFoundError:
-                return platform.release()
-
-        if os_name == "darwin":
-            mac_version = platform.mac_ver()[0]
-            if not mac_version:
-                self.logger.error("Unable to determine macOS version.")
-                raise EnvironmentError("Unable to determine macOS version")
-
-            mac_version_parts = mac_version.split(".")
-            version = f"{mac_version_parts[0]}.{mac_version_parts[1]}"
-
-            return version
-
-        self.logger.error("Unsupported OS version: %s", os_version)
-        raise EnvironmentError("Unsupported OS version")
-
-    def __get_architecture(self) -> str:
-        """
-        Get the architecture of the machine.
-        """
-        machine = platform.machine().lower()
-
-        if machine in ["arm64", "aarch64"]:
-            return "arm64"
-
-        if machine in ["x86_64", "amd64"]:
-            return "x86_64"
-
-        self.logger.error("Unsupported architecture: %s", machine)
-        raise EnvironmentError("Unsupported architecture")
 
     def __construct_binary_output_dir(self, workspace: str) -> str:
         """
@@ -670,5 +585,9 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+
+    if not args.stages:
+        print("No stages specified. Use --help to see available stages.")
+        sys.exit(1)
 
     Build(args.stages).run()
