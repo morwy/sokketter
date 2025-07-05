@@ -4,5 +4,6 @@
         <file>socket_icon_white.png</file>
         <file>power_strip_icon_white.png</file>
         <file>power_strip_icon_black.png</file>
+        <file>radiobutton_checked.svg</file>
     </qresource>
 </RCC>

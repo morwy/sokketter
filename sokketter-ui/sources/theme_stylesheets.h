@@ -212,6 +212,24 @@ const QString light_theme = base_theme + R"(
     QLineEdit:focus {
         border: 2px solid #E2A336;
     }
+
+    QRadioButton {
+        color: #21201C;
+    }
+
+    QRadioButton::indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 7px;
+        border: 1px solid #CFCECA;
+        background: #FFFFFF;
+    }
+
+    QRadioButton::indicator:checked {
+        background-color: #FFC53D;
+        border: 1px solid #FFC53D;
+        image: url(:/icons/radiobutton_checked.svg);
+    }
 )";
 
 const QString dark_theme = base_theme + R"(
@@ -387,6 +405,24 @@ const QString dark_theme = base_theme + R"(
 
     QLineEdit:focus {
         border: 2px solid #8F6424;
+    }
+
+    QRadioButton {
+        color: #EEEEEC;
+    }
+
+    QRadioButton::indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 7px;
+        border: 1px solid #474642;
+        background: #0D0D0C;
+    }
+
+    QRadioButton::indicator:checked {
+        background-color: #FFC743;
+        border: 1px solid #FFC743;
+        image: url(:/icons/radiobutton_checked.svg);
     }
 )";
 

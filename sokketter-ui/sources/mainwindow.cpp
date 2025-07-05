@@ -449,7 +449,21 @@ auto MainWindow::initialize_settings_page() -> void
         QString::fromStdString(sokketter::storage_path().string()));
     m_ui->settings_data_path_label->setToolTip(
         QString::fromStdString(sokketter::storage_path().string()));
-    m_ui->settings_socket_activation_combobox->setCurrentIndex(int(settings.socket_toggle));
+
+    switch (settings.socket_toggle)
+    {
+    case socket_toggle_type::ST_SINGLE_CLICK: {
+        m_ui->settings_socket_single_on_radio_button->setChecked(true);
+        break;
+    }
+    case socket_toggle_type::ST_DOUBLE_CLICK: {
+        m_ui->settings_socket_double_on_radio_button->setChecked(true);
+        break;
+    }
+    case socket_toggle_type::ST_INVALID: {
+        break;
+    }
+    }
 
     QObject::connect(m_ui->settings_open_data_label, &ClickableLabel::clicked, [this]() {
         const QString &path = m_ui->settings_data_path_label->text();
@@ -473,11 +487,16 @@ auto MainWindow::initialize_settings_page() -> void
     });
 
     QObject::connect(
-        m_ui->settings_socket_activation_combobox, &QComboBox::currentIndexChanged, [&](int index) {
-            settings.socket_toggle = socket_toggle_type(index);
-
+        m_ui->settings_socket_single_on_radio_button, &QRadioButton::clicked, [&](bool checked) {
+            settings.socket_toggle = socket_toggle_type::ST_SINGLE_CLICK;
             app_settings_storage::instance().save();
+            connect_socket_list_on_click();
+        });
 
+    QObject::connect(
+        m_ui->settings_socket_double_on_radio_button, &QRadioButton::clicked, [&](bool checked) {
+            settings.socket_toggle = socket_toggle_type::ST_DOUBLE_CLICK;
+            app_settings_storage::instance().save();
             connect_socket_list_on_click();
         });
 }
