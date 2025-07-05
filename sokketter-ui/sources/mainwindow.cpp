@@ -772,7 +772,8 @@ void MainWindow::broadcast_event(QEvent *event)
 
 auto MainWindow::set_theme_according_to_mode() -> void
 {
-    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Setting application theme.");
+    SPDLOG_LOGGER_DEBUG(
+        APP_LOGGER, "Setting application theme to {}.", isDarkMode() ? "dark" : "light");
 
     qApp->setStyleSheet(isDarkMode() ? dark_theme : light_theme);
 #ifdef Q_OS_WIN

@@ -2,6 +2,8 @@
 
 #ifdef Q_OS_WIN
 
+#    include <app_logger.h>
+
 #    include <Windows.h>
 #    include <dwmapi.h>
 #    include <spdlog/spdlog.h>
@@ -20,7 +22,7 @@ void toggle_dark_titlebar(WId window_id, const bool enabled)
         window_handle, DWMWA_USE_IMMERSIVE_DARK_MODE, &use_dark_mode, sizeof(use_dark_mode));
     if (FAILED(result))
     {
-        SPDLOG_ERROR(
+        SPDLOG_LOGGER_ERROR(APP_LOGGER,
             "DwmSetWindowAttribute() failed with error code {}, retrying with older version.",
             result);
 
@@ -28,10 +30,13 @@ void toggle_dark_titlebar(WId window_id, const bool enabled)
             &use_dark_mode, sizeof(use_dark_mode));
         if (FAILED(result))
         {
-            SPDLOG_ERROR(
+            SPDLOG_LOGGER_ERROR(APP_LOGGER,
                 "DwmSetWindowAttribute() with older version failed with error code {}.", result);
         }
     }
+
+    SPDLOG_LOGGER_DEBUG(
+        APP_LOGGER, "Set application title bar theme to {}.", enabled ? "dark" : "light");
 }
 
 #endif
