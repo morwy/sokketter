@@ -15,11 +15,13 @@ void from_json(const nlohmann::json &j, window_settings &ws)
 
 void to_json(nlohmann::json &j, const app_settings &s)
 {
-    j = nlohmann::json{{"window", s.window}, {"socket_toggle", s.socket_toggle}};
+    j = nlohmann::json{
+        {"window", s.window}, {"socket_toggle", s.socket_toggle}, {"theme", s.theme}};
 }
 
 void from_json(const nlohmann::json &j, app_settings &s)
 {
     s.window = j.value("window", window_settings());
     s.socket_toggle = j.value("socket_toggle", socket_toggle_type::ST_SINGLE_CLICK);
+    s.theme = j.value("theme", theme_type::T_AUTO);
 }

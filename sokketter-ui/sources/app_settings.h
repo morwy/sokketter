@@ -31,10 +31,26 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
                             {socket_toggle_type::ST_DOUBLE_CLICK, "double-click"},
                         })
 
+enum class theme_type
+{
+    T_INVALID = -1,
+    T_AUTO,
+    T_LIGHT,
+    T_DARK,
+};
+
+NLOHMANN_JSON_SERIALIZE_ENUM(theme_type, {
+                                             {theme_type::T_INVALID, nullptr},
+                                             {theme_type::T_AUTO, "auto"},
+                                             {theme_type::T_LIGHT, "light"},
+                                             {theme_type::T_DARK, "dark"},
+                                         })
+
 struct app_settings
 {
     window_settings window;
     socket_toggle_type socket_toggle = socket_toggle_type::ST_SINGLE_CLICK;
+    theme_type theme = theme_type::T_AUTO;
 };
 
 void to_json(nlohmann::json &j, const app_settings &s);
