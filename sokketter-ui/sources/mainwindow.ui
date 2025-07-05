@@ -449,17 +449,20 @@ li.checked::marker { content: &quot;\2612&quot;; }
               </widget>
              </item>
              <item row="0" column="1">
-              <widget class="QComboBox" name="settings_socket_activation_combobox">
-               <item>
-                <property name="text">
-                 <string>Single click</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Double click</string>
-                </property>
-               </item>
+              <widget class="QRadioButton" name="settings_socket_single_on_radio_button">
+               <property name="text">
+                <string>Single click</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QRadioButton" name="settings_socket_double_on_radio_button">
+               <property name="text">
+                <string>Double click</string>
+               </property>
               </widget>
              </item>
             </layout>
