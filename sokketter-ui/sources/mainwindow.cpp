@@ -18,7 +18,9 @@
 
 #include <ClickableLabel.h>
 #include <QApplication>
+#include <QButtonGroup>
 #include <QDesktopServices>
+#include <QEvent>
 #include <QFileInfo>
 #include <QLabel>
 #include <QLineEdit>
@@ -43,7 +45,7 @@ MainWindow::MainWindow(QWidget *parent)
     this->setGeometry(
         settings.window.x, settings.window.y, settings.window.width, settings.window.height);
 
-    setThemeAccordingToMode();
+    set_theme_according_to_mode();
 
     SPDLOG_LOGGER_DEBUG(APP_LOGGER, "sokketter-ui has started.");
 
@@ -450,21 +452,6 @@ auto MainWindow::initialize_settings_page() -> void
     m_ui->settings_data_path_label->setToolTip(
         QString::fromStdString(sokketter::storage_path().string()));
 
-    switch (settings.socket_toggle)
-    {
-    case socket_toggle_type::ST_SINGLE_CLICK: {
-        m_ui->settings_socket_single_on_radio_button->setChecked(true);
-        break;
-    }
-    case socket_toggle_type::ST_DOUBLE_CLICK: {
-        m_ui->settings_socket_double_on_radio_button->setChecked(true);
-        break;
-    }
-    case socket_toggle_type::ST_INVALID: {
-        break;
-    }
-    }
-
     QObject::connect(m_ui->settings_open_data_label, &ClickableLabel::clicked, [this]() {
         const QString &path = m_ui->settings_data_path_label->text();
         QFileInfo pathInfo(path);
@@ -480,25 +467,105 @@ auto MainWindow::initialize_settings_page() -> void
             QUrl(QUrl::fromLocalFile(pathInfo.absoluteFilePath()).toString()));
     });
 
+    QButtonGroup *socket_toggle_button_group = new QButtonGroup(this);
+    socket_toggle_button_group->addButton(m_ui->settings_socket_single_on_radio_button);
+    socket_toggle_button_group->addButton(m_ui->settings_socket_double_on_radio_button);
+
+    switch (settings.socket_toggle)
+    {
+    case socket_toggle_type::ST_SINGLE_CLICK: {
+        m_ui->settings_socket_single_on_radio_button->setChecked(true);
+        break;
+    }
+    case socket_toggle_type::ST_DOUBLE_CLICK: {
+        m_ui->settings_socket_double_on_radio_button->setChecked(true);
+        break;
+    }
+    case socket_toggle_type::ST_INVALID: {
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "Invalid socket toggle type provided!");
+        break;
+    }
+    }
+
     QObject::connect(m_ui->settings_back_label, &ClickableLabel::clicked, [this]() {
         const int &index = m_ui->stackedWidget->indexOf(m_ui->power_strip_list_page);
         m_ui->stackedWidget->slideInIdx(index);
         redraw_device_list();
     });
 
-    QObject::connect(
-        m_ui->settings_socket_single_on_radio_button, &QRadioButton::clicked, [&](bool checked) {
+    auto socket_toggle_lambda = [&](bool checked) {
+        if (m_ui->settings_socket_double_on_radio_button->isChecked())
+        {
+            settings.socket_toggle = socket_toggle_type::ST_DOUBLE_CLICK;
+        }
+        else
+        {
+            /**
+             * Use the single click toggle as a default value in case of invalid selection.
+             */
             settings.socket_toggle = socket_toggle_type::ST_SINGLE_CLICK;
-            app_settings_storage::instance().save();
-            connect_socket_list_on_click();
-        });
+        }
+
+        app_settings_storage::instance().save();
+        connect_socket_list_on_click();
+    };
 
     QObject::connect(
-        m_ui->settings_socket_double_on_radio_button, &QRadioButton::clicked, [&](bool checked) {
-            settings.socket_toggle = socket_toggle_type::ST_DOUBLE_CLICK;
-            app_settings_storage::instance().save();
-            connect_socket_list_on_click();
-        });
+        m_ui->settings_socket_single_on_radio_button, &QRadioButton::clicked, socket_toggle_lambda);
+    QObject::connect(
+        m_ui->settings_socket_double_on_radio_button, &QRadioButton::clicked, socket_toggle_lambda);
+
+    QButtonGroup *theme_button_group = new QButtonGroup(this);
+    theme_button_group->addButton(m_ui->settings_theme_auto_radio_button);
+    theme_button_group->addButton(m_ui->settings_theme_light_radio_button);
+    theme_button_group->addButton(m_ui->settings_theme_dark_radio_button);
+
+    switch (settings.theme)
+    {
+    case theme_type::T_AUTO: {
+        m_ui->settings_theme_auto_radio_button->setChecked(true);
+        break;
+    }
+    case theme_type::T_LIGHT: {
+        m_ui->settings_theme_light_radio_button->setChecked(true);
+        break;
+    }
+    case theme_type::T_DARK: {
+        m_ui->settings_theme_dark_radio_button->setChecked(true);
+        break;
+    }
+    case theme_type::T_INVALID: {
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "Invalid theme type provided!");
+        break;
+    }
+    }
+
+    auto theme_lambda = [&](bool checked) {
+        if (m_ui->settings_theme_auto_radio_button->isChecked())
+        {
+            settings.theme = theme_type::T_AUTO;
+        }
+        else if (m_ui->settings_theme_light_radio_button->isChecked())
+        {
+            settings.theme = theme_type::T_LIGHT;
+        }
+        else
+        {
+            /**
+             * Use the dark as a default value in case of invalid selection.
+             */
+            settings.theme = theme_type::T_DARK;
+        }
+
+        app_settings_storage::instance().save();
+
+        QEvent theme_change_event(QEvent::ThemeChange);
+        broadcast_event(&theme_change_event);
+    };
+
+    QObject::connect(m_ui->settings_theme_auto_radio_button, &QRadioButton::clicked, theme_lambda);
+    QObject::connect(m_ui->settings_theme_light_radio_button, &QRadioButton::clicked, theme_lambda);
+    QObject::connect(m_ui->settings_theme_dark_radio_button, &QRadioButton::clicked, theme_lambda);
 }
 
 auto MainWindow::initialize_about_page() -> void
@@ -663,7 +730,7 @@ auto MainWindow::event(QEvent *event) -> bool
     {
         SPDLOG_LOGGER_DEBUG(
             APP_LOGGER, "Detected mode change to {}.", isDarkMode() ? "dark" : "light");
-        setThemeAccordingToMode();
+        set_theme_according_to_mode();
         return true;
     }
 
@@ -681,8 +748,32 @@ auto MainWindow::resizeEvent(QResizeEvent *event) -> void
     redraw_configure_list();
 }
 
-auto MainWindow::setThemeAccordingToMode() -> void
+void MainWindow::broadcast_event(QEvent *event)
 {
+    QCoreApplication::sendEvent(this, event);
+
+    const auto top_level_widgets = QApplication::topLevelWidgets();
+    for (auto *widget : top_level_widgets)
+    {
+        if (widget == nullptr)
+        {
+            continue;
+        }
+
+        QCoreApplication::sendEvent(widget, event);
+
+        const auto children = widget->findChildren<QWidget *>();
+        for (auto *child : children)
+        {
+            QCoreApplication::sendEvent(child, event);
+        }
+    }
+}
+
+auto MainWindow::set_theme_according_to_mode() -> void
+{
+    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Setting application theme.");
+
     qApp->setStyleSheet(isDarkMode() ? dark_theme : light_theme);
 #ifdef Q_OS_WIN
     toggle_dark_titlebar(winId(), isDarkMode());

@@ -50,7 +50,9 @@ private:
 
     auto event(QEvent *event) -> bool override;
     auto resizeEvent(QResizeEvent *event) -> void override;
-    auto setThemeAccordingToMode() -> void;
+
+    auto broadcast_event(QEvent *event) -> void;
+    auto set_theme_according_to_mode() -> void;
 };
 
 #endif // MAINWINDOW_H

@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <app_settings_storage.h>
+
 #include <QApplication>
 #include <QString>
 #include <QStyleHints>
@@ -428,15 +430,32 @@ const QString dark_theme = base_theme + R"(
 
 static auto isDarkMode() -> bool
 {
+    auto settings = app_settings_storage::instance().get();
+
+    switch (settings.theme)
+    {
+    case theme_type::T_AUTO: {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
-    const auto scheme = QGuiApplication::styleHints()->colorScheme();
-    return scheme == Qt::ColorScheme::Dark;
+        const auto scheme = QGuiApplication::styleHints()->colorScheme();
+        return scheme == Qt::ColorScheme::Dark;
 #else
-    const QPalette palette;
-    const auto text = palette.color(QPalette::WindowText);
-    const auto window = palette.color(QPalette::Window);
-    return text.lightness() > window.lightness();
+        const QPalette palette;
+        const auto text = palette.color(QPalette::WindowText);
+        const auto window = palette.color(QPalette::Window);
+        return text.lightness() > window.lightness();
 #endif
+    }
+    case theme_type::T_LIGHT: {
+        return false;
+    }
+    case theme_type::T_DARK: {
+        return true;
+    }
+    default:
+    case theme_type::T_INVALID: {
+        return false;
+    }
+    }
 }
 
 #endif // THEME_STYLESHEETS_H
