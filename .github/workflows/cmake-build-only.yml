@@ -32,7 +32,9 @@ jobs:
       if: ${{ startsWith(matrix.os, 'ubuntu') }}
       run: |
         sudo apt update
-        sudo apt install libfuse2 gcc lcov libudev-dev ninja-build -y
+        sudo apt install libfuse2 libudev-dev ninja-build gcc lcov wget libxcb1 libxcb-cursor0 libxcb-xinerama0 libxcb-xfixes0 libxcb-image0
+        wget -c https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage
+        chmod +x linuxdeployqt-continuous-x86_64.AppImage
 
     - name: Install dependencies (MacOS only)
       if: ${{ startsWith(matrix.os, 'macos') }}
