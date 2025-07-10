@@ -6,14 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>100</width>
-    <height>130</height>
+    <width>136</width>
+    <height>182</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
-    <width>100</width>
-    <height>130</height>
+    <width>136</width>
+    <height>182</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -72,6 +72,16 @@
       </sizepolicy>
      </property>
     </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="socket_configurable_reset_label">
+     <property name="text">
+      <string>Configurable reset (msec)</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLineEdit" name="socket_configurable_reset_line_edit"/>
    </item>
   </layout>
  </widget>

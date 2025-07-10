@@ -57,6 +57,8 @@ MainWindow::MainWindow(QWidget *parent)
     /**
      * @brief connect the signals to the slots.
      */
+    QObject::connect(this, &MainWindow::toggleResetButton, this, &MainWindow::onResetButtonToggled);
+
     QObject::connect(m_ui->power_strip_list_widget, &QListWidget::itemClicked, this,
         &MainWindow::onPowerStripClicked);
 
@@ -262,7 +264,10 @@ auto MainWindow::repopulate_socket_list() -> void
         if (m_device->is_connected())
         {
             socket_item->set_state(socket.is_powered_on());
+            QObject::connect(socket_item, &SocketListItem::configurableResetRequested, this,
+                &MainWindow::onSocketResetClicked);
         }
+
         const auto &size_hint = socket_item->sizeHint();
 
         auto *item = new QListWidgetItem();
@@ -722,6 +727,51 @@ auto MainWindow::onSocketClicked(QListWidgetItem *item) -> void
     }
 
     socket_item->set_state(socket.is_powered_on());
+}
+
+void MainWindow::onSocketResetClicked(SocketListItem *item)
+{
+    emit toggleResetButton(item, false);
+
+    const auto &power_strip_configuration = item->power_strip_configuration();
+    const auto &socket_configuration = item->socket_configuration();
+
+    const auto &device = sokketter::device(power_strip_configuration.id);
+    if (device == nullptr)
+    {
+        return;
+    }
+
+    const auto &socket_opt = device->socket(item->socket_index());
+    if (!socket_opt.has_value())
+    {
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed getting a socket from device!");
+        return;
+    }
+
+    const auto &socket = socket_opt->get();
+    if (!socket.toggle())
+    {
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed toggling a socket!");
+        return;
+    }
+
+    socket.power(false);
+
+    item->set_state(socket.is_powered_on());
+
+    QTimer::singleShot(socket_configuration.configurable_reset_msec, [this, item, socket]() {
+        socket.power(true);
+
+        item->set_state(socket.is_powered_on());
+
+        emit toggleResetButton(item, true);
+    });
+}
+
+void MainWindow::onResetButtonToggled(SocketListItem *item, bool is_on)
+{
+    item->toggle_reset_button_state(is_on);
 }
 
 auto MainWindow::event(QEvent *event) -> bool

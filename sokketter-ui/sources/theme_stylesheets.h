@@ -156,18 +156,23 @@ const QString light_theme = base_theme + R"(
     }
 
     QPushButton {
-        background-color: #FFF7C2;
-        color: #B06E0E;
+        background-color: #FFC53D;
+        color: #21201C;
         border: none;
-        padding: 5px 10px;
         border-radius: 5px;
     }
 
     QPushButton:hover {
-        background-color: #FFEDA4;
-        color: #B06E0E;
+        background-color: #FFBA18;
+        color: #21201C;
         border: none;
-        padding: 5px 10px;
+        border-radius: 5px;
+    }
+
+    QPushButton:disabled {
+        background-color: #F1F0EF;
+        color: #B2B0AA;
+        border: none;
         border-radius: 5px;
     }
 
@@ -350,18 +355,23 @@ const QString dark_theme = base_theme + R"(
     }
 
     QPushButton {
-        background-color: #382715;
-        color: #FFCA16;
+        background-color: #FFC53D;
+        color: #21201C;
         border: none;
-        padding: 5px 10px;
         border-radius: 5px;
     }
 
     QPushButton:hover {
-        background-color: #462E17;
-        color: #FFCA16;
+        background-color: #FFD60A;
+        color: #21201C;
         border: none;
-        padding: 5px 10px;
+        border-radius: 5px;
+    }
+
+    QPushButton:disabled {
+        background-color: #222221;
+        color: #6D6B66;
+        border: none;
         border-radius: 5px;
     }
 
