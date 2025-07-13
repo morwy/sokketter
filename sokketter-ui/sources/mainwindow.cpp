@@ -742,7 +742,8 @@ void MainWindow::onSocketResetClicked(SocketListItem *item)
         return;
     }
 
-    const auto &socket_opt = device->socket(item->socket_index());
+    const auto &socket_index = item->socket_index() - 1;
+    const auto &socket_opt = device->socket(socket_index);
     if (!socket_opt.has_value())
     {
         SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed getting a socket from device!");
