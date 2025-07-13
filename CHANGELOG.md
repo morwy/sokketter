@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.3.1] - 2025-07-13
+
+### 🚀 Features
+
+- Sorting power strips by name (#14) by @morwy
+- Added possibility to open disconnected power strip for editing (#15) by @morwy
+- Using radio buttons for selecting socket toggling action (#18) by @morwy
+- Added possibility to manually select theme of the application (#19) by @morwy
+- Added a configurable restart button for the socket (#20) by @morwy
+
+### 🐛 Bug Fixes
+
+- Corrected mentions of used libraries and their licenses by @morwy
+- Made socket list item to have more detailed information (#16) by @morwy
+- Fixed crash during initialization of libsokketter in sokketter-cli application by @morwy
+
+### 🚜 Refactor
+
+- Sped up device enumeration and opening procedures (#21) by @morwy
+
+### 📚 Documentation
+
+- Added mention of used nlohmann/json library by @morwy
+
+### ⚙️ Miscellaneous Tasks
+
+- Simplified and unified build scripts (#17) by @morwy
+- Improved logging in several classes by @morwy
+
 ## [1.3.0] - 2025-06-22
 
 ### 🚀 Features
