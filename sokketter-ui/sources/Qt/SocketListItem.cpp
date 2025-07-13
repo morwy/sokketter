@@ -20,8 +20,8 @@ SocketListItem::SocketListItem(const sokketter::power_strip_configuration &power
     m_ui->status_label->setState(QLedLabel::State::StateUnknown);
     m_ui->status_label->setToolTip(tr("unknown"));
 
-    const auto &title_text =
-        "**Socket " + QString::number(socket_index) + "**: " + QString::fromStdString(socket.name);
+    const auto &title_text = "**Socket " + QString::number(socket_index + 1) +
+                             "**: " + QString::fromStdString(socket.name);
 
     m_ui->name_label->setText(title_text);
 

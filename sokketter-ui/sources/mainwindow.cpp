@@ -259,7 +259,7 @@ auto MainWindow::repopulate_socket_list() -> void
         const auto &socket = sockets[socket_index];
 
         auto *socket_item =
-            new SocketListItem(device_configuration, socket.configuration(), socket_index + 1);
+            new SocketListItem(device_configuration, socket.configuration(), socket_index);
         socket_item->setEnabled(m_device->is_connected());
         if (m_device->is_connected())
         {
@@ -742,7 +742,7 @@ void MainWindow::onSocketResetClicked(SocketListItem *item)
         return;
     }
 
-    const auto &socket_index = item->socket_index() - 1;
+    const auto &socket_index = item->socket_index();
     const auto &socket_opt = device->socket(socket_index);
     if (!socket_opt.has_value())
     {
