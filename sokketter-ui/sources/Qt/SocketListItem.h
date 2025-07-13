@@ -5,6 +5,7 @@
 
 #include <libsokketter.h>
 
+#include <QDebug>
 #include <QWidget>
 
 namespace Ui {
@@ -23,8 +24,17 @@ public:
 
     auto power_strip_configuration() const -> const sokketter::power_strip_configuration &;
     auto socket_configuration() const -> const sokketter::socket_configuration &;
+    auto socket_index() const -> const size_t &;
 
     auto set_state(const bool is_on) const -> void;
+
+    auto toggle_reset_button_state(const bool is_enabled) -> void;
+
+signals:
+    auto configurableResetRequested(SocketListItem *object) -> void;
+
+private slots:
+    auto onResetButtonClicked(bool checked) -> void;
 
 private:
     Ui::SocketListItem *m_ui;
@@ -35,5 +45,7 @@ private:
     auto event(QEvent *event) -> bool override;
     auto setThemeAccordingToMode() -> void;
 };
+
+Q_DECLARE_METATYPE(SocketListItem)
 
 #endif // SOCKET_LIST_ITEM_H

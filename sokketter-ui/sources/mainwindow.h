@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <SocketListItem.h>
 #include <libsokketter.h>
 
 #include <QListWidget>
@@ -22,12 +23,17 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+signals:
+    auto toggleResetButton(SocketListItem *object, bool is_on) -> void;
+
 protected:
     auto closeEvent(QCloseEvent *event) -> void override;
 
 private slots:
     auto onPowerStripClicked(QListWidgetItem *item) -> void;
     auto onSocketClicked(QListWidgetItem *item) -> void;
+    auto onSocketResetClicked(SocketListItem *item) -> void;
+    auto onResetButtonToggled(SocketListItem *item, bool is_on) -> void;
 
 private:
     Ui::MainWindow *m_ui;

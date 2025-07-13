@@ -19,6 +19,8 @@ license_dialog::license_dialog(QWidget *parent)
         m_ui->tabWidget->widget(widget_index)->setObjectName("tabPage");
     }
 
+    QObject::connect(m_ui->ok_button, &QPushButton::clicked, this, &license_dialog::accept);
+
     setThemeAccordingToMode();
 }
 

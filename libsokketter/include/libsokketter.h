@@ -139,6 +139,12 @@ namespace sokketter {
     {
         std::string name = "Unnamed socket";
         std::string description = "";
+
+        /**
+         * @brief configurable reset timeout in milliseconds.
+         * @attention 0 means disabled.
+         */
+        uint32_t configurable_reset_msec = 0;
     };
 
     /**
