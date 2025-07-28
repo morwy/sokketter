@@ -898,7 +898,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
             </widget>
            </item>
            <item>
-            <widget class="QListWidget" name="configure_socket_list_widget">
+            <widget class="PixelScrollListWidget" name="configure_socket_list_widget">
              <property name="autoFillBackground">
               <bool>true</bool>
              </property>
@@ -954,14 +954,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    <header>HeaderLabel.h</header>
   </customwidget>
   <customwidget>
-   <class>Header2Label</class>
+   <class>ButtonLabel</class>
    <extends>QLabel</extends>
-   <header>Header2Label.h</header>
-  </customwidget>
-  <customwidget>
-   <class>SubheaderLabel</class>
-   <extends>QLabel</extends>
-   <header>SubheaderLabel.h</header>
+   <header>ButtonLabel.h</header>
   </customwidget>
   <customwidget>
    <class>ElidingLabel</class>
@@ -974,14 +969,24 @@ li.checked::marker { content: &quot;\2612&quot;; }
    <header>BoldLabel.h</header>
   </customwidget>
   <customwidget>
-   <class>ButtonLabel</class>
-   <extends>QLabel</extends>
-   <header>ButtonLabel.h</header>
-  </customwidget>
-  <customwidget>
    <class>HoverableListWidget</class>
    <extends>QListWidget</extends>
    <header>HoverableListWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>Header2Label</class>
+   <extends>QLabel</extends>
+   <header>Header2Label.h</header>
+  </customwidget>
+  <customwidget>
+   <class>SubheaderLabel</class>
+   <extends>QLabel</extends>
+   <header>SubheaderLabel.h</header>
+  </customwidget>
+  <customwidget>
+   <class>PixelScrollListWidget</class>
+   <extends>QListWidget</extends>
+   <header>PixelScrollListWidget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
