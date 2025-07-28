@@ -31,7 +31,7 @@
      <number>20</number>
     </property>
     <item>
-     <widget class="SlidingStackedWidget" name="stackedWidget">
+     <widget class="QStackedWidget" name="stackedWidget">
       <property name="currentIndex">
        <number>2</number>
       </property>
@@ -957,12 +957,6 @@ li.checked::marker { content: &quot;\2612&quot;; }
   </widget>
  </widget>
  <customwidgets>
-  <customwidget>
-   <class>SlidingStackedWidget</class>
-   <extends>QStackedWidget</extends>
-   <header location="global">SlidingStackedWidget.h</header>
-   <container>1</container>
-  </customwidget>
   <customwidget>
    <class>TitleLabel</class>
    <extends>QLabel</extends>
