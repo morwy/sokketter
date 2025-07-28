@@ -93,6 +93,10 @@ MainWindow::MainWindow(QWidget *parent)
 
     QObject::connect(m_ui->configure_save_label, &ClickableLabel::clicked, [this]() {
         save_new_configuration();
+
+        const int &index = m_ui->stackedWidget->indexOf(m_ui->socket_list_page);
+        m_ui->stackedWidget->setCurrentIndex(index);
+
         repopulate_device_list();
         repopulate_socket_list();
     });
