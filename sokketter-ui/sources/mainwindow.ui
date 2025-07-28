@@ -857,47 +857,6 @@ li.checked::marker { content: &quot;\2612&quot;; }
             <number>0</number>
            </property>
            <item>
-            <layout class="QVBoxLayout" name="verticalLayout_11">
-             <property name="bottomMargin">
-              <number>0</number>
-             </property>
-             <item>
-              <widget class="Header2Label" name="label_6">
-               <property name="text">
-                <string>Device</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="BoldLabel" name="label_4">
-               <property name="text">
-                <string>Name:</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="configure_device_name_line_edit"/>
-             </item>
-             <item>
-              <widget class="BoldLabel" name="label_5">
-               <property name="text">
-                <string>Description:</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="configure_device_description_line_edit"/>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <widget class="Line" name="line_8">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-            </widget>
-           </item>
-           <item>
             <widget class="PixelScrollListWidget" name="configure_socket_list_widget">
              <property name="autoFillBackground">
               <bool>true</bool>
@@ -930,7 +889,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
               <number>0</number>
              </property>
              <property name="uniformItemSizes">
-              <bool>true</bool>
+              <bool>false</bool>
              </property>
              <property name="itemAlignment">
               <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
@@ -964,19 +923,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    <header location="global">ElidingLabel.h</header>
   </customwidget>
   <customwidget>
-   <class>BoldLabel</class>
-   <extends>QLabel</extends>
-   <header>BoldLabel.h</header>
-  </customwidget>
-  <customwidget>
    <class>HoverableListWidget</class>
    <extends>QListWidget</extends>
    <header>HoverableListWidget.h</header>
-  </customwidget>
-  <customwidget>
-   <class>Header2Label</class>
-   <extends>QLabel</extends>
-   <header>Header2Label.h</header>
   </customwidget>
   <customwidget>
    <class>SubheaderLabel</class>
