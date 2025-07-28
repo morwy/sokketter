@@ -65,18 +65,14 @@
             <number>0</number>
            </property>
            <item>
-            <widget class="TitleLabel" name="about_title_label">
+            <widget class="HeaderLabel" name="about_title_label">
              <property name="font">
               <font>
                <pointsize>14</pointsize>
-               <bold>true</bold>
               </font>
              </property>
              <property name="text">
               <string>About</string>
-             </property>
-             <property name="alignment">
-              <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
              </property>
             </widget>
            </item>
@@ -304,11 +300,10 @@ li.checked::marker { content: &quot;\2612&quot;; }
             <number>0</number>
            </property>
            <item>
-            <widget class="TitleLabel" name="settings_title_label">
+            <widget class="HeaderLabel" name="settings_title_label">
              <property name="font">
               <font>
                <pointsize>14</pointsize>
-               <bold>true</bold>
               </font>
              </property>
              <property name="text">
@@ -546,18 +541,14 @@ li.checked::marker { content: &quot;\2612&quot;; }
             <number>0</number>
            </property>
            <item>
-            <widget class="TitleLabel" name="power_strip_title_label">
+            <widget class="HeaderLabel" name="power_strip_title_label">
              <property name="font">
               <font>
                <pointsize>14</pointsize>
-               <bold>true</bold>
               </font>
              </property>
              <property name="text">
               <string>Devices</string>
-             </property>
-             <property name="alignment">
-              <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
              </property>
             </widget>
            </item>
@@ -680,33 +671,34 @@ li.checked::marker { content: &quot;\2612&quot;; }
             <number>0</number>
            </property>
            <item>
-            <widget class="TitleLabel" name="socket_list_title_label">
+            <widget class="HeaderLabel" name="socket_list_title_label">
              <property name="font">
               <font>
                <pointsize>14</pointsize>
-               <bold>true</bold>
               </font>
              </property>
              <property name="text">
               <string>Sockets</string>
              </property>
-             <property name="alignment">
-              <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-             </property>
             </widget>
            </item>
            <item>
-            <spacer name="horizontalSpacer_2">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+            <widget class="SubheaderLabel" name="socket_list_device_label">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
              </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
+             <property name="font">
+              <font>
+               <pointsize>14</pointsize>
+              </font>
              </property>
-            </spacer>
+             <property name="text">
+              <string>of device name</string>
+             </property>
+            </widget>
            </item>
            <item>
             <widget class="ButtonLabel" name="socket_list_edit_label">
@@ -801,11 +793,10 @@ li.checked::marker { content: &quot;\2612&quot;; }
             <number>0</number>
            </property>
            <item>
-            <widget class="TitleLabel" name="configure_title_label">
+            <widget class="HeaderLabel" name="configure_title_label">
              <property name="font">
               <font>
                <pointsize>14</pointsize>
-               <bold>true</bold>
               </font>
              </property>
              <property name="text">
@@ -871,7 +862,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
               <number>0</number>
              </property>
              <item>
-              <widget class="Title2Label" name="label_6">
+              <widget class="Header2Label" name="label_6">
                <property name="text">
                 <string>Device</string>
                </property>
@@ -958,14 +949,19 @@ li.checked::marker { content: &quot;\2612&quot;; }
  </widget>
  <customwidgets>
   <customwidget>
-   <class>TitleLabel</class>
+   <class>HeaderLabel</class>
    <extends>QLabel</extends>
-   <header>TitleLabel.h</header>
+   <header>HeaderLabel.h</header>
   </customwidget>
   <customwidget>
-   <class>ButtonLabel</class>
+   <class>Header2Label</class>
    <extends>QLabel</extends>
-   <header>ButtonLabel.h</header>
+   <header>Header2Label.h</header>
+  </customwidget>
+  <customwidget>
+   <class>SubheaderLabel</class>
+   <extends>QLabel</extends>
+   <header>SubheaderLabel.h</header>
   </customwidget>
   <customwidget>
    <class>ElidingLabel</class>
@@ -978,9 +974,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    <header>BoldLabel.h</header>
   </customwidget>
   <customwidget>
-   <class>Title2Label</class>
+   <class>ButtonLabel</class>
    <extends>QLabel</extends>
-   <header>Title2Label.h</header>
+   <header>ButtonLabel.h</header>
   </customwidget>
   <customwidget>
    <class>HoverableListWidget</class>

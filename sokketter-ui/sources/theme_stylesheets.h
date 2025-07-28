@@ -25,12 +25,12 @@ const QString base_theme = R"(
         color: black;
     }
 
-    TitleLabel {
+    HeaderLabel {
         font-size: 16px;
         font-weight: bold;
     }
 
-    Title2Label {
+    Header2Label {
         font-size: 14px;
         font-weight: bold;
     }
@@ -237,6 +237,11 @@ const QString light_theme = base_theme + R"(
         border: 1px solid #FFC53D;
         image: url(:/icons/radiobutton_checked.svg);
     }
+
+    SubheaderLabel {
+        font-size: 16px;
+        color: #82827C;
+    }
 )";
 
 const QString dark_theme = base_theme + R"(
@@ -435,6 +440,11 @@ const QString dark_theme = base_theme + R"(
         background-color: #FFC743;
         border: 1px solid #FFC743;
         image: url(:/icons/radiobutton_checked.svg);
+    }
+
+    SubheaderLabel {
+        font-size: 16px;
+        color: #7d7c75;
     }
 )";
 

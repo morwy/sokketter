@@ -33,7 +33,7 @@
     <number>5</number>
    </property>
    <item>
-    <widget class="Title2Label" name="socket_title_label">
+    <widget class="Header2Label" name="socket_title_label">
      <property name="text">
       <string>Socket X</string>
      </property>
@@ -92,9 +92,9 @@
    <header>BoldLabel.h</header>
   </customwidget>
   <customwidget>
-   <class>Title2Label</class>
+   <class>Header2Label</class>
    <extends>QLabel</extends>
-   <header>Title2Label.h</header>
+   <header>Header2Label.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

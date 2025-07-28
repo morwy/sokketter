@@ -250,6 +250,9 @@ auto MainWindow::repopulate_socket_list() -> void
 
     const auto &device_configuration = m_device->configuration();
 
+    m_ui->socket_list_device_label->setText(
+        "of " + QString::fromStdString(device_configuration.name));
+
     const auto &sockets = m_device->sockets();
     for (size_t socket_index = 0; socket_index < sockets.size(); socket_index++)
     {
