@@ -50,11 +50,6 @@ MainWindow::MainWindow(QWidget *parent)
     SPDLOG_LOGGER_DEBUG(APP_LOGGER, "sokketter-ui has started.");
 
     /**
-     * @brief set the speed of the sliding stacked widget to 500 ms.
-     */
-    m_ui->stackedWidget->setSpeed(500);
-
-    /**
      * @brief connect the signals to the slots.
      */
     QObject::connect(this, &MainWindow::toggleResetButton, this, &MainWindow::onResetButtonToggled);
@@ -69,29 +64,31 @@ MainWindow::MainWindow(QWidget *parent)
 
     QObject::connect(m_ui->power_strip_settings_label, &ClickableLabel::clicked, [this]() {
         const int &index = m_ui->stackedWidget->indexOf(m_ui->settings_page);
-        m_ui->stackedWidget->slideInIdx(index);
+        m_ui->stackedWidget->setCurrentIndex(index);
     });
 
     QObject::connect(m_ui->power_strip_about_label, &ClickableLabel::clicked, [this]() {
         const int &index = m_ui->stackedWidget->indexOf(m_ui->about_page);
-        m_ui->stackedWidget->slideInIdx(index);
+        m_ui->stackedWidget->setCurrentIndex(index);
     });
 
     QObject::connect(m_ui->socket_list_edit_label, &ClickableLabel::clicked, [this]() {
         const int &index = m_ui->stackedWidget->indexOf(m_ui->device_configure_page);
-        m_ui->stackedWidget->slideInIdx(index);
+        m_ui->stackedWidget->setCurrentIndex(index);
+
         repopulate_configure_list();
     });
 
     QObject::connect(m_ui->socket_list_back_label, &ClickableLabel::clicked, [this]() {
         const int &index = m_ui->stackedWidget->indexOf(m_ui->power_strip_list_page);
-        m_ui->stackedWidget->slideInIdx(index);
+        m_ui->stackedWidget->setCurrentIndex(index);
+
         redraw_device_list();
     });
 
     QObject::connect(m_ui->configure_back_label, &ClickableLabel::clicked, [this]() {
         const int &index = m_ui->stackedWidget->indexOf(m_ui->socket_list_page);
-        m_ui->stackedWidget->slideInIdx(index);
+        m_ui->stackedWidget->setCurrentIndex(index);
     });
 
     QObject::connect(m_ui->configure_save_label, &ClickableLabel::clicked, [this]() {
@@ -494,7 +491,8 @@ auto MainWindow::initialize_settings_page() -> void
 
     QObject::connect(m_ui->settings_back_label, &ClickableLabel::clicked, [this]() {
         const int &index = m_ui->stackedWidget->indexOf(m_ui->power_strip_list_page);
-        m_ui->stackedWidget->slideInIdx(index);
+        m_ui->stackedWidget->setCurrentIndex(index);
+
         redraw_device_list();
     });
 
@@ -580,7 +578,8 @@ auto MainWindow::initialize_about_page() -> void
      */
     QObject::connect(m_ui->about_back_label, &ClickableLabel::clicked, [this]() {
         const int &index = m_ui->stackedWidget->indexOf(m_ui->power_strip_list_page);
-        m_ui->stackedWidget->slideInIdx(index);
+        m_ui->stackedWidget->setCurrentIndex(index);
+
         redraw_device_list();
     });
 
@@ -612,8 +611,6 @@ auto MainWindow::initialize_about_page() -> void
 \- **spdlog** library, version 1.15.0: made by Gabi Melman ([link to the library on GitHub](https://github.com/gabime/spdlog)). Distributed under MIT license ([link to license](https://opensource.org/license/mit)).
 
 \- **nlohmann/json** library, version 3.12.0: made by Niels Lohmann ([link to the library on GitHub](https://github.com/nlohmann/json)). Distributed under MIT license ([link to license](https://opensource.org/license/mit)).
-
-\- **SlidingStackedWidget** class: made by Tim Schneeberger (ThePBone) ([link to the class on GitHub](https://github.com/timschneeb/SlidingStackedWidget)). Distributed under MIT license ([link to license](https://opensource.org/license/mit)).
 
 \- "**Charge, charging, electric icon**" as an application icon: made by Ümit Can Evleksiz ([link to profile on IconFinder](https://www.iconfinder.com/umitcan_07)), shared on IconFinder ([link to material on IconFinder](https://www.iconfinder.com/icons/2578280/charge_charging_electric_electricity_plug_power_socket_icon)). Distributed under CC BY-NC 3.0 license ([link to license](https://creativecommons.org/licenses/by-nc/3.0/deed.en)). Icon was modified, several parts outside of socket shape were removed.
 
@@ -669,9 +666,6 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
         return;
     }
 
-    const int &index = m_ui->stackedWidget->indexOf(m_ui->socket_list_page);
-    m_ui->stackedWidget->slideInIdx(index);
-
     const auto &configuration =
         dynamic_cast<power_strip_list_item *>(m_ui->power_strip_list_widget->itemWidget(item))
             ->configuration();
@@ -687,6 +681,9 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
     {
         return;
     }
+
+    const int &index = m_ui->stackedWidget->indexOf(m_ui->socket_list_page);
+    m_ui->stackedWidget->setCurrentIndex(index);
 
     repopulate_socket_list();
 }
