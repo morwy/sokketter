@@ -2,6 +2,7 @@
 #include "license_dialog.h"
 #include "ui_mainwindow.h"
 
+#include <Qt/DeviceEditForm.h>
 #include <Qt/SocketEditForm.h>
 #include <Qt/SocketListItem.h>
 #include <app_logger.h>
@@ -339,11 +340,21 @@ auto MainWindow::repopulate_configure_list() -> void
         m_ui->configure_socket_list_widget->takeItem(0);
     }
 
-    m_ui->configure_device_name_line_edit->setText(
-        QString::fromStdString(m_device->configuration().name));
-    m_ui->configure_device_description_line_edit->setText(
-        QString::fromStdString(m_device->configuration().description));
+    /**
+     * @brief populate device entry.
+     */
+    auto *form = new DeviceEditForm(m_device->configuration(), this);
+    const auto &size_hint = form->sizeHint();
 
+    auto *item = new QListWidgetItem();
+    item->setSizeHint(QSize(size_hint.width(), size_hint.height()));
+
+    m_ui->configure_socket_list_widget->addItem(item);
+    m_ui->configure_socket_list_widget->setItemWidget(item, form);
+
+    /**
+     * @brief populate socket entries.
+     */
     auto &sockets = m_device->sockets();
     for (size_t socket_index = 0; socket_index < sockets.size(); socket_index++)
     {
@@ -412,13 +423,6 @@ auto MainWindow::save_new_configuration() -> void
         return;
     }
 
-    auto configuration = m_device->configuration();
-
-    configuration.name = m_ui->configure_device_name_line_edit->text().toStdString();
-    configuration.description = m_ui->configure_device_description_line_edit->text().toStdString();
-
-    m_device->configure(configuration);
-
     auto &sockets = m_device->sockets();
     for (int item_index = 0; item_index < m_ui->configure_socket_list_widget->count(); item_index++)
     {
@@ -438,15 +442,28 @@ auto MainWindow::save_new_configuration() -> void
             continue;
         }
 
-        if (qobject_cast<SocketEditForm *>(widget) == nullptr)
+        if (qobject_cast<DeviceEditForm *>(widget) != nullptr)
         {
-            SPDLOG_LOGGER_ERROR(APP_LOGGER, "Display widget item is not a SocketEditForm!");
-            continue;
+            auto configuration = m_device->configuration();
+
+            const auto *form = qobject_cast<DeviceEditForm *>(
+                m_ui->configure_socket_list_widget->itemWidget(list_widget));
+
+            auto new_configuration = form->configuration();
+
+            configuration.name = new_configuration.name;
+            configuration.description = new_configuration.description;
+
+            m_device->configure(configuration);
         }
 
-        const auto *form = qobject_cast<SocketEditForm *>(
-            m_ui->configure_socket_list_widget->itemWidget(list_widget));
-        sockets[item_index].configure(form->configuration());
+        if (qobject_cast<SocketEditForm *>(widget) != nullptr)
+        {
+            const auto socket_index = item_index - 1;
+            const auto *form = qobject_cast<SocketEditForm *>(
+                m_ui->configure_socket_list_widget->itemWidget(list_widget));
+            sockets[socket_index].configure(form->configuration());
+        }
     }
 
     m_device->save();

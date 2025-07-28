@@ -1,19 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>SocketEditForm</class>
- <widget class="QWidget" name="SocketEditForm">
+ <class>DeviceEditForm</class>
+ <widget class="QWidget" name="DeviceEditForm">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
     <width>136</width>
-    <height>190</height>
+    <height>141</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>136</width>
-    <height>190</height>
+    <height>141</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>16777215</width>
+    <height>16777215</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -33,55 +39,31 @@
     <number>5</number>
    </property>
    <item>
-    <widget class="Header2Label" name="socket_title_label">
+    <widget class="Header2Label" name="device_title_label">
      <property name="text">
-      <string>Socket X</string>
+      <string>Device</string>
      </property>
     </widget>
    </item>
    <item>
-    <widget class="BoldLabel" name="socket_name_label">
+    <widget class="BoldLabel" name="device_name_label">
      <property name="text">
       <string>Name</string>
      </property>
     </widget>
    </item>
    <item>
-    <widget class="QLineEdit" name="socket_name_line_edit">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-    </widget>
+    <widget class="QLineEdit" name="device_name_line_edit"/>
    </item>
    <item>
-    <widget class="BoldLabel" name="socket_description_label">
+    <widget class="BoldLabel" name="device_description_label">
      <property name="text">
       <string>Description</string>
      </property>
     </widget>
    </item>
    <item>
-    <widget class="QLineEdit" name="socket_description_line_edit">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QLabel" name="socket_configurable_reset_label">
-     <property name="text">
-      <string>Configurable reset (msec)</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QLineEdit" name="socket_configurable_reset_line_edit"/>
+    <widget class="QLineEdit" name="device_description_line_edit"/>
    </item>
   </layout>
  </widget>
