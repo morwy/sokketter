@@ -13,7 +13,7 @@ public:
 
     auto initialize(std::shared_ptr<kommpot::device_communication> communication) -> bool override;
 
-    static auto identification() -> const kommpot::device_identification;
+    static auto identification() -> const kommpot::usb_device_identification;
 };
 
 #endif // GEMBIRD_MSIS_PM_2_H

@@ -53,9 +53,9 @@ auto gembird_sis_pm::initialize(std::shared_ptr<kommpot::device_communication> c
     return true;
 }
 
-auto gembird_sis_pm::identification() -> const kommpot::device_identification
+auto gembird_sis_pm::identification() -> const kommpot::usb_device_identification
 {
-    kommpot::device_identification identitication;
+    kommpot::usb_device_identification identitication;
 
     identitication.vendor_id = 0x04b4;
     identitication.product_id = 0xfd11;

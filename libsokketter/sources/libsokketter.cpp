@@ -208,6 +208,9 @@ auto sokketter::power_strip_type_to_string(const power_strip_type &type) -> std:
     case power_strip_type::ENERGENIE_EG_PMS2: {
         return "Energenie EG-PMS2";
     }
+    case power_strip_type::ENERGENIE_EG_PMXX_LAN: {
+        return "Energenie EG-PMxx-LAN";
+    }
     default: {
         return "Unknown";
     }

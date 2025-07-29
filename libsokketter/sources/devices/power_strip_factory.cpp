@@ -2,6 +2,7 @@
 
 #include <devices/energenie_eg_pms.h>
 #include <devices/energenie_eg_pms2.h>
+#include <devices/energenie_eg_pmxx_lan.h>
 #include <devices/gembird_msis_pm.h>
 #include <devices/gembird_msis_pm_2.h>
 #include <devices/gembird_sis_pm.h>
@@ -17,6 +18,7 @@ auto power_strip_factory::supported_devices() -> const std::vector<kommpot::devi
     identifications.push_back(gembird_sis_pm::identification());
     identifications.push_back(energenie_eg_pms::identification());
     identifications.push_back(energenie_eg_pms2::identification());
+    identifications.push_back(energenie_eg_pmxx_lan::identification());
 
     return identifications;
 }
@@ -74,6 +76,15 @@ auto power_strip_factory::create(std::shared_ptr<kommpot::device_communication> 
         return ptr->initialize(communication) ? ptr : nullptr;
     }
 
+    /**
+     * Energenie EG-PMXX-LAN.
+     */
+    if (false)
+    {
+        auto ptr = std::make_shared<energenie_eg_pmxx_lan>();
+        return ptr->initialize(communication) ? ptr : nullptr;
+    }
+
     SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
         "Provided communication is not supported: {}, VID{}:PID{}, at port {}!",
         communication->information().name, communication->information().vendor_id,
@@ -116,6 +127,12 @@ std::shared_ptr<sokketter::power_strip> power_strip_factory::create(
      */
     case sokketter::power_strip_type::ENERGENIE_EG_PMS2: {
         return std::make_shared<energenie_eg_pms2>();
+    }
+    /**
+     * Energenie EG-PMXX-LAN.
+     */
+    case sokketter::power_strip_type::ENERGENIE_EG_PMXX_LAN: {
+        return std::make_shared<energenie_eg_pmxx_lan>();
     }
     default: {
         SPDLOG_LOGGER_ERROR(

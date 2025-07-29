@@ -214,6 +214,7 @@ namespace sokketter {
         GEMBIRD_MSIS_PM_2 = 4,
         ENERGENIE_EG_PMS = 5,
         ENERGENIE_EG_PMS2 = 6,
+        ENERGENIE_EG_PMXX_LAN = 7,
     };
 
     /**
