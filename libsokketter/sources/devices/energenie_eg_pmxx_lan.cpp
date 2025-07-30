@@ -50,6 +50,15 @@ auto energenie_eg_pmxx_lan::initialize(std::shared_ptr<kommpot::device_communica
         return false;
     }
 
+    std::string mac_lower = identification->mac;
+    std::transform(mac_lower.begin(), mac_lower.end(), mac_lower.begin(), ::tolower);
+
+    if (mac_lower.find("88:b6:27") == std::string::npos && mac_lower.find("88:b6:27") != 0)
+    {
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "Not an Energenie device, skipping.");
+        return false;
+    }
+
     auto configuration = this->configuration();
 
     m_serial_number = identification->mac;
