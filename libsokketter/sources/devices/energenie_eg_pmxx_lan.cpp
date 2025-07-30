@@ -33,9 +33,34 @@ energenie_eg_pmxx_lan::~energenie_eg_pmxx_lan()
         static_cast<void *>(this));
 }
 
-bool energenie_eg_pmxx_lan::initialize(std::shared_ptr<kommpot::device_communication> communication)
+auto energenie_eg_pmxx_lan::initialize(std::shared_ptr<kommpot::device_communication> communication)
+    -> bool
 {
-    return false;
+    if (!power_strip_base::initialize(communication))
+    {
+        return false;
+    }
+
+    const auto &identification_variant = m_communication->identification();
+    const auto *identification =
+        std::get_if<kommpot::ethernet_device_identification>(&identification_variant);
+    if (identification == nullptr)
+    {
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "Provided identification is not Ethernet.");
+        return false;
+    }
+
+    auto configuration = this->configuration();
+
+    m_serial_number = identification->mac;
+    configuration.id = identification->mac;
+    configuration.address = identification->ip;
+
+    this->configure(configuration);
+
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: initialization.", this->to_string());
+
+    return true;
 }
 
 auto energenie_eg_pmxx_lan::identification() -> const kommpot::ethernet_device_identification

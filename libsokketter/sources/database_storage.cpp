@@ -27,6 +27,7 @@ namespace sokketter {
             {sokketter::power_strip_type::UNKNOWN, nullptr},
             {sokketter::power_strip_type::ENERGENIE_EG_PMS, "ENERGENIE-EG-PMS"},
             {sokketter::power_strip_type::ENERGENIE_EG_PMS2, "ENERGENIE-EG-PMS2"},
+            {sokketter::power_strip_type::ENERGENIE_EG_PMXX_LAN, "ENERGENIE-EG-PMXX-LAN"},
             {sokketter::power_strip_type::GEMBIRD_SIS_PM, "GEMBIRD-SIS-PM"},
             {sokketter::power_strip_type::GEMBIRD_MSIS_PM, "GEMBIRD-MSIS-PM"},
             {sokketter::power_strip_type::GEMBIRD_MSIS_PM_2, "GEMBIRD-MSIS-PM2"},
