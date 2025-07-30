@@ -41,10 +41,19 @@ auto gembird_sis_pm::initialize(std::shared_ptr<kommpot::device_communication> c
         return false;
     }
 
+    const auto &identification_variant = m_communication->identification();
+    const auto *identification =
+        std::get_if<kommpot::usb_device_identification>(&identification_variant);
+    if (identification == nullptr)
+    {
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "Provided identification is not USB.");
+        return false;
+    }
+
     auto configuration = this->configuration();
 
     configuration.id = m_serial_number;
-    configuration.address = std::string("USB:") + m_communication->information().port;
+    configuration.address = std::string("USB:") + identification->port;
 
     this->configure(configuration);
 

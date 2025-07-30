@@ -26,69 +26,85 @@ auto power_strip_factory::supported_devices() -> const std::vector<kommpot::devi
 auto power_strip_factory::create(std::shared_ptr<kommpot::device_communication> communication)
     -> std::shared_ptr<sokketter::power_strip>
 {
-    /**
-     * Gembird MSIS-PM.
-     */
-    if (communication->information().vendor_id == gembird_msis_pm::identification().vendor_id &&
-        communication->information().product_id == gembird_msis_pm::identification().product_id)
+    const auto &identification_variant = communication->identification();
+
+    if (const auto *identification =
+            std::get_if<kommpot::usb_device_identification>(&identification_variant))
     {
-        auto ptr = std::make_shared<gembird_msis_pm>();
-        return ptr->initialize(communication) ? ptr : nullptr;
+        /**
+         * Gembird MSIS-PM.
+         */
+        if (identification->vendor_id == gembird_msis_pm::identification().vendor_id &&
+            identification->product_id == gembird_msis_pm::identification().product_id)
+        {
+            auto ptr = std::make_shared<gembird_msis_pm>();
+            return ptr->initialize(communication) ? ptr : nullptr;
+        }
+
+        /**
+         * Gembird MSIS-PM 2.
+         */
+        if (identification->vendor_id == gembird_msis_pm_2::identification().vendor_id &&
+            identification->product_id == gembird_msis_pm_2::identification().product_id)
+        {
+            auto ptr = std::make_shared<gembird_msis_pm_2>();
+            return ptr->initialize(communication) ? ptr : nullptr;
+        }
+
+        /**
+         * Gembird SIS-PM.
+         */
+        if (identification->vendor_id == gembird_sis_pm::identification().vendor_id &&
+            identification->product_id == gembird_sis_pm::identification().product_id)
+        {
+            auto ptr = std::make_shared<gembird_sis_pm>();
+            return ptr->initialize(communication) ? ptr : nullptr;
+        }
+
+        /**
+         * Energenie EG-PMS.
+         */
+        if (identification->vendor_id == energenie_eg_pms::identification().vendor_id &&
+            identification->product_id == energenie_eg_pms::identification().product_id)
+        {
+            auto ptr = std::make_shared<energenie_eg_pms>();
+            return ptr->initialize(communication) ? ptr : nullptr;
+        }
+
+        /**
+         * Energenie EG-PMS2.
+         */
+        if (identification->vendor_id == energenie_eg_pms2::identification().vendor_id &&
+            identification->product_id == energenie_eg_pms2::identification().product_id)
+        {
+            auto ptr = std::make_shared<energenie_eg_pms2>();
+            return ptr->initialize(communication) ? ptr : nullptr;
+        }
+
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+            "Provided USB communication is not supported: {}, VID{}:PID{}, at port {}!",
+            identification->name, identification->vendor_id, identification->product_id,
+            identification->port);
     }
 
-    /**
-     * Gembird MSIS-PM 2.
-     */
-    if (communication->information().vendor_id == gembird_msis_pm_2::identification().vendor_id &&
-        communication->information().product_id == gembird_msis_pm_2::identification().product_id)
+    if (const auto *identification =
+            std::get_if<kommpot::ethernet_device_identification>(&identification_variant))
     {
-        auto ptr = std::make_shared<gembird_msis_pm_2>();
-        return ptr->initialize(communication) ? ptr : nullptr;
+        /**
+         * Energenie EG-PMXX-LAN.
+         */
+        if (identification->port == energenie_eg_pmxx_lan::identification().port)
+        {
+            auto ptr = std::make_shared<energenie_eg_pmxx_lan>();
+            return ptr->initialize(communication) ? ptr : nullptr;
+        }
+
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+            "Provided Ethernet communication is not supported: {}, at port {}!",
+            identification->name, identification->port);
     }
 
-    /**
-     * Gembird SIS-PM.
-     */
-    if (communication->information().vendor_id == gembird_sis_pm::identification().vendor_id &&
-        communication->information().product_id == gembird_sis_pm::identification().product_id)
-    {
-        auto ptr = std::make_shared<gembird_sis_pm>();
-        return ptr->initialize(communication) ? ptr : nullptr;
-    }
-
-    /**
-     * Energenie EG-PMS.
-     */
-    if (communication->information().vendor_id == energenie_eg_pms::identification().vendor_id &&
-        communication->information().product_id == energenie_eg_pms::identification().product_id)
-    {
-        auto ptr = std::make_shared<energenie_eg_pms>();
-        return ptr->initialize(communication) ? ptr : nullptr;
-    }
-
-    /**
-     * Energenie EG-PMS2.
-     */
-    if (communication->information().vendor_id == energenie_eg_pms2::identification().vendor_id &&
-        communication->information().product_id == energenie_eg_pms2::identification().product_id)
-    {
-        auto ptr = std::make_shared<energenie_eg_pms2>();
-        return ptr->initialize(communication) ? ptr : nullptr;
-    }
-
-    /**
-     * Energenie EG-PMXX-LAN.
-     */
-    if (false)
-    {
-        auto ptr = std::make_shared<energenie_eg_pmxx_lan>();
-        return ptr->initialize(communication) ? ptr : nullptr;
-    }
-
-    SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
-        "Provided communication is not supported: {}, VID{}:PID{}, at port {}!",
-        communication->information().name, communication->information().vendor_id,
-        communication->information().product_id, communication->information().port);
+    SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "Provided communication is not supported!");
 
     return nullptr;
 }

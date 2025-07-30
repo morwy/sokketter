@@ -124,10 +124,7 @@ auto sokketter_core::devices(const sokketter::device_filter &filter)
         auto device = power_strip_factory::create(communication);
         if (!device)
         {
-            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
-                "Failed creating the device - name {}, serial number {}, at port {}!",
-                communication->information().name, communication->information().serial_number,
-                communication->information().port);
+            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "Failed creating the device!");
             continue;
         }
 
