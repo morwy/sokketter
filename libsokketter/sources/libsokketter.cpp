@@ -224,7 +224,7 @@ auto sokketter::power_strip::configure(const power_strip_configuration &configur
     m_configuration = configuration;
 }
 
-void sokketter::power_strip::save()
+auto sokketter::power_strip::save() -> void
 {
     sokketter_core::instance().database().save();
 }
@@ -349,4 +349,10 @@ auto sokketter::device(const std::string &serial_number) -> std::shared_ptr<sokk
     SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER, "No device found with serial number {}.", serial_number);
 
     return nullptr;
+}
+
+auto sokketter::forget_device(std::shared_ptr<power_strip> &device) -> void
+{
+    sokketter_core::instance().database().remove(device);
+    sokketter_core::instance().database().save();
 }

@@ -26,6 +26,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidgetItem>
+#include <QMessageBox>
 #include <QScrollBar>
 #include <QTimer>
 #include <QUrl>
@@ -90,6 +91,30 @@ MainWindow::MainWindow(QWidget *parent)
     QObject::connect(m_ui->configure_back_label, &ClickableLabel::clicked, [this]() {
         const int &index = m_ui->stackedWidget->indexOf(m_ui->socket_list_page);
         m_ui->stackedWidget->setCurrentIndex(index);
+    });
+
+    QObject::connect(m_ui->configure_delete_label, &ClickableLabel::clicked, [this]() {
+        const auto reply = QMessageBox::warning(this, "Warning",
+            "This action will remove currently selected device from the list of saved devices.\nDo "
+            "you want to continue?",
+            QMessageBox::Yes | QMessageBox::No);
+
+        if (reply != QMessageBox::Yes)
+        {
+            SPDLOG_LOGGER_DEBUG(
+                APP_LOGGER, "User cancelled deletion of device '{}'.", m_device->to_string());
+            return;
+        }
+
+        SPDLOG_LOGGER_DEBUG(
+            APP_LOGGER, "User confirmed deletion of device '{}'.", m_device->to_string());
+
+        forget_selected_device();
+
+        const int &index = m_ui->stackedWidget->indexOf(m_ui->power_strip_list_page);
+        m_ui->stackedWidget->setCurrentIndex(index);
+
+        repopulate_device_list();
     });
 
     QObject::connect(m_ui->configure_save_label, &ClickableLabel::clicked, [this]() {
@@ -467,6 +492,17 @@ auto MainWindow::save_new_configuration() -> void
     }
 
     m_device->save();
+}
+
+auto MainWindow::forget_selected_device() -> void
+{
+    if (m_device == nullptr)
+    {
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "No currently saved device pointer is present!");
+        return;
+    }
+
+    sokketter::forget_device(m_device);
 }
 
 auto MainWindow::initialize_settings_page() -> void

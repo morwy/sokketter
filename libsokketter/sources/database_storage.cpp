@@ -166,6 +166,14 @@ auto database_storage::load() -> void
     m_devices = j.get<std::vector<std::shared_ptr<sokketter::power_strip>>>();
 }
 
+auto database_storage::remove(std::shared_ptr<sokketter::power_strip> &power_strip) -> void
+{
+    m_devices.erase(
+        std::remove_if(m_devices.begin(), m_devices.end(),
+            [&](const std::shared_ptr<sokketter::power_strip> &ptr) { return ptr == power_strip; }),
+        m_devices.end());
+}
+
 auto database_storage::release_resources() -> void
 {
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Releasing device database resources.");
