@@ -76,7 +76,7 @@ auto energenie_eg_pmxx_lan::identification() -> const kommpot::ethernet_device_i
 {
     kommpot::ethernet_device_identification identitication;
 
-    identitication.ip = "0.0.0.0";
+    identitication.ip = "*";
     identitication.port = 5000;
 
     return identitication;
