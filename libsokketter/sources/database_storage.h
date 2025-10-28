@@ -18,6 +18,8 @@ public:
     auto save() const -> void;
     auto load() -> void;
 
+    auto remove(std::shared_ptr<sokketter::power_strip>& power_strip) -> void;
+
     auto release_resources() -> void;
 
     auto path() const -> std::filesystem::path;

@@ -338,6 +338,13 @@ namespace sokketter {
      */
     auto EXPORTED device(const std::string &serial_number)
         -> std::shared_ptr<sokketter::power_strip>;
+
+    /**
+     * @brief removes current power strip from the storage.
+     * @param device shared pointer to the power strip to be removed.
+     */
+    auto EXPORTED forget_device(std::shared_ptr<sokketter::power_strip> &device) -> void;
+
 } // namespace sokketter
 
 #endif // LIBSOKKETTER_H
