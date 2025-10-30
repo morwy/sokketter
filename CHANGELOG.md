@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.3.2] - 2025-10-30
+
+### 🚀 Features
+
+- Added device name on the socket list page (#23) by @morwy
+- Added the ability to delete saved devices (#27) by @morwy
+
+### 🐛 Bug Fixes
+
+- Resolved UI lag during page transitions by eliminating the smooth transition effect and removing the SlidingStackedWidget class (#22) by @morwy
+- Scrolling device configuration by pixel (#24) by @morwy
+- Getting back to socket list on configuration save (#25) by @morwy
+- Make configuration page fully scrollable (#26) by @morwy
+- Increased minimum CMake version to 3.5 for libftdi in kommpot submodule by @morwy
+
 ## [1.3.1] - 2025-07-13
 
 ### 🚀 Features
