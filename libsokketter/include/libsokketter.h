@@ -198,8 +198,8 @@ namespace sokketter {
         socket_configuration m_configuration;
 
         size_t m_index = 0;
-        std::function<bool(size_t, bool)> m_power_cb;
-        std::function<bool(size_t)> m_status_cb;
+        std::function<bool(size_t, bool)> m_power_cb = nullptr;
+        std::function<bool(size_t)> m_status_cb = nullptr;
     };
 
     /**
@@ -321,9 +321,32 @@ namespace sokketter {
      * @brief returns the list of power strip devices built upon provided filtering settings.
      * @param filter settings stating which devices to list.
      * @return vector of power_strip objects.
+     * @attention blocking call.
      */
     auto EXPORTED devices(const device_filter &filter = {})
         -> const std::vector<std::shared_ptr<sokketter::power_strip>> &;
+
+    /**
+     * @brief returns the list of power strip devices built upon provided filtering settings.
+     * @param filter settings stating which devices to list.
+     * @return vector of power_strip objects.
+     * @attention non-blocking call.
+     */
+    enum class enumeration_status
+    {
+        UNKNOWN = 0,
+        STARTED = 1,
+        USB_DEVICES_READY = 2,
+        ETHERNET_DEVICES_READY = 2,
+        COMPLETED = 3
+    };
+
+    using device_callback =
+        std::function<void(std::vector<std::shared_ptr<sokketter::power_strip>> &)>;
+    using status_callback = std::function<void(sokketter::enumeration_status)>;
+
+    auto EXPORTED devices(
+        const device_filter &filter, device_callback device_cb, status_callback status_cb) -> void;
 
     /**
      * @brief returns the power strip device by its index.

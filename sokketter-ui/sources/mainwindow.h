@@ -24,12 +24,18 @@ public:
     ~MainWindow();
 
 signals:
+    auto newPowerStripReceived(std::vector<std::shared_ptr<sokketter::power_strip>> &power_strips)
+        -> void;
+    auto newStatusReceived(sokketter::enumeration_status status) -> void;
     auto toggleResetButton(SocketListItem *object, bool is_on) -> void;
 
 protected:
     auto closeEvent(QCloseEvent *event) -> void override;
 
 private slots:
+    auto onNewPowerStripReceived(std::vector<std::shared_ptr<sokketter::power_strip>> &power_strips)
+        -> void;
+    auto onNewStatusReceived(sokketter::enumeration_status status) -> void;
     auto onPowerStripClicked(QListWidgetItem *item) -> void;
     auto onSocketClicked(QListWidgetItem *item) -> void;
     auto onSocketResetClicked(SocketListItem *item) -> void;
@@ -38,6 +44,10 @@ private slots:
 private:
     Ui::MainWindow *m_ui;
     std::shared_ptr<sokketter::power_strip> m_device = nullptr;
+
+    auto new_devices_received(std::vector<std::shared_ptr<sokketter::power_strip>> &power_strips)
+        -> void;
+    auto new_status_received(sokketter::enumeration_status status) -> void;
 
     auto repopulate_device_list() -> void;
     auto redraw_device_list() -> void;

@@ -74,12 +74,14 @@ auto energenie_eg_pmxx_lan::initialize(std::shared_ptr<kommpot::device_communica
 
 auto energenie_eg_pmxx_lan::identification() -> const kommpot::ethernet_device_identification
 {
-    kommpot::ethernet_device_identification identitication;
+    kommpot::ethernet_device_identification identification;
 
-    identitication.ip = "0.0.0.0";
-    identitication.port = 5000;
+    identification.ip = "*";
+    identification.port = 5000;
+    identification.mac = "88:B6:27:*";
+    identification.protocol = kommpot::ethernet_protocol_type::TCP;
 
-    return identitication;
+    return identification;
 }
 
 auto energenie_eg_pmxx_lan::power_socket(size_t index, bool is_toggled) -> bool

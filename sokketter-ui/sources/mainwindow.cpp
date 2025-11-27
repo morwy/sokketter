@@ -53,6 +53,9 @@ MainWindow::MainWindow(QWidget *parent)
     /**
      * @brief connect the signals to the slots.
      */
+    QObject::connect(
+        this, &MainWindow::newPowerStripReceived, this, &MainWindow::onNewPowerStripReceived);
+    QObject::connect(this, &MainWindow::newStatusReceived, this, &MainWindow::onNewStatusReceived);
     QObject::connect(this, &MainWindow::toggleResetButton, this, &MainWindow::onResetButtonToggled);
 
     QObject::connect(m_ui->power_strip_list_widget, &QListWidget::itemClicked, this,
@@ -135,7 +138,8 @@ auto MainWindow::closeEvent(QCloseEvent *event) -> void
     QMainWindow::closeEvent(event);
 }
 
-auto MainWindow::repopulate_device_list() -> void
+auto MainWindow::onNewPowerStripReceived(
+    std::vector<std::shared_ptr<sokketter::power_strip>> &power_strips) -> void
 {
     SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Repopulating power strip list.");
 
@@ -156,7 +160,6 @@ auto MainWindow::repopulate_device_list() -> void
         visible_height -= (m_ui->power_strip_list_widget->horizontalScrollBar()->height() * 2);
     }
 
-    const auto &power_strips = sokketter::devices();
     for (const auto &power_strip : power_strips)
     {
         auto *power_strip_item = new power_strip_list_item(power_strip->configuration());
@@ -185,6 +188,18 @@ auto MainWindow::repopulate_device_list() -> void
     }
 
     redraw_device_list();
+}
+
+auto MainWindow::onNewStatusReceived(sokketter::enumeration_status status) -> void
+{
+    SPDLOG_LOGGER_INFO(APP_LOGGER, "New status: {}.", static_cast<int>(status));
+}
+
+auto MainWindow::repopulate_device_list() -> void
+{
+    sokketter::devices({},
+        std::bind(&MainWindow::new_devices_received, this, std::placeholders::_1),
+        std::bind(&MainWindow::new_status_received, this, std::placeholders::_1));
 }
 
 auto MainWindow::redraw_device_list() -> void
@@ -703,6 +718,7 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
     m_device = sokketter::device(configuration.id);
     if (m_device == nullptr)
     {
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "No currently saved device pointer is present!");
         return;
     }
 
@@ -723,17 +739,15 @@ auto MainWindow::onSocketClicked(QListWidgetItem *item) -> void
         return;
     }
 
-    const auto &power_strip_configuration = socket_item->power_strip_configuration();
-
-    const auto &device = sokketter::device(power_strip_configuration.id);
-    if (device == nullptr)
+    if (m_device == nullptr)
     {
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "No currently saved device pointer is present!");
         return;
     }
 
     const size_t &index = m_ui->socket_list_widget->row(item);
 
-    const auto &socket_opt = device->socket(index);
+    const auto &socket_opt = m_device->socket(index);
     if (!socket_opt.has_value())
     {
         SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed getting a socket from device!");
@@ -750,21 +764,18 @@ auto MainWindow::onSocketClicked(QListWidgetItem *item) -> void
     socket_item->set_state(socket.is_powered_on());
 }
 
-void MainWindow::onSocketResetClicked(SocketListItem *item)
+auto MainWindow::onSocketResetClicked(SocketListItem *item) -> void
 {
     emit toggleResetButton(item, false);
 
-    const auto &power_strip_configuration = item->power_strip_configuration();
-    const auto &socket_configuration = item->socket_configuration();
-
-    const auto &device = sokketter::device(power_strip_configuration.id);
-    if (device == nullptr)
+    if (m_device == nullptr)
     {
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "No currently saved device pointer is present!");
         return;
     }
 
     const auto &socket_index = item->socket_index();
-    const auto &socket_opt = device->socket(socket_index);
+    const auto &socket_opt = m_device->socket(socket_index);
     if (!socket_opt.has_value())
     {
         SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed getting a socket from device!");
@@ -782,6 +793,8 @@ void MainWindow::onSocketResetClicked(SocketListItem *item)
 
     item->set_state(socket.is_powered_on());
 
+    const auto &socket_configuration = item->socket_configuration();
+
     QTimer::singleShot(socket_configuration.configurable_reset_msec, [this, item, socket]() {
         socket.power(true);
 
@@ -791,9 +804,20 @@ void MainWindow::onSocketResetClicked(SocketListItem *item)
     });
 }
 
-void MainWindow::onResetButtonToggled(SocketListItem *item, bool is_on)
+auto MainWindow::onResetButtonToggled(SocketListItem *item, bool is_on) -> void
 {
     item->toggle_reset_button_state(is_on);
+}
+
+auto MainWindow::new_devices_received(
+    std::vector<std::shared_ptr<sokketter::power_strip>> &power_strips) -> void
+{
+    emit newPowerStripReceived(power_strips);
+}
+
+auto MainWindow::new_status_received(sokketter::enumeration_status status) -> void
+{
+    emit newStatusReceived(status);
 }
 
 auto MainWindow::event(QEvent *event) -> bool
@@ -820,7 +844,7 @@ auto MainWindow::resizeEvent(QResizeEvent *event) -> void
     redraw_configure_list();
 }
 
-void MainWindow::broadcast_event(QEvent *event)
+auto MainWindow::broadcast_event(QEvent *event) -> void
 {
     QCoreApplication::sendEvent(this, event);
 

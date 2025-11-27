@@ -284,6 +284,39 @@ auto sokketter::devices(const device_filter &filter)
     return sokketter_core::instance().devices(filter);
 }
 
+auto sokketter::devices(
+    const device_filter &filter, device_callback device_cb, status_callback status_cb) -> void
+{
+    auto requested_test_device_number = get_requested_test_device_number();
+    if (requested_test_device_number > 0)
+    {
+        status_cb(enumeration_status::STARTED);
+
+        static std::vector<std::shared_ptr<sokketter::power_strip>> devices;
+
+        devices.clear();
+
+        SPDLOG_LOGGER_DEBUG(
+            SOKKETTER_LOGGER, "Requested debug devices: {}.", requested_test_device_number);
+
+        for (size_t device_index = 0; device_index < requested_test_device_number; ++device_index)
+        {
+            devices.push_back(std::make_shared<test_device>(device_index));
+        }
+
+        status_cb(enumeration_status::USB_DEVICES_READY);
+        status_cb(enumeration_status::ETHERNET_DEVICES_READY);
+
+        device_cb(devices);
+
+        status_cb(enumeration_status::COMPLETED);
+
+        return;
+    }
+
+    sokketter_core::instance().devices(filter, device_cb, status_cb);
+}
+
 auto sokketter::device(const size_t &index) -> std::shared_ptr<sokketter::power_strip>
 {
     if (get_requested_test_device_number())
