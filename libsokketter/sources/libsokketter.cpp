@@ -323,18 +323,7 @@ auto sokketter::device(const size_t &index) -> std::shared_ptr<sokketter::power_
         return std::make_shared<test_device>(index);
     }
 
-    auto &devices = sokketter_core::instance().devices();
-
-    if (index >= devices.size())
-    {
-        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
-            "Failed creating the device - requested index {} is greater that the number of the "
-            "devices ({})!",
-            index, devices.size());
-        return {};
-    }
-
-    return devices[index];
+    return sokketter_core::instance().device(index);
 }
 
 auto sokketter::device(const std::string &serial_number) -> std::shared_ptr<sokketter::power_strip>
@@ -370,19 +359,7 @@ auto sokketter::device(const std::string &serial_number) -> std::shared_ptr<sokk
         return nullptr;
     }
 
-    auto &devices = sokketter_core::instance().devices();
-
-    for (const auto &device : devices)
-    {
-        if (device && device->configuration().id == serial_number)
-        {
-            return device;
-        }
-    }
-
-    SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER, "No device found with serial number {}.", serial_number);
-
-    return nullptr;
+    return sokketter_core::instance().device(serial_number);
 }
 
 auto sokketter::enumeration_status_to_string(const enumeration_status &status) noexcept

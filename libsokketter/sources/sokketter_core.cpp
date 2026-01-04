@@ -203,6 +203,40 @@ auto sokketter_core::devices(const sokketter::device_filter &filter,
         std::bind(&sokketter_core::new_status_received, this, std::placeholders::_1));
 }
 
+auto sokketter_core::device(const size_t &index) -> std::shared_ptr<sokketter::power_strip>
+{
+    auto &database = sokketter_core::instance().database().get();
+
+    if (index >= database.size())
+    {
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+            "Failed creating the device - requested index {} is greater that the number of the "
+            "devices ({})!",
+            index, database.size());
+        return nullptr;
+    }
+
+    return database[index];
+}
+
+auto sokketter_core::device(const std::string &serial_number)
+    -> std::shared_ptr<sokketter::power_strip>
+{
+    auto &database = sokketter_core::instance().database().get();
+
+    for (const auto &device : database)
+    {
+        if (device && device->configuration().id == serial_number)
+        {
+            return device;
+        }
+    }
+
+    SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER, "No device found with serial number {}.", serial_number);
+
+    return nullptr;
+}
+
 auto sokketter_core::initialize_logger() -> void
 {
     std::vector<spdlog::sink_ptr> new_sinks;

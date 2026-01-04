@@ -37,6 +37,10 @@ public:
     auto devices(const sokketter::device_filter &filter, sokketter::device_callback device_cb,
         sokketter::status_callback status_cb) -> void;
 
+    auto device(const size_t &index) -> std::shared_ptr<sokketter::power_strip>;
+
+    auto device(const std::string &serial_number) -> std::shared_ptr<sokketter::power_strip>;
+
 private:
     sokketter::settings_structure m_settings;
     std::shared_ptr<spdlog::logger> m_logger = nullptr;
