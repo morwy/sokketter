@@ -290,8 +290,6 @@ auto sokketter::devices(
     auto requested_test_device_number = get_requested_test_device_number();
     if (requested_test_device_number > 0)
     {
-        status_cb(enumeration_status::STARTED);
-
         static std::vector<std::shared_ptr<sokketter::power_strip>> devices;
 
         devices.clear();
@@ -304,8 +302,8 @@ auto sokketter::devices(
             devices.push_back(std::make_shared<test_device>(device_index));
         }
 
-        status_cb(enumeration_status::USB_DEVICES_READY);
-        status_cb(enumeration_status::ETHERNET_DEVICES_READY);
+        status_cb(enumeration_status::ENUMERATING_USB_DEVICES);
+        status_cb(enumeration_status::ENUMERATING_ETHERNET_DEVICES);
 
         device_cb(devices);
 
@@ -385,4 +383,26 @@ auto sokketter::device(const std::string &serial_number) -> std::shared_ptr<sokk
     SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER, "No device found with serial number {}.", serial_number);
 
     return nullptr;
+}
+
+auto sokketter::enumeration_status_to_string(const enumeration_status &status) noexcept
+    -> std::string
+{
+    switch (status)
+    {
+    case enumeration_status::UNKNOWN: {
+        return "Unknown";
+    }
+    case enumeration_status::ENUMERATING_USB_DEVICES: {
+        return "Enumerating USB devices";
+    }
+    case enumeration_status::ENUMERATING_ETHERNET_DEVICES: {
+        return "Enumerating Ethernet devices";
+    }
+    case enumeration_status::COMPLETED: {
+        return "Completed";
+    }
+    default:
+        return "";
+    }
 }

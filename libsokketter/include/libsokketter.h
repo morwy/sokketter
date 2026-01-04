@@ -335,11 +335,18 @@ namespace sokketter {
     enum class enumeration_status
     {
         UNKNOWN = 0,
-        STARTED = 1,
-        USB_DEVICES_READY = 2,
-        ETHERNET_DEVICES_READY = 2,
+        ENUMERATING_USB_DEVICES = 1,
+        ENUMERATING_ETHERNET_DEVICES = 2,
         COMPLETED = 3
     };
+
+    /**
+     * @brief converts enumeration_status to a readable string value.
+     * @param status of enumeration.
+     * @return string.
+     */
+    auto EXPORTED enumeration_status_to_string(const enumeration_status &status) noexcept
+        -> std::string;
 
     using device_callback =
         std::function<void(std::vector<std::shared_ptr<sokketter::power_strip>> &)>;
