@@ -139,7 +139,7 @@ auto MainWindow::closeEvent(QCloseEvent *event) -> void
 }
 
 auto MainWindow::onNewPowerStripReceived(
-    std::vector<std::shared_ptr<sokketter::power_strip>> &power_strips) -> void
+    std::vector<std::shared_ptr<sokketter::power_strip>> power_strips) -> void
 {
     SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Repopulating power strip list.");
 
@@ -192,7 +192,8 @@ auto MainWindow::onNewPowerStripReceived(
 
 auto MainWindow::onNewStatusReceived(sokketter::enumeration_status status) -> void
 {
-    SPDLOG_LOGGER_INFO(APP_LOGGER, "New status: {}.", static_cast<int>(status));
+    SPDLOG_LOGGER_INFO(
+        APP_LOGGER, "New status: {}.", sokketter::enumeration_status_to_string(status));
 }
 
 auto MainWindow::repopulate_device_list() -> void
@@ -810,7 +811,7 @@ auto MainWindow::onResetButtonToggled(SocketListItem *item, bool is_on) -> void
 }
 
 auto MainWindow::new_devices_received(
-    std::vector<std::shared_ptr<sokketter::power_strip>> &power_strips) -> void
+    std::vector<std::shared_ptr<sokketter::power_strip>> power_strips) -> void
 {
     emit newPowerStripReceived(power_strips);
 }
