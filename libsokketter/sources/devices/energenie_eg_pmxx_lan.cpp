@@ -3,6 +3,22 @@
 #include <sokketter_core.h>
 #include <spdlog/spdlog.h>
 
+/**
+ * @attention interaction with device is based on the protocol described in egctl project.
+ * @link https://github.com/unterwulf/egctl/blob/master/egctl.c
+ */
+constexpr uint16_t MAX_PASSWORD_BYTES = 8;
+
+struct eg_lan_password_struct
+{
+    std::array<uint8_t, MAX_PASSWORD_BYTES> value;
+
+    eg_lan_password_struct()
+    {
+        value.fill(0x20);
+    }
+} __attribute__((packed));
+
 energenie_eg_pmxx_lan::energenie_eg_pmxx_lan()
 {
     SPDLOG_LOGGER_DEBUG(
@@ -86,10 +102,31 @@ auto energenie_eg_pmxx_lan::identification() -> const kommpot::ethernet_device_i
 
 auto energenie_eg_pmxx_lan::power_socket(size_t index, bool is_toggled) -> bool
 {
+    if (m_communication == nullptr)
+    {
+        SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
+            "{}: skipping powering socket due to disconnected status.", this->to_string(), index);
+        return false;
+    }
+
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: powering socket {} {}.", this->to_string(), index,
+        is_toggled ? "on" : "off");
+
     return false;
 }
 
 auto energenie_eg_pmxx_lan::socket_status(size_t index) -> bool
 {
+    if (m_communication == nullptr)
+    {
+        SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
+            "{}: skipping checking socket status due to disconnected status.", this->to_string(),
+            index);
+        return false;
+    }
+
+    SPDLOG_LOGGER_DEBUG(
+        SOKKETTER_LOGGER, "{}: checking socket {} status.", this->to_string(), index);
+
     return false;
 }

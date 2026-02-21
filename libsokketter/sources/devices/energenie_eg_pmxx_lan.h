@@ -16,6 +16,8 @@ public:
     static auto identification() -> const kommpot::ethernet_device_identification;
 
 private:
+    std::string m_password = "1";
+
     auto power_socket(size_t index, bool is_toggled) -> bool override;
     auto socket_status(size_t index) -> bool override;
 };
