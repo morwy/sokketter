@@ -18,6 +18,12 @@ public:
 private:
     std::string m_password = "1";
 
+    auto connect_if_not_yet() -> bool;
+    auto disconnect() -> void;
+
+    auto login(const std::string &password) -> bool;
+    auto logout() -> bool;
+
     auto power_socket(size_t index, bool is_toggled) -> bool override;
     auto socket_status(size_t index) -> bool override;
 };

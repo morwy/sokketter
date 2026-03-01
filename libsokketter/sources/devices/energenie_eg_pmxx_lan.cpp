@@ -4,21 +4,9 @@
 #include <spdlog/spdlog.h>
 
 /**
- * @attention interaction with device is based on the protocol described in egctl project.
- * @link https://github.com/unterwulf/egctl/blob/master/egctl.c
+ * @attention
+ * @link
  */
-constexpr uint16_t MAX_PASSWORD_BYTES = 8;
-
-struct eg_lan_password_struct
-{
-    std::array<uint8_t, MAX_PASSWORD_BYTES> value;
-
-    eg_lan_password_struct()
-    {
-        value.fill(0x20);
-    }
-} __attribute__((packed));
-
 energenie_eg_pmxx_lan::energenie_eg_pmxx_lan()
 {
     SPDLOG_LOGGER_DEBUG(
@@ -52,12 +40,7 @@ energenie_eg_pmxx_lan::~energenie_eg_pmxx_lan()
 auto energenie_eg_pmxx_lan::initialize(std::shared_ptr<kommpot::device_communication> communication)
     -> bool
 {
-    if (!power_strip_base::initialize(communication))
-    {
-        return false;
-    }
-
-    const auto &identification_variant = m_communication->identification();
+    const auto &identification_variant = communication->identification();
     const auto *identification =
         std::get_if<kommpot::ethernet_device_identification>(&identification_variant);
     if (identification == nullptr)
@@ -66,13 +49,24 @@ auto energenie_eg_pmxx_lan::initialize(std::shared_ptr<kommpot::device_communica
         return false;
     }
 
-    std::string mac_lower = identification->mac;
-    std::transform(mac_lower.begin(), mac_lower.end(), mac_lower.begin(), ::tolower);
-
-    if (mac_lower.find("88:b6:27") == std::string::npos && mac_lower.find("88:b6:27") != 0)
+    /**
+     * @attention swap communication to HTTP after discovering required host.
+     */
+    if (communication->type() == kommpot::communication_type::ETHERNET)
     {
-        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "Not an Energenie device, skipping.");
-        return false;
+        const kommpot::http_device_identification http_identification{identification->ip, 80};
+        auto http_communication = kommpot::device(http_identification);
+        if (!power_strip_base::initialize(http_communication))
+        {
+            return false;
+        }
+    }
+    else
+    {
+        if (!power_strip_base::initialize(communication))
+        {
+            return false;
+        }
     }
 
     auto configuration = this->configuration();
@@ -100,6 +94,55 @@ auto energenie_eg_pmxx_lan::identification() -> const kommpot::ethernet_device_i
     return identification;
 }
 
+auto energenie_eg_pmxx_lan::connect_if_not_yet() -> bool
+{
+    if (!m_communication->is_open())
+    {
+        if (!m_communication->open())
+        {
+            SPDLOG_LOGGER_ERROR(
+                SOKKETTER_LOGGER, "{}: failed to open communication.", this->to_string());
+            return false;
+        }
+    }
+
+    return true;
+}
+
+auto energenie_eg_pmxx_lan::disconnect() -> void
+{
+    if (m_communication->is_open())
+    {
+        m_communication->close();
+    }
+}
+
+auto energenie_eg_pmxx_lan::login(const std::string &password) -> bool
+{
+    connect_if_not_yet();
+
+    auto transfer = kommpot::http_transfer_configuration();
+    transfer.type = kommpot::http_transfer_type::POST;
+    transfer.resource_path = "/login.html";
+    transfer.body = "pw=" + password;
+    transfer.content_type = "application/x-www-form-urlencoded";
+
+    std::string body = "pw=" + password;
+
+    return m_communication->write(transfer, body.data(), body.size());
+}
+
+auto energenie_eg_pmxx_lan::logout() -> bool
+{
+    const auto transfer =
+        kommpot::http_transfer_configuration{kommpot::http_transfer_type::GET, "/login.html"};
+    const bool result = m_communication->read(transfer, nullptr, 0);
+
+    disconnect();
+
+    return result;
+}
+
 auto energenie_eg_pmxx_lan::power_socket(size_t index, bool is_toggled) -> bool
 {
     if (m_communication == nullptr)
@@ -112,7 +155,25 @@ auto energenie_eg_pmxx_lan::power_socket(size_t index, bool is_toggled) -> bool
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: powering socket {} {}.", this->to_string(), index,
         is_toggled ? "on" : "off");
 
-    return false;
+    if (!login(m_password))
+    {
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "{}: failed to login to device.", this->to_string());
+        return false;
+    }
+
+    const auto transfer =
+        kommpot::http_transfer_configuration{kommpot::http_transfer_type::POST, "/"};
+    std::string body = "cte" + std::to_string(index) + "=" + std::string(is_toggled ? "1" : "0");
+
+    const bool result = m_communication->write(transfer, body.data(), body.size());
+
+    if (!logout())
+    {
+        SPDLOG_LOGGER_ERROR(
+            SOKKETTER_LOGGER, "{}: failed to logout from device.", this->to_string());
+    }
+
+    return result;
 }
 
 auto energenie_eg_pmxx_lan::socket_status(size_t index) -> bool
