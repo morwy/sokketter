@@ -1,12 +1,10 @@
 #include "energenie_eg_pmxx_lan.h"
 
-#include <sokketter_core.h>
-#include <spdlog/spdlog.h>
-
 /**
  * @attention
  * @link
  */
+
 energenie_eg_pmxx_lan::energenie_eg_pmxx_lan()
 {
     SPDLOG_LOGGER_DEBUG(
@@ -33,6 +31,8 @@ energenie_eg_pmxx_lan::energenie_eg_pmxx_lan()
 
 energenie_eg_pmxx_lan::~energenie_eg_pmxx_lan()
 {
+    logout();
+
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: destructed object {}.", this->to_string(),
         static_cast<void *>(this));
 }
@@ -49,24 +49,9 @@ auto energenie_eg_pmxx_lan::initialize(std::shared_ptr<kommpot::device_communica
         return false;
     }
 
-    /**
-     * @attention swap communication to HTTP after discovering required host.
-     */
-    if (communication->type() == kommpot::communication_type::ETHERNET)
+    if (!power_strip_base::initialize(communication))
     {
-        const kommpot::http_device_identification http_identification{identification->ip, 80};
-        auto http_communication = kommpot::device(http_identification);
-        if (!power_strip_base::initialize(http_communication))
-        {
-            return false;
-        }
-    }
-    else
-    {
-        if (!power_strip_base::initialize(communication))
-        {
-            return false;
-        }
+        return false;
     }
 
     auto configuration = this->configuration();
@@ -106,7 +91,24 @@ auto energenie_eg_pmxx_lan::connect_if_not_yet() -> bool
         }
     }
 
-    return true;
+    char end_session_character = END_SESSION_CHARACTER;
+
+    /**
+     * Old session may be still alive. Try several times to close it forcibly.
+     */
+    bool is_connected = false;
+    constexpr size_t max_retries = 4;
+    for (size_t retry = 1; retry < max_retries; retry++)
+    {
+        is_connected =
+            m_communication->write({}, &end_session_character, sizeof(end_session_character));
+        if (is_connected)
+        {
+            break;
+        }
+    }
+
+    return is_connected;
 }
 
 auto energenie_eg_pmxx_lan::disconnect() -> void
@@ -121,26 +123,50 @@ auto energenie_eg_pmxx_lan::login(const std::string &password) -> bool
 {
     connect_if_not_yet();
 
-    auto transfer = kommpot::http_transfer_configuration();
-    transfer.type = kommpot::http_transfer_type::POST;
-    transfer.resource_path = "/login.html";
-    transfer.body = "pw=" + password;
-    transfer.content_type = "application/x-www-form-urlencoded";
+    /**
+     * Read out current task.
+     */
+    auth_question_array question = {0};
 
-    std::string body = "pw=" + password;
+    bool result = m_communication->read({}, question.data(), question.size());
+    if (!result)
+    {
+        SPDLOG_LOGGER_ERROR(
+            SOKKETTER_LOGGER, "{}: failed to read out current task.", this->to_string());
+        return false;
+    }
 
-    return m_communication->write(transfer, body.data(), body.size());
+    auth_answer_structure answer(question, password);
+
+    result = m_communication->write({}, &answer, sizeof(answer));
+    if (!result)
+    {
+        SPDLOG_LOGGER_ERROR(
+            SOKKETTER_LOGGER, "{}: failed to write authentication answer.", this->to_string());
+        return false;
+    }
+
+    m_session.password = password;
+    m_session.question = question;
+
+    return true;
 }
 
-auto energenie_eg_pmxx_lan::logout() -> bool
+auto energenie_eg_pmxx_lan::logout() -> void
 {
-    const auto transfer =
-        kommpot::http_transfer_configuration{kommpot::http_transfer_type::GET, "/login.html"};
-    const bool result = m_communication->read(transfer, nullptr, 0);
+    if (m_communication != nullptr)
+    {
+        char end_session_character = END_SESSION_CHARACTER;
+
+        const bool result =
+            m_communication->write({}, &end_session_character, sizeof(end_session_character));
+        if (!result)
+        {
+            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "{}: failed to end session.", this->to_string());
+        }
+    }
 
     disconnect();
-
-    return result;
 }
 
 auto energenie_eg_pmxx_lan::power_socket(size_t index, bool is_toggled) -> bool
@@ -155,23 +181,31 @@ auto energenie_eg_pmxx_lan::power_socket(size_t index, bool is_toggled) -> bool
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: powering socket {} {}.", this->to_string(), index,
         is_toggled ? "on" : "off");
 
-    if (!login(m_password))
+    if (!m_session.is_authenticated())
     {
-        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "{}: failed to login to device.", this->to_string());
-        return false;
+        if (!login(m_password))
+        {
+            SPDLOG_LOGGER_ERROR(
+                SOKKETTER_LOGGER, "{}: failed to login to device.", this->to_string());
+            return false;
+        }
     }
 
-    const auto transfer =
-        kommpot::http_transfer_configuration{kommpot::http_transfer_type::POST, "/"};
-    std::string body = "cte" + std::to_string(index) + "=" + std::string(is_toggled ? "1" : "0");
+    encrypted_status_array status_array = m_status_array;
 
-    const bool result = m_communication->write(transfer, body.data(), body.size());
+    const uint8_t value = is_toggled ? 0x1 : 0x2;
+    status_array[3 - (index - 1)] =
+        (((value ^ m_session.question[2]) + m_session.question[3]) ^ m_session.password.at(0)) +
+        m_session.password.at(1);
 
-    if (!logout())
+    const bool result = m_communication->write({}, status_array.data(), status_array.size());
+    if (!result)
     {
         SPDLOG_LOGGER_ERROR(
-            SOKKETTER_LOGGER, "{}: failed to logout from device.", this->to_string());
+            SOKKETTER_LOGGER, "{}: failed to write socket {} status.", this->to_string(), index);
     }
+
+    m_status_array = {0};
 
     return result;
 }
@@ -189,5 +223,55 @@ auto energenie_eg_pmxx_lan::socket_status(size_t index) -> bool
     SPDLOG_LOGGER_DEBUG(
         SOKKETTER_LOGGER, "{}: checking socket {} status.", this->to_string(), index);
 
-    return false;
+    if (!m_session.is_authenticated())
+    {
+        if (!login(m_password))
+        {
+            SPDLOG_LOGGER_ERROR(
+                SOKKETTER_LOGGER, "{}: failed to login to device.", this->to_string());
+            return false;
+        }
+    }
+
+    if (m_status_array[0] == 0 && m_status_array[1] == 0 && m_status_array[2] == 0 &&
+        m_status_array[3] == 0)
+    {
+        encrypted_status_array status_array;
+
+        const bool result = m_communication->read({}, status_array.data(), status_array.size());
+        if (!result)
+        {
+            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "{}: failed to read out socket {} status.",
+                this->to_string(), index);
+            return false;
+        }
+
+        m_status_array = status_array;
+    }
+
+    const uint8_t status =
+        (((m_status_array[3 - (index - 1)] - m_session.password.at(1)) ^ m_session.password.at(0)) -
+            m_session.question[3]) ^
+        m_session.question[2];
+
+    switch (status)
+    {
+    case 0x22: /** protocol version 2.0 */
+    case 0x82: /** protocol version 2.1 */
+    case 0x92: /** protocol version WLAN */
+    {
+        return false;
+    }
+    case 0x11: /** protocol version 2.0 */
+    case 0x41: /** protocol version 2.1 */
+    case 0x51: /** protocol version WLAN */
+    {
+        return true;
+    }
+    default: {
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "{}: received unknown status 0x{:02X} for socket {}.",
+            this->to_string(), status, index);
+        return false;
+    }
+    }
 }
