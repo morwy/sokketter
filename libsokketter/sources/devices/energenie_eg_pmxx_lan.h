@@ -112,7 +112,7 @@ struct auth_answer_structure
 
 constexpr size_t MAX_STATUS_SIZE_BYTES = 4;
 
-typedef std::array<uint8_t, MAX_STATUS_SIZE_BYTES> encrypted_status_array;
+typedef std::array<uint8_t, MAX_STATUS_SIZE_BYTES> encrypted_state_array;
 
 struct auth_session_structure
 {
@@ -139,13 +139,17 @@ public:
 private:
     std::string m_password = "1";
     auth_session_structure m_session;
-    encrypted_status_array m_status_array = {0};
+    encrypted_state_array m_state_array = {0};
 
     auto connect_if_not_yet() -> bool;
     auto disconnect() -> void;
 
     auto login(const std::string &password) -> bool;
     auto logout() -> void;
+
+    auto wait_for_data(const uint32_t &timeout_secs, const uint32_t &timeout_usecs) -> bool;
+
+    auto read_out_state(encrypted_state_array &state) const -> bool;
 
     auto power_socket(size_t index, bool is_toggled) -> bool override;
     auto socket_status(size_t index) -> bool override;
