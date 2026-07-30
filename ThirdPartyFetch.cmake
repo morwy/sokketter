@@ -1,7 +1,26 @@
+include(FetchContent)
+
+message("Fetching libcurl library.")
+FetchContent_Declare(
+    curl
+    URL https://github.com/curl/curl/releases/download/curl-8_9_1/curl-8.9.1.tar.gz
+)
+
+set(BUILD_CURL_EXE OFF CACHE BOOL "" FORCE)
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(BUILD_LIBCURL_DOCS OFF CACHE BOOL "" FORCE)
+set(BUILD_MISC_DOCS OFF CACHE BOOL "" FORCE)
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)
+set(CURL_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(curl)
+
+message("libcurl library was fetched to directory: ${curl_SOURCE_DIR}.")
+
 if(SOKKETTER_ENABLE_TESTING)
     message("Fetching GoogleTest test library.")
 
-    include(FetchContent)
     FetchContent_Declare(
         googletest
         URL https://github.com/google/googletest/releases/download/v1.16.0/googletest-1.16.0.tar.gz

@@ -86,6 +86,11 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 #
+# Link with libcurl, built from source via FetchContent.
+#
+target_link_libraries(${PROJECT_NAME} PRIVATE CURL::libcurl)
+
+#
 # Link with kommpot dependencies.
 #
 set(KOMMPOT_INCLUDE_OUTPUT_PATH ${SOKKETTER_INCLUDE_OUTPUT_PATH})
