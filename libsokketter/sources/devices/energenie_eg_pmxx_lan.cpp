@@ -116,9 +116,20 @@ auto energenie_eg_pmxx_lan::power_socket(size_t index, bool is_toggled) -> bool
     {
         SPDLOG_LOGGER_ERROR(
             SOKKETTER_LOGGER, "{}: failed powering socket {}.", this->to_string(), index);
+        return false;
     }
 
-    return success;
+    /**
+     * The device echoes the full socket states in its response, so refresh the cache from it and
+     * avoid a follow-up status query. Fall back to the requested state if parsing yields nothing.
+     */
+    if (!update_states_from_response(response) && index >= 1 && index <= m_socket_states.size())
+    {
+        m_socket_states[index - 1] = is_toggled;
+        m_socket_states_time = std::chrono::steady_clock::now();
+    }
+
+    return true;
 }
 
 auto energenie_eg_pmxx_lan::socket_status(size_t index) -> bool
@@ -131,9 +142,35 @@ auto energenie_eg_pmxx_lan::socket_status(size_t index) -> bool
         return false;
     }
 
-    SPDLOG_LOGGER_DEBUG(
-        SOKKETTER_LOGGER, "{}: checking socket {} status.", this->to_string(), index);
+    const bool cache_fresh =
+        m_socket_states_valid &&
+        (std::chrono::steady_clock::now() - m_socket_states_time) < SOCKET_STATES_CACHE_TTL;
 
+    if (!cache_fresh)
+    {
+        SPDLOG_LOGGER_DEBUG(
+            SOKKETTER_LOGGER, "{}: checking socket {} status.", this->to_string(), index);
+
+        if (!refresh_socket_states())
+        {
+            SPDLOG_LOGGER_ERROR(
+                SOKKETTER_LOGGER, "{}: failed reading socket {} status.", this->to_string(), index);
+            return false;
+        }
+    }
+
+    if (index < 1 || index > m_socket_states.size())
+    {
+        SPDLOG_LOGGER_ERROR(
+            SOKKETTER_LOGGER, "{}: socket {} status is not available.", this->to_string(), index);
+        return false;
+    }
+
+    return m_socket_states[index - 1];
+}
+
+auto energenie_eg_pmxx_lan::refresh_socket_states() -> bool
+{
     const std::string &address = this->configuration().address;
 
     CURL *curl = create_session();
@@ -153,20 +190,25 @@ auto energenie_eg_pmxx_lan::socket_status(size_t index) -> bool
 
     if (!success)
     {
-        SPDLOG_LOGGER_ERROR(
-            SOKKETTER_LOGGER, "{}: failed reading socket {} status.", this->to_string(), index);
         return false;
     }
 
-    const std::vector<bool> states = parse_socket_states(response);
-    if (index < 1 || index > states.size())
+    return update_states_from_response(response);
+}
+
+auto energenie_eg_pmxx_lan::update_states_from_response(const std::string &body) -> bool
+{
+    const std::vector<bool> states = parse_socket_states(body);
+    if (states.empty())
     {
-        SPDLOG_LOGGER_ERROR(
-            SOKKETTER_LOGGER, "{}: socket {} status is not available.", this->to_string(), index);
         return false;
     }
 
-    return states[index - 1];
+    m_socket_states = states;
+    m_socket_states_time = std::chrono::steady_clock::now();
+    m_socket_states_valid = true;
+
+    return true;
 }
 
 auto energenie_eg_pmxx_lan::write_callback(char *data, size_t size, size_t count, void *user_data)

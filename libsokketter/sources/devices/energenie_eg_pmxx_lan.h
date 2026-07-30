@@ -9,6 +9,7 @@
 #include <curl/curl.h>
 #include <spdlog/spdlog.h>
 
+#include <chrono>
 #include <string>
 #include <vector>
 
@@ -30,6 +31,18 @@ private:
      */
     static constexpr long HTTP_TIMEOUT_SECONDS = 5;
 
+    /**
+     * @brief how long cached socket states stay valid before another status query is issued.
+     *
+     * A single status query returns the states of every socket, so a short cache collapses the
+     * burst of per-socket reads done when a device page is opened into one network round-trip.
+     */
+    static constexpr std::chrono::milliseconds SOCKET_STATES_CACHE_TTL{1000};
+
+    std::vector<bool> m_socket_states;
+    std::chrono::steady_clock::time_point m_socket_states_time{};
+    bool m_socket_states_valid = false;
+
     auto power_socket(size_t index, bool is_toggled) -> bool override;
     auto socket_status(size_t index) -> bool override;
 
@@ -37,6 +50,17 @@ private:
     static auto http_post(CURL *curl, const std::string &url, const std::string &fields,
         std::string &response) -> bool;
     static auto http_get(CURL *curl, const std::string &url, std::string &response) -> bool;
+
+    /**
+     * @brief performs a single status query and refreshes the cached socket states.
+     */
+    auto refresh_socket_states() -> bool;
+
+    /**
+     * @brief refreshes the cached socket states from a page containing the "sockstates" list.
+     * @return true if states were found and cached, false otherwise.
+     */
+    auto update_states_from_response(const std::string &body) -> bool;
 
     /**
      * @brief creates a new session handle with an in-memory cookie engine enabled.
