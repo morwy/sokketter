@@ -327,10 +327,7 @@ namespace sokketter {
         -> const std::vector<std::shared_ptr<sokketter::power_strip>> &;
 
     /**
-     * @brief returns the list of power strip devices built upon provided filtering settings.
-     * @param filter settings stating which devices to list.
-     * @return vector of power_strip objects.
-     * @attention non-blocking call.
+     * @brief the enum specifying the status of device enumeration.
      */
     enum class enumeration_status
     {
@@ -348,10 +345,23 @@ namespace sokketter {
     auto EXPORTED enumeration_status_to_string(const enumeration_status &status) noexcept
         -> std::string;
 
+    /**
+     * @brief type alias for the device callback function.
+     */
     using device_callback =
         std::function<void(std::vector<std::shared_ptr<sokketter::power_strip>> &)>;
+
+    /**
+     * @brief type alias for the status callback function.
+     */
     using status_callback = std::function<void(sokketter::enumeration_status)>;
 
+    /**
+     * @brief returns the list of power strip devices built upon provided filtering settings.
+     * @param filter settings stating which devices to list.
+     * @return vector of power_strip objects.
+     * @attention non-blocking call.
+     */
     auto EXPORTED devices(
         const device_filter &filter, device_callback device_cb, status_callback status_cb) -> void;
 
