@@ -1,5 +1,11 @@
 #include "energenie_eg_pmxx_lan.h"
 
+#include <curl/curl.h>
+
+#include <sstream>
+#include <string>
+#include <vector>
+
 energenie_eg_pmxx_lan::energenie_eg_pmxx_lan()
 {
     SPDLOG_LOGGER_DEBUG(
@@ -84,7 +90,35 @@ auto energenie_eg_pmxx_lan::power_socket(size_t index, bool is_toggled) -> bool
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: powering socket {} {}.", this->to_string(), index,
         is_toggled ? "on" : "off");
 
-    return false;
+    const std::string &address = this->configuration().address;
+
+    CURL *curl = create_session();
+    if (curl == nullptr)
+    {
+        SPDLOG_LOGGER_ERROR(
+            SOKKETTER_LOGGER, "{}: failed to initialize the HTTP session.", this->to_string());
+        return false;
+    }
+
+    std::string response;
+    bool success = login(curl, address, m_password, response);
+    if (success)
+    {
+        const std::string fields = "cte" + std::to_string(index) + "=" + (is_toggled ? "1" : "0");
+        success = http_post(curl, "http://" + address + "/", fields, response);
+    }
+
+    logout(curl, address);
+
+    curl_easy_cleanup(curl);
+
+    if (!success)
+    {
+        SPDLOG_LOGGER_ERROR(
+            SOKKETTER_LOGGER, "{}: failed powering socket {}.", this->to_string(), index);
+    }
+
+    return success;
 }
 
 auto energenie_eg_pmxx_lan::socket_status(size_t index) -> bool
@@ -100,5 +134,135 @@ auto energenie_eg_pmxx_lan::socket_status(size_t index) -> bool
     SPDLOG_LOGGER_DEBUG(
         SOKKETTER_LOGGER, "{}: checking socket {} status.", this->to_string(), index);
 
-    return false;
+    const std::string &address = this->configuration().address;
+
+    CURL *curl = create_session();
+    if (curl == nullptr)
+    {
+        SPDLOG_LOGGER_ERROR(
+            SOKKETTER_LOGGER, "{}: failed to initialize the HTTP session.", this->to_string());
+        return false;
+    }
+
+    std::string response;
+    const bool success = login(curl, address, m_password, response);
+
+    logout(curl, address);
+
+    curl_easy_cleanup(curl);
+
+    if (!success)
+    {
+        SPDLOG_LOGGER_ERROR(
+            SOKKETTER_LOGGER, "{}: failed reading socket {} status.", this->to_string(), index);
+        return false;
+    }
+
+    const std::vector<bool> states = parse_socket_states(response);
+    if (index < 1 || index > states.size())
+    {
+        SPDLOG_LOGGER_ERROR(
+            SOKKETTER_LOGGER, "{}: socket {} status is not available.", this->to_string(), index);
+        return false;
+    }
+
+    return states[index - 1];
+}
+
+auto energenie_eg_pmxx_lan::write_callback(char *data, size_t size, size_t count, void *user_data)
+    -> size_t
+{
+    const size_t length = size * count;
+    auto *buffer = static_cast<std::string *>(user_data);
+    buffer->append(data, length);
+    return length;
+}
+
+auto energenie_eg_pmxx_lan::http_post(
+    CURL *curl, const std::string &url, const std::string &fields, std::string &response) -> bool
+{
+    response.clear();
+
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, fields.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+    return curl_easy_perform(curl) == CURLE_OK;
+}
+
+auto energenie_eg_pmxx_lan::http_get(CURL *curl, const std::string &url, std::string &response)
+    -> bool
+{
+    response.clear();
+
+    curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+    return curl_easy_perform(curl) == CURLE_OK;
+}
+
+auto energenie_eg_pmxx_lan::create_session() -> CURL *
+{
+    CURL *curl = curl_easy_init();
+    if (curl == nullptr)
+    {
+        return nullptr;
+    }
+
+    curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "");
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, HTTP_TIMEOUT_SECONDS);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, HTTP_TIMEOUT_SECONDS);
+
+    return curl;
+}
+
+auto energenie_eg_pmxx_lan::login(CURL *curl, const std::string &address,
+    const std::string &password, std::string &response) -> bool
+{
+    return http_post(curl, "http://" + address + "/login.html", "pw=" + password, response);
+}
+
+auto energenie_eg_pmxx_lan::logout(CURL *curl, const std::string &address) -> void
+{
+    std::string response;
+    http_get(curl, "http://" + address + "/login.html", response);
+}
+
+auto energenie_eg_pmxx_lan::parse_socket_states(const std::string &body) -> std::vector<bool>
+{
+    std::vector<bool> states;
+
+    const std::string marker = "sockstates = ";
+    const auto marker_position = body.find(marker);
+    if (marker_position == std::string::npos)
+    {
+        return states;
+    }
+
+    const auto open_bracket = body.find('[', marker_position);
+    const auto close_bracket = body.find(']', open_bracket);
+    if (open_bracket == std::string::npos || close_bracket == std::string::npos)
+    {
+        return states;
+    }
+
+    const std::string list = body.substr(open_bracket + 1, close_bracket - open_bracket - 1);
+
+    std::istringstream stream(list);
+    std::string token;
+    while (std::getline(stream, token, ','))
+    {
+        const auto first = token.find_first_not_of(" \t\r\n");
+        if (first == std::string::npos)
+        {
+            continue;
+        }
+        const auto last = token.find_last_not_of(" \t\r\n");
+        states.push_back(token.substr(first, last - first + 1) == "1");
+    }
+
+    return states;
 }
