@@ -208,13 +208,22 @@ namespace sokketter {
     enum class power_strip_type
     {
         UNKNOWN = 0,
+
         TEST_DEVICE = 1,
+
         GEMBIRD_MSIS_PM = 2,
-        GEMBIRD_SIS_PM = 3,
-        GEMBIRD_MSIS_PM_2 = 4,
-        ENERGENIE_EG_PMS = 5,
-        ENERGENIE_EG_PMS2 = 6,
-        ENERGENIE_EG_PMXX_LAN = 7,
+        GEMBIRD_SIS_PM = 4,
+        GEMBIRD_MSIS_PM_2 = 8,
+        ENERGENIE_EG_PMS = 16,
+        ENERGENIE_EG_PMS2 = 32,
+
+        ENERGENIE_EG_PMXX_LAN = 64,
+
+        USB_DEVICES = GEMBIRD_MSIS_PM | GEMBIRD_SIS_PM | GEMBIRD_MSIS_PM_2 | ENERGENIE_EG_PMS |
+                      ENERGENIE_EG_PMS2,
+        ETHERNET_DEVICES = ENERGENIE_EG_PMXX_LAN,
+
+        ALL_DEVICES = USB_DEVICES | ETHERNET_DEVICES
     };
 
     /**
@@ -314,7 +323,7 @@ namespace sokketter {
     struct EXPORTED device_filter
     {
         bool allow_disconnected_devices = true;
-        std::vector<power_strip_type> allowed_types = {};
+        power_strip_type allowed_types = power_strip_type::ALL_DEVICES;
     };
 
     /**

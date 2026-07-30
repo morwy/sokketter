@@ -111,7 +111,7 @@ auto sokketter_core::devices(const sokketter::device_filter &filter)
 {
     auto &database = sokketter_core::instance().database().get();
 
-    const auto supported_devices = power_strip_factory::supported_devices();
+    const auto supported_devices = power_strip_factory::supported_devices(filter);
 
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Supported devices: {}.", supported_devices.size());
 
@@ -194,7 +194,7 @@ auto sokketter_core::devices(const sokketter::device_filter &filter,
     m_device_cb = device_cb;
     m_status_cb = status_cb;
 
-    const auto supported_devices = power_strip_factory::supported_devices();
+    const auto supported_devices = power_strip_factory::supported_devices(filter);
 
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Supported devices: {}.", supported_devices.size());
 

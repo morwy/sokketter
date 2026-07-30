@@ -7,7 +7,8 @@
 #include <third-party/kommpot/libkommpot/include/libkommpot.h>
 
 namespace power_strip_factory {
-    auto supported_devices() -> const std::vector<kommpot::device_identification>;
+    auto supported_devices(const sokketter::device_filter &filter)
+        -> const std::vector<kommpot::device_identification>;
 
     auto create(std::shared_ptr<kommpot::device_communication> communication)
         -> std::shared_ptr<sokketter::power_strip>;

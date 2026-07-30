@@ -9,16 +9,47 @@
 #include <sokketter_core.h>
 #include <spdlog/spdlog.h>
 
-auto power_strip_factory::supported_devices() -> const std::vector<kommpot::device_identification>
+#include <type_traits>
+
+auto power_strip_factory::supported_devices(const sokketter::device_filter &filter)
+    -> const std::vector<kommpot::device_identification>
 {
     std::vector<kommpot::device_identification> identifications;
 
-    identifications.push_back(gembird_msis_pm::identification());
-    identifications.push_back(gembird_msis_pm_2::identification());
-    identifications.push_back(gembird_sis_pm::identification());
-    identifications.push_back(energenie_eg_pms::identification());
-    identifications.push_back(energenie_eg_pms2::identification());
-    identifications.push_back(energenie_eg_pmxx_lan::identification());
+    const auto is_allowed = [&filter](const sokketter::power_strip_type &type) -> bool {
+        using underlying = std::underlying_type_t<sokketter::power_strip_type>;
+        return (static_cast<underlying>(filter.allowed_types) & static_cast<underlying>(type)) != 0;
+    };
+
+    if (is_allowed(sokketter::power_strip_type::GEMBIRD_MSIS_PM))
+    {
+        identifications.push_back(gembird_msis_pm::identification());
+    }
+
+    if (is_allowed(sokketter::power_strip_type::GEMBIRD_MSIS_PM_2))
+    {
+        identifications.push_back(gembird_msis_pm_2::identification());
+    }
+
+    if (is_allowed(sokketter::power_strip_type::GEMBIRD_SIS_PM))
+    {
+        identifications.push_back(gembird_sis_pm::identification());
+    }
+
+    if (is_allowed(sokketter::power_strip_type::ENERGENIE_EG_PMS))
+    {
+        identifications.push_back(energenie_eg_pms::identification());
+    }
+
+    if (is_allowed(sokketter::power_strip_type::ENERGENIE_EG_PMS2))
+    {
+        identifications.push_back(energenie_eg_pms2::identification());
+    }
+
+    if (is_allowed(sokketter::power_strip_type::ENERGENIE_EG_PMXX_LAN))
+    {
+        identifications.push_back(energenie_eg_pmxx_lan::identification());
+    }
 
     return identifications;
 }

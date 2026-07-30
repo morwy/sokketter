@@ -210,7 +210,26 @@ auto MainWindow::onNewStatusReceived(sokketter::enumeration_status status) -> vo
 
 auto MainWindow::repopulate_device_list() -> void
 {
-    sokketter::devices({},
+    auto &settings = app_settings_storage::instance().get();
+
+    sokketter::device_filter filter;
+    filter.allowed_types = sokketter::power_strip_type::UNKNOWN;
+
+    if (settings.is_usb_devices_allowed)
+    {
+        filter.allowed_types = static_cast<sokketter::power_strip_type>(
+            static_cast<int>(filter.allowed_types) |
+            static_cast<int>(sokketter::power_strip_type::USB_DEVICES));
+    }
+
+    if (settings.is_ethernet_devices_allowed)
+    {
+        filter.allowed_types = static_cast<sokketter::power_strip_type>(
+            static_cast<int>(filter.allowed_types) |
+            static_cast<int>(sokketter::power_strip_type::ETHERNET_DEVICES));
+    }
+
+    sokketter::devices(filter,
         std::bind(&MainWindow::new_devices_received, this, std::placeholders::_1),
         std::bind(&MainWindow::new_status_received, this, std::placeholders::_1));
 }
@@ -376,8 +395,8 @@ auto MainWindow::run_device_task(std::function<bool()> work, std::function<void(
     -> void
 {
     auto *watcher = new QFutureWatcher<bool>(this);
-    QObject::connect(watcher, &QFutureWatcher<bool>::finished, this,
-        [watcher, on_done = std::move(on_done)]() {
+    QObject::connect(
+        watcher, &QFutureWatcher<bool>::finished, this, [watcher, on_done = std::move(on_done)]() {
             const bool result = watcher->result();
             watcher->deleteLater();
             on_done(result);
@@ -692,6 +711,23 @@ auto MainWindow::initialize_settings_page() -> void
     QObject::connect(m_ui->settings_theme_auto_radio_button, &QRadioButton::clicked, theme_lambda);
     QObject::connect(m_ui->settings_theme_light_radio_button, &QRadioButton::clicked, theme_lambda);
     QObject::connect(m_ui->settings_theme_dark_radio_button, &QRadioButton::clicked, theme_lambda);
+
+    m_ui->settings_usb_devices_checkbox->setChecked(settings.is_usb_devices_allowed);
+    QObject::connect(m_ui->settings_usb_devices_checkbox, &QCheckBox::clicked, [&]() {
+        settings.is_usb_devices_allowed = m_ui->settings_usb_devices_checkbox->isChecked();
+        app_settings_storage::instance().save();
+
+        repopulate_device_list();
+    });
+
+    m_ui->settings_ethernet_devices_checkbox->setChecked(settings.is_ethernet_devices_allowed);
+    QObject::connect(m_ui->settings_ethernet_devices_checkbox, &QCheckBox::clicked, [&]() {
+        settings.is_ethernet_devices_allowed =
+            m_ui->settings_ethernet_devices_checkbox->isChecked();
+        app_settings_storage::instance().save();
+
+        repopulate_device_list();
+    });
 }
 
 auto MainWindow::initialize_about_page() -> void

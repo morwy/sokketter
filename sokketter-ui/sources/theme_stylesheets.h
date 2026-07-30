@@ -238,6 +238,24 @@ const QString light_theme = base_theme + R"(
         image: url(:/icons/radiobutton_checked.svg);
     }
 
+    QCheckBox {
+        color: #21201C;
+    }
+
+    QCheckBox::indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        border: 1px solid #CFCECA;
+        background: #FFFFFF;
+    }
+
+    QCheckBox::indicator:checked {
+        background-color: #FFC53D;
+        border: 1px solid #FFC53D;
+        image: url(:/icons/checkbox_checked.svg);
+    }
+
     SubheaderLabel {
         font-size: 16px;
         color: #82827C;
@@ -440,6 +458,24 @@ const QString dark_theme = base_theme + R"(
         background-color: #FFC743;
         border: 1px solid #FFC743;
         image: url(:/icons/radiobutton_checked.svg);
+    }
+
+    QCheckBox {
+        color: #EEEEEC;
+    }
+
+    QCheckBox::indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        border: 1px solid #474642;
+        background: #0D0D0C;
+    }
+
+    QCheckBox::indicator:checked {
+        background-color: #FFC743;
+        border: 1px solid #FFC743;
+        image: url(:/icons/checkbox_checked.svg);
     }
 
     SubheaderLabel {
