@@ -23,12 +23,15 @@
 #include <QDesktopServices>
 #include <QEvent>
 #include <QFileInfo>
+#include <QFutureWatcher>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidgetItem>
+#include <QPointer>
 #include <QScrollBar>
 #include <QTimer>
 #include <QUrl>
+#include <QtConcurrent>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -39,6 +42,12 @@ MainWindow::MainWindow(QWidget *parent)
     sokketter::initialize();
 
     m_ui->setupUi(this);
+
+    /**
+     * @brief a single worker keeps device network I/O off the UI thread and serialized, matching
+     * the device's single-session nature.
+     */
+    m_device_pool.setMaxThreadCount(1);
 
     app_settings_storage::instance().load();
 
@@ -113,6 +122,9 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    m_device_pool.clear();
+    m_device_pool.waitForDone();
+
     if (m_device != nullptr)
     {
         m_device.reset();
@@ -275,16 +287,16 @@ auto MainWindow::repopulate_socket_list() -> void
         "of " + QString::fromStdString(device_configuration.name));
 
     const auto &sockets = m_device->sockets();
+    const bool is_connected = m_device->is_connected();
     for (size_t socket_index = 0; socket_index < sockets.size(); socket_index++)
     {
         const auto &socket = sockets[socket_index];
 
         auto *socket_item =
             new SocketListItem(device_configuration, socket.configuration(), socket_index);
-        socket_item->setEnabled(m_device->is_connected());
-        if (m_device->is_connected())
+        socket_item->setEnabled(is_connected);
+        if (is_connected)
         {
-            socket_item->set_state(socket.is_powered_on());
             QObject::connect(socket_item, &SocketListItem::configurableResetRequested, this,
                 &MainWindow::onSocketResetClicked);
         }
@@ -298,9 +310,80 @@ auto MainWindow::repopulate_socket_list() -> void
         m_ui->socket_list_widget->setItemWidget(item, socket_item);
     }
 
-    m_ui->socket_list_widget->setEnabled(m_device->is_connected());
+    m_ui->socket_list_widget->setEnabled(is_connected);
 
     redraw_socket_list();
+
+    if (is_connected)
+    {
+        refresh_socket_states_async();
+    }
+}
+
+auto MainWindow::refresh_socket_states_async() -> void
+{
+    auto device = m_device;
+    if (device == nullptr)
+    {
+        return;
+    }
+
+    auto *watcher = new QFutureWatcher<std::vector<bool>>(this);
+    QObject::connect(
+        watcher, &QFutureWatcher<std::vector<bool>>::finished, this, [this, watcher, device]() {
+            const std::vector<bool> states = watcher->result();
+            watcher->deleteLater();
+
+            if (m_device != device)
+            {
+                return;
+            }
+
+            const int item_count = m_ui->socket_list_widget->count();
+            for (int item_index = 0; item_index < item_count && item_index < int(states.size());
+                ++item_index)
+            {
+                auto *list_widget = m_ui->socket_list_widget->item(item_index);
+                if (list_widget == nullptr)
+                {
+                    continue;
+                }
+
+                auto *socket_item = qobject_cast<SocketListItem *>(
+                    m_ui->socket_list_widget->itemWidget(list_widget));
+                if (socket_item == nullptr)
+                {
+                    continue;
+                }
+
+                socket_item->set_state(states[item_index]);
+            }
+        });
+
+    watcher->setFuture(QtConcurrent::run(&m_device_pool, [device]() {
+        std::vector<bool> states;
+        const auto &sockets = device->sockets();
+        states.reserve(sockets.size());
+        for (const auto &socket : sockets)
+        {
+            states.push_back(socket.is_powered_on());
+        }
+        return states;
+    }));
+}
+
+auto MainWindow::run_device_task(std::function<bool()> work, std::function<void(bool)> on_done)
+    -> void
+{
+    auto *watcher = new QFutureWatcher<bool>(this);
+    QObject::connect(watcher, &QFutureWatcher<bool>::finished, this,
+        [watcher, on_done = std::move(on_done)]() {
+            const bool result = watcher->result();
+            watcher->deleteLater();
+            on_done(result);
+        });
+
+    watcher->setFuture(QtConcurrent::run(&m_device_pool, std::move(work)));
 }
 
 auto MainWindow::redraw_socket_list() -> void
@@ -746,23 +829,42 @@ auto MainWindow::onSocketClicked(QListWidgetItem *item) -> void
         return;
     }
 
-    const size_t &index = m_ui->socket_list_widget->row(item);
+    const size_t index = m_ui->socket_list_widget->row(item);
 
-    const auto &socket_opt = m_device->socket(index);
-    if (!socket_opt.has_value())
-    {
-        SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed getting a socket from device!");
-        return;
-    }
+    auto device = m_device;
+    QPointer<SocketListItem> guard(socket_item);
+    socket_item->setEnabled(false);
 
-    const auto &socket = socket_opt->get();
-    if (!socket.toggle())
-    {
-        SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed toggling a socket!");
-        return;
-    }
+    run_device_task(
+        [device, index]() -> bool {
+            const auto socket_opt = device->socket(index);
+            if (!socket_opt.has_value())
+            {
+                SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed getting a socket from device!");
+                return false;
+            }
 
-    socket_item->set_state(socket.is_powered_on());
+            const auto &socket = socket_opt->get();
+            if (!socket.toggle())
+            {
+                SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed toggling a socket!");
+            }
+
+            return socket.is_powered_on();
+        },
+        [this, guard, device](bool state) {
+            if (guard == nullptr)
+            {
+                return;
+            }
+
+            if (m_device == device)
+            {
+                guard->set_state(state);
+            }
+
+            guard->setEnabled(true);
+        });
 }
 
 auto MainWindow::onSocketResetClicked(SocketListItem *item) -> void
@@ -775,34 +877,57 @@ auto MainWindow::onSocketResetClicked(SocketListItem *item) -> void
         return;
     }
 
-    const auto &socket_index = item->socket_index();
-    const auto &socket_opt = m_device->socket(socket_index);
-    if (!socket_opt.has_value())
-    {
-        SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed getting a socket from device!");
-        return;
-    }
+    const size_t socket_index = item->socket_index();
+    const auto reset_msec = item->socket_configuration().configurable_reset_msec;
 
-    const auto &socket = socket_opt->get();
-    if (!socket.toggle())
-    {
-        SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed toggling a socket!");
-        return;
-    }
+    auto device = m_device;
+    QPointer<SocketListItem> guard(item);
 
-    socket.power(false);
+    run_device_task(
+        [device, socket_index]() -> bool {
+            const auto socket_opt = device->socket(socket_index);
+            if (!socket_opt.has_value())
+            {
+                SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed getting a socket from device!");
+                return false;
+            }
 
-    item->set_state(socket.is_powered_on());
+            const auto &socket = socket_opt->get();
+            socket.power(false);
+            return socket.is_powered_on();
+        },
+        [this, guard, device, socket_index, reset_msec](bool state) {
+            if (guard != nullptr && m_device == device)
+            {
+                guard->set_state(state);
+            }
 
-    const auto &socket_configuration = item->socket_configuration();
+            QTimer::singleShot(reset_msec, this, [this, guard, device, socket_index]() {
+                run_device_task(
+                    [device, socket_index]() -> bool {
+                        const auto socket_opt = device->socket(socket_index);
+                        if (!socket_opt.has_value())
+                        {
+                            return false;
+                        }
 
-    QTimer::singleShot(socket_configuration.configurable_reset_msec, [this, item, socket]() {
-        socket.power(true);
+                        const auto &socket = socket_opt->get();
+                        socket.power(true);
+                        return socket.is_powered_on();
+                    },
+                    [this, guard, device](bool restored_state) {
+                        if (guard != nullptr && m_device == device)
+                        {
+                            guard->set_state(restored_state);
+                        }
 
-        item->set_state(socket.is_powered_on());
-
-        emit toggleResetButton(item, true);
-    });
+                        if (guard != nullptr)
+                        {
+                            emit toggleResetButton(guard, true);
+                        }
+                    });
+            });
+        });
 }
 
 auto MainWindow::onResetButtonToggled(SocketListItem *item, bool is_on) -> void
