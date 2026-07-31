@@ -12,7 +12,7 @@ if(PLATFORM_OS_MACOS)
 endif()
 
 find_package(Threads REQUIRED)
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Concurrent)
 
 include_directories(${CMAKE_CURRENT_LIST_DIR}/sources)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/sources/Qt)
@@ -123,7 +123,7 @@ endif()
 #
 # Link with sokketter dependencies.
 #
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Widgets Threads::Threads ${SOKKETTER_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Widgets Qt6::Concurrent Threads::Threads ${SOKKETTER_LIBRARIES})
 foreach (SOKKETTER_DEPENDENCY IN LISTS SOKKETTER_DEPENDENCIES)
     add_dependencies(${PROJECT_NAME} ${SOKKETTER_DEPENDENCY})
 endforeach()
