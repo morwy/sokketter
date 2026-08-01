@@ -1006,27 +1006,31 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
     }
     else
     {
-        if (m_device->try_authenticate())
-        {
-            const int &index = m_ui->stackedWidget->indexOf(m_ui->socket_list_page);
-            m_ui->stackedWidget->setCurrentIndex(index);
+        run_device_task([this]() -> bool { return m_device->try_authenticate(); },
+            [this](bool state) {
+                if (state)
+                {
+                    const int &index = m_ui->stackedWidget->indexOf(m_ui->socket_list_page);
+                    m_ui->stackedWidget->setCurrentIndex(index);
 
-            repopulate_socket_list();
-        }
-        else
-        {
-            /**
-             * Redirect to authentication page in case if previously stored credentials stopped
-             * working.
-             */
-            SPDLOG_LOGGER_DEBUG(
-                APP_LOGGER, "Device authentication failed. Redirecting to authentication page.");
+                    repopulate_socket_list();
+                }
+                else
+                {
+                    /**
+                     * Redirect to authentication page in case if previously stored credentials
+                     * stopped working.
+                     */
+                    SPDLOG_LOGGER_DEBUG(APP_LOGGER,
+                        "Device authentication failed. Redirecting to authentication page.");
 
-            populate_authentication_page();
+                    populate_authentication_page();
 
-            const int &index = m_ui->stackedWidget->indexOf(m_ui->device_authentication_page);
-            m_ui->stackedWidget->setCurrentIndex(index);
-        }
+                    const int &index =
+                        m_ui->stackedWidget->indexOf(m_ui->device_authentication_page);
+                    m_ui->stackedWidget->setCurrentIndex(index);
+                }
+            });
     }
 }
 
