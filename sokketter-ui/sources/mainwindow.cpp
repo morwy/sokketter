@@ -639,6 +639,7 @@ auto MainWindow::populate_authentication_page() -> void
     }
 
     m_ui->authentication_failed_label->hide();
+    m_ui->authentication_password_line_edit->clear();
 
     auto configuration = m_device->configuration();
 
