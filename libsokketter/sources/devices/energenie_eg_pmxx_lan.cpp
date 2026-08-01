@@ -11,9 +11,7 @@ energenie_eg_pmxx_lan::energenie_eg_pmxx_lan()
     SPDLOG_LOGGER_DEBUG(
         SOKKETTER_LOGGER, "{}: constructed object {}.", __FUNCTION__, static_cast<void *>(this));
 
-    sokketter::power_strip_configuration configuration;
-    configuration.type = sokketter::power_strip_type::ENERGENIE_EG_PMXX_LAN;
-    this->configure(configuration);
+    m_configuration.type = sokketter::power_strip_type::ENERGENIE_EG_PMXX_LAN;
 
     /**
      * Configure sockets.
@@ -53,17 +51,51 @@ auto energenie_eg_pmxx_lan::initialize(std::shared_ptr<kommpot::device_communica
         return false;
     }
 
-    auto configuration = this->configuration();
-
     m_serial_number = identification->mac;
-    configuration.id = identification->mac;
-    configuration.address = identification->ip;
 
-    this->configure(configuration);
+    m_configuration.id = identification->mac;
+    m_configuration.address = identification->ip;
+    m_configuration.authentication.type = sokketter::power_strip_authentication_type::PASSWORD_ONLY;
 
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: initialization.", this->to_string());
 
     return true;
+}
+
+auto energenie_eg_pmxx_lan::try_authenticate() -> bool
+{
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: trying to authenticate.", this->to_string());
+
+    const std::string &address = this->configuration().address;
+
+    CURL *curl = create_session();
+    if (curl == nullptr)
+    {
+        SPDLOG_LOGGER_ERROR(
+            SOKKETTER_LOGGER, "{}: failed to initialize the HTTP session.", this->to_string());
+        return false;
+    }
+
+    std::string response = "";
+    const bool is_logged_in =
+        login(curl, address, m_configuration.authentication.password, response);
+
+    SPDLOG_LOGGER_DEBUG(
+        SOKKETTER_LOGGER, "{}: received response: {}.", this->to_string(), response);
+
+    logout(curl, address);
+
+    curl_easy_cleanup(curl);
+
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: authentication: {}.", this->to_string(),
+        is_logged_in ? "success" : "failure");
+
+    if (!is_logged_in)
+    {
+        return false;
+    }
+
+    return is_logged_in;
 }
 
 auto energenie_eg_pmxx_lan::identification() -> const kommpot::ethernet_device_identification
@@ -90,6 +122,13 @@ auto energenie_eg_pmxx_lan::power_socket(size_t index, bool is_toggled) -> bool
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: powering socket {} {}.", this->to_string(), index,
         is_toggled ? "on" : "off");
 
+    if (m_configuration.authentication.password.empty())
+    {
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "{}: no password provided for powering socket {}.",
+            this->to_string(), index);
+        return false;
+    }
+
     const std::string &address = this->configuration().address;
 
     CURL *curl = create_session();
@@ -100,19 +139,19 @@ auto energenie_eg_pmxx_lan::power_socket(size_t index, bool is_toggled) -> bool
         return false;
     }
 
-    std::string response;
-    bool success = login(curl, address, m_password, response);
-    if (success)
+    std::string response = "";
+    bool result = login(curl, address, m_configuration.authentication.password, response);
+    if (result)
     {
         const std::string fields = "cte" + std::to_string(index) + "=" + (is_toggled ? "1" : "0");
-        success = http_post(curl, "http://" + address + "/", fields, response);
+        result = http_post(curl, "http://" + address + "/", fields, response);
     }
 
     logout(curl, address);
 
     curl_easy_cleanup(curl);
 
-    if (!success)
+    if (!result)
     {
         SPDLOG_LOGGER_ERROR(
             SOKKETTER_LOGGER, "{}: failed powering socket {}.", this->to_string(), index);
@@ -171,6 +210,13 @@ auto energenie_eg_pmxx_lan::socket_status(size_t index) -> bool
 
 auto energenie_eg_pmxx_lan::refresh_socket_states() -> bool
 {
+    if (m_configuration.authentication.password.empty())
+    {
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "{}: no password provided for reading socket states.",
+            this->to_string());
+        return false;
+    }
+
     const std::string &address = this->configuration().address;
 
     CURL *curl = create_session();
@@ -181,14 +227,15 @@ auto energenie_eg_pmxx_lan::refresh_socket_states() -> bool
         return false;
     }
 
-    std::string response;
-    const bool success = login(curl, address, m_password, response);
+    std::string response = "";
+    const bool is_logged_in =
+        login(curl, address, m_configuration.authentication.password, response);
 
     logout(curl, address);
 
     curl_easy_cleanup(curl);
 
-    if (!success)
+    if (!is_logged_in)
     {
         return false;
     }
@@ -230,7 +277,15 @@ auto energenie_eg_pmxx_lan::http_post(
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
-    return curl_easy_perform(curl) == CURLE_OK;
+    const auto result = curl_easy_perform(curl);
+    if (result != CURLE_OK)
+    {
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "{}: HTTP POST request failed: {}.",
+            this->to_string(), curl_easy_strerror(result));
+        return false;
+    }
+
+    return true;
 }
 
 auto energenie_eg_pmxx_lan::http_get(CURL *curl, const std::string &url, std::string &response)
@@ -264,12 +319,29 @@ auto energenie_eg_pmxx_lan::create_session() -> CURL *
 auto energenie_eg_pmxx_lan::login(CURL *curl, const std::string &address,
     const std::string &password, std::string &response) -> bool
 {
-    return http_post(curl, "http://" + address + "/login.html", "pw=" + password, response);
+    const bool response_received =
+        http_post(curl, "http://" + address + "/login.html", "pw=" + password, response);
+    if (!response_received)
+    {
+        return false;
+    }
+
+    const std::string marker = "action=\"/login.html\"";
+    const auto marker_position = response.find(marker);
+    if (marker_position != std::string::npos)
+    {
+        /**
+         * Authentication failed if login form is present in the response.
+         */
+        return false;
+    }
+
+    return true;
 }
 
 auto energenie_eg_pmxx_lan::logout(CURL *curl, const std::string &address) -> void
 {
-    std::string response;
+    std::string response = "";
     http_get(curl, "http://" + address + "/login.html", response);
 }
 

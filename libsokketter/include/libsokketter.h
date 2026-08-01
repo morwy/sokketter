@@ -234,6 +234,41 @@ namespace sokketter {
     auto EXPORTED power_strip_type_to_string(const power_strip_type &type) -> std::string;
 
     /**
+     * @brief the enum specifying supported authentication types for the power strip.
+     * @attention not all power strips have authentication.
+     */
+    enum class power_strip_authentication_type
+    {
+        UNKNOWN = 0,
+        NONE = 1,
+        PASSWORD_ONLY = 2
+    };
+
+    /**
+     * @brief converts power_strip_authentication_type to a readable string value.
+     * @param type of power strip authentication.
+     * @return string.
+     */
+    auto EXPORTED power_strip_authentication_type_to_string(
+        const power_strip_authentication_type &type) -> std::string;
+
+    /**
+     * @brief structure containing authentication parameters for the power strip.
+     */
+    struct EXPORTED power_strip_authentication
+    {
+        power_strip_authentication_type type = power_strip_authentication_type::UNKNOWN;
+
+        std::string password = "";
+
+        /**
+         * @brief checks if the authentication parameters are valid.
+         * @return true if valid, false otherwise.
+         */
+        [[nodiscard]] auto is_valid() const -> bool;
+    };
+
+    /**
      * @brief structure containing configuration parameters of the specific power strip.
      */
     struct EXPORTED power_strip_configuration
@@ -242,6 +277,13 @@ namespace sokketter {
         std::string id = "";
         std::string name = "Unnamed power strip";
         std::string description = "";
+
+        power_strip_authentication authentication = {};
+
+        /**
+         * @brief Address of the power strip in format "USB:x" or "IP:IP_ADDRESS".
+         * @attention Read-only, populated internally by the library, not to be set by the user.
+         */
         std::string address = "";
     };
 
@@ -275,7 +317,14 @@ namespace sokketter {
         /**
          * @brief saves current configuration of the power strip to the storage.
          */
-        auto save() -> void;
+        auto save() const -> void;
+
+        /**
+         * @brief tries to authenticate the power strip based on the provided authentication
+         * parameters.
+         * @return true in case of success, false in case of any failure.
+         */
+        [[nodiscard]] virtual auto try_authenticate() -> bool;
 
         /**
          * @brief gets connection state of the power strip.
@@ -311,10 +360,8 @@ namespace sokketter {
         [[nodiscard]] auto to_string() const noexcept -> std::string;
 
     protected:
-        std::vector<sokketter::socket> m_sockets;
-
-    private:
         power_strip_configuration m_configuration;
+        std::vector<sokketter::socket> m_sockets;
     };
 
     /**

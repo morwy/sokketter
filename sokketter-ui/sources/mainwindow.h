@@ -58,8 +58,8 @@ private:
     auto new_status_received(sokketter::enumeration_status status) -> void;
 
     /**
-     * @brief runs a blocking device operation on the worker thread and delivers the resulting socket
-     * state back on the UI thread.
+     * @brief runs a blocking device operation on the worker thread and delivers the resulting
+     * socket state back on the UI thread.
      */
     auto run_device_task(std::function<bool()> work, std::function<void(bool)> on_done) -> void;
 
@@ -78,6 +78,7 @@ private:
     auto redraw_configure_list() -> void;
     auto save_new_configuration() -> void;
 
+    auto populate_authentication_page() -> void;
     auto initialize_settings_page() -> void;
     auto initialize_about_page() -> void;
 

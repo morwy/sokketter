@@ -11,6 +11,8 @@ class energenie_eg_base : public power_strip_base
 public:
     auto initialize(std::shared_ptr<kommpot::device_communication> communication) -> bool override;
 
+    [[nodiscard]] auto try_authenticate() -> bool override;
+
 protected:
     std::string m_serial_number = "";
     size_t m_socket_number = 0;

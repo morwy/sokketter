@@ -17,6 +17,8 @@ auto energenie_eg_base::initialize(std::shared_ptr<kommpot::device_communication
         return false;
     }
 
+    m_configuration.authentication.type = sokketter::power_strip_authentication_type::NONE;
+
     /**
      * Read device serial number from device since it is not available in USB descriptor.
      */
@@ -56,6 +58,14 @@ auto energenie_eg_base::initialize(std::shared_ptr<kommpot::device_communication
 
     m_serial_number = serial_number.str();
 
+    return true;
+}
+
+auto energenie_eg_base::try_authenticate() -> bool
+{
+    /**
+     * @attention authentication is not required for USB-based Energenie devices.
+     */
     return true;
 }
 

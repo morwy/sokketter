@@ -85,6 +85,13 @@ MainWindow::MainWindow(QWidget *parent)
         m_ui->stackedWidget->setCurrentIndex(index);
     });
 
+    QObject::connect(m_ui->authentication_back_label, &ClickableLabel::clicked, [this]() {
+        const int &index = m_ui->stackedWidget->indexOf(m_ui->power_strip_list_page);
+        m_ui->stackedWidget->setCurrentIndex(index);
+
+        redraw_device_list();
+    });
+
     QObject::connect(m_ui->socket_list_edit_label, &ClickableLabel::clicked, [this]() {
         const int &index = m_ui->stackedWidget->indexOf(m_ui->device_configure_page);
         m_ui->stackedWidget->setCurrentIndex(index);
@@ -587,6 +594,76 @@ auto MainWindow::save_new_configuration() -> void
     m_device->save();
 }
 
+auto MainWindow::populate_authentication_page() -> void
+{
+    if (m_device == nullptr)
+    {
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "No currently saved device pointer is present!");
+        return;
+    }
+
+    m_ui->authentication_failed_label->hide();
+
+    auto configuration = m_device->configuration();
+
+    switch (configuration.authentication.type)
+    {
+    default:
+    case sokketter::power_strip_authentication_type::UNKNOWN:
+    case sokketter::power_strip_authentication_type::NONE: {
+        break;
+    }
+    case sokketter::power_strip_authentication_type::PASSWORD_ONLY: {
+        const int &index2 = m_ui->stackedWidget->indexOf(m_ui->authentication_password_page);
+        m_ui->stackedWidget_2->setCurrentIndex(index2);
+        break;
+    }
+    }
+
+    QObject::disconnect(m_ui->authentication_login_label);
+    QObject::connect(
+        m_ui->authentication_login_label, &ClickableLabel::clicked, [this, configuration]() {
+            m_ui->authentication_failed_label->hide();
+
+            auto _configuration = configuration;
+
+            switch (_configuration.authentication.type)
+            {
+            default:
+            case sokketter::power_strip_authentication_type::UNKNOWN:
+            case sokketter::power_strip_authentication_type::NONE: {
+                break;
+            }
+            case sokketter::power_strip_authentication_type::PASSWORD_ONLY: {
+                _configuration.authentication.password =
+                    m_ui->authentication_password_line_edit->text().toStdString();
+            }
+            }
+
+            m_device->configure(_configuration);
+
+            if (m_device->try_authenticate())
+            {
+                SPDLOG_LOGGER_INFO(APP_LOGGER, "Authentication successful.");
+
+                /**
+                 * Save the configuration and password if case of success.
+                 */
+                m_device->save();
+
+                const int &index = m_ui->stackedWidget->indexOf(m_ui->socket_list_page);
+                m_ui->stackedWidget->setCurrentIndex(index);
+
+                repopulate_socket_list();
+            }
+            else
+            {
+                SPDLOG_LOGGER_ERROR(APP_LOGGER, "Authentication failed.");
+                m_ui->authentication_failed_label->show();
+            }
+        });
+}
+
 auto MainWindow::initialize_settings_page() -> void
 {
     auto &settings = app_settings_storage::instance().get();
@@ -842,10 +919,46 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
         return;
     }
 
-    const int &index = m_ui->stackedWidget->indexOf(m_ui->socket_list_page);
-    m_ui->stackedWidget->setCurrentIndex(index);
+    if (configuration.authentication.type != sokketter::power_strip_authentication_type::NONE &&
+        !configuration.authentication.is_valid())
+    {
+        /**
+         * Device requires authentication but no authentication parameters were provided or are
+         * incorrect.
+         */
+        SPDLOG_LOGGER_DEBUG(APP_LOGGER,
+            "Device requires authentication but no authentication parameters were "
+            "provided or are incorrect. Redirecting to authentication page.");
 
-    repopulate_socket_list();
+        populate_authentication_page();
+
+        const int &index = m_ui->stackedWidget->indexOf(m_ui->device_authentication_page);
+        m_ui->stackedWidget->setCurrentIndex(index);
+    }
+    else
+    {
+        if (m_device->try_authenticate())
+        {
+            const int &index = m_ui->stackedWidget->indexOf(m_ui->socket_list_page);
+            m_ui->stackedWidget->setCurrentIndex(index);
+
+            repopulate_socket_list();
+        }
+        else
+        {
+            /**
+             * Redirect to authentication page in case if previously stored credentials stopped
+             * working.
+             */
+            SPDLOG_LOGGER_DEBUG(
+                APP_LOGGER, "Device authentication failed. Redirecting to authentication page.");
+
+            populate_authentication_page();
+
+            const int &index = m_ui->stackedWidget->indexOf(m_ui->device_authentication_page);
+            m_ui->stackedWidget->setCurrentIndex(index);
+        }
+    }
 }
 
 auto MainWindow::onSocketClicked(QListWidgetItem *item) -> void

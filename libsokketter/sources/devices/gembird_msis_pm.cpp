@@ -8,9 +8,7 @@ gembird_msis_pm::gembird_msis_pm()
     SPDLOG_LOGGER_DEBUG(
         SOKKETTER_LOGGER, "{}: constructed object {}.", __FUNCTION__, static_cast<void *>(this));
 
-    sokketter::power_strip_configuration configuration;
-    configuration.type = sokketter::power_strip_type::GEMBIRD_MSIS_PM;
-    this->configure(configuration);
+    m_configuration.type = sokketter::power_strip_type::GEMBIRD_MSIS_PM;
 
     /**
      * Configure sockets.
@@ -50,12 +48,8 @@ auto gembird_msis_pm::initialize(std::shared_ptr<kommpot::device_communication> 
         return false;
     }
 
-    auto configuration = this->configuration();
-
-    configuration.id = m_serial_number;
-    configuration.address = std::string("USB:") + identification->port;
-
-    this->configure(configuration);
+    m_configuration.id = m_serial_number;
+    m_configuration.address = std::string("USB:") + identification->port;
 
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: initialization.", this->to_string());
 

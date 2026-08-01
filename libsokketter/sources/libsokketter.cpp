@@ -217,6 +217,40 @@ auto sokketter::power_strip_type_to_string(const power_strip_type &type) -> std:
     }
 }
 
+auto sokketter::power_strip_authentication_type_to_string(
+    const power_strip_authentication_type &type) -> std::string
+{
+    switch (type)
+    {
+    case power_strip_authentication_type::NONE: {
+        return "None";
+    }
+    case power_strip_authentication_type::PASSWORD_ONLY: {
+        return "Password only";
+    }
+    default: {
+        return "Unknown";
+    }
+    }
+}
+
+auto sokketter::power_strip_authentication::is_valid() const -> bool
+{
+    switch (type)
+    {
+    default:
+    case power_strip_authentication_type::UNKNOWN: {
+        return false;
+    }
+    case power_strip_authentication_type::NONE: {
+        return true;
+    }
+    case power_strip_authentication_type::PASSWORD_ONLY: {
+        return !password.empty();
+    }
+    }
+}
+
 auto sokketter::power_strip::configuration() const noexcept -> const power_strip_configuration &
 {
     return m_configuration;
@@ -227,9 +261,14 @@ auto sokketter::power_strip::configure(const power_strip_configuration &configur
     m_configuration = configuration;
 }
 
-void sokketter::power_strip::save()
+void sokketter::power_strip::save() const
 {
     sokketter_core::instance().database().save();
+}
+
+auto sokketter::power_strip::try_authenticate() -> bool
+{
+    return false;
 }
 
 auto sokketter::power_strip::is_connected() const -> bool

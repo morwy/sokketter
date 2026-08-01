@@ -21,11 +21,11 @@ public:
 
     auto initialize(std::shared_ptr<kommpot::device_communication> communication) -> bool override;
 
+    [[nodiscard]] auto try_authenticate() -> bool override;
+
     static auto identification() -> const kommpot::ethernet_device_identification;
 
 private:
-    std::string m_password = "1";
-
     /**
      * @brief maximum time in seconds allowed for connecting to and communicating with the device.
      */
@@ -47,9 +47,9 @@ private:
     auto socket_status(size_t index) -> bool override;
 
     static auto write_callback(char *data, size_t size, size_t count, void *user_data) -> size_t;
-    static auto http_post(CURL *curl, const std::string &url, const std::string &fields,
+    auto http_post(CURL *curl, const std::string &url, const std::string &fields,
         std::string &response) -> bool;
-    static auto http_get(CURL *curl, const std::string &url, std::string &response) -> bool;
+    auto http_get(CURL *curl, const std::string &url, std::string &response) -> bool;
 
     /**
      * @brief performs a single status query and refreshes the cached socket states.
@@ -68,11 +68,11 @@ private:
      * The device keeps the authenticated session in a cookie, so login, switching and logout must
      * all share the same handle.
      */
-    static auto create_session() -> CURL *;
+    auto create_session() -> CURL *;
 
-    static auto login(CURL *curl, const std::string &address, const std::string &password,
+    auto login(CURL *curl, const std::string &address, const std::string &password,
         std::string &response) -> bool;
-    static auto logout(CURL *curl, const std::string &address) -> void;
+    auto logout(CURL *curl, const std::string &address) -> void;
 
     /**
      * @brief extracts the socket states from the "sockstates = [x,x,x,x]" declaration of the status

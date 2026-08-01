@@ -34,6 +34,13 @@ namespace sokketter {
             {sokketter::power_strip_type::TEST_DEVICE, "TEST-DEVICE"},
         })
 
+    NLOHMANN_JSON_SERIALIZE_ENUM(sokketter::power_strip_authentication_type,
+        {
+            {sokketter::power_strip_authentication_type::UNKNOWN, nullptr},
+            {sokketter::power_strip_authentication_type::NONE, "NONE"},
+            {sokketter::power_strip_authentication_type::PASSWORD_ONLY, "PASSWORD-ONLY"},
+        })
+
     void to_json(nlohmann::json &j, const sokketter::power_strip &ps)
     {
         /**
@@ -52,6 +59,8 @@ namespace sokketter {
 
         j = nlohmann::json{{"type", ps.configuration().type}, {"id", ps.configuration().id},
             {"name", ps.configuration().name}, {"description", ps.configuration().description},
+            {"authentication-type", ps.configuration().authentication.type},
+            {"authentication-password", ps.configuration().authentication.password},
             {"sockets", sockets}};
     }
 
@@ -63,6 +72,9 @@ namespace sokketter {
         configuration.id = j.value("id", "");
         configuration.name = j.value("name", "");
         configuration.description = j.value("description", "");
+        configuration.authentication.type =
+            j.value("authentication-type", sokketter::power_strip_authentication_type::UNKNOWN);
+        configuration.authentication.password = j.value("authentication-password", "");
 
         ps.configure(configuration);
 
