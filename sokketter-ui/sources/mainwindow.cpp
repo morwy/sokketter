@@ -93,6 +93,10 @@ MainWindow::MainWindow(QWidget *parent)
         redraw_device_list();
     });
 
+    auto size_policy = m_ui->authentication_failed_label->sizePolicy();
+    size_policy.setRetainSizeWhenHidden(true);
+    m_ui->authentication_failed_label->setSizePolicy(size_policy);
+
     QObject::connect(m_ui->socket_list_edit_label, &ClickableLabel::clicked, [this]() {
         const int &index = m_ui->stackedWidget->indexOf(m_ui->device_configure_page);
         m_ui->stackedWidget->setCurrentIndex(index);
