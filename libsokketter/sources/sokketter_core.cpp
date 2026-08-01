@@ -73,9 +73,14 @@ auto sokketter_core::initialize() -> bool
 auto sokketter_core::deinitialize() -> bool
 {
     m_database.save();
-    m_database.release_resources();
 
+    /**
+     * @brief wait for any ongoing device enumeration to finish before releasing the devices,
+     *        otherwise the enumeration thread accesses the database while it is being cleared.
+     */
     kommpot::deinitialize();
+
+    m_database.release_resources();
 
     deinitialize_logger();
 
@@ -370,7 +375,7 @@ auto sokketter_core::new_devices_received(
          */
         auto it = std::find_if(database.begin(), database.end(),
             [&](const std::shared_ptr<sokketter::power_strip> &item) {
-                return item->configuration().id == device->configuration().id;
+                return item && item->configuration().id == device->configuration().id;
             });
 
         if (it != database.end())
