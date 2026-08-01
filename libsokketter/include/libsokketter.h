@@ -257,8 +257,15 @@ namespace sokketter {
      */
     struct EXPORTED power_strip_authentication
     {
+        /**
+         * @brief type of the authentication.
+         * @attention Read-only, populated internally by the library, not to be set by the user.
+         */
         power_strip_authentication_type type = power_strip_authentication_type::UNKNOWN;
 
+        /**
+         * @brief password for the authentication.
+         */
         std::string password = "";
 
         /**
@@ -273,11 +280,31 @@ namespace sokketter {
      */
     struct EXPORTED power_strip_configuration
     {
+        /**
+         * @brief type of the power strip.
+         * @attention Read-only, populated internally by the library, not to be set by the user.
+         */
         power_strip_type type = power_strip_type::UNKNOWN;
+
+        /**
+         * @brief unique identifier of the power strip.
+         * @attention Read-only, populated internally by the library, not to be set by the user.
+         */
         std::string id = "";
+
+        /**
+         * @brief name of the power strip.
+         */
         std::string name = "Unnamed power strip";
+
+        /**
+         * @brief description of the power strip.
+         */
         std::string description = "";
 
+        /**
+         * @brief authentication parameters of the power strip.
+         */
         power_strip_authentication authentication = {};
 
         /**
