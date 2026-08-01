@@ -176,6 +176,10 @@ const QString light_theme = base_theme + R"(
         border-radius: 5px;
     }
 
+    QMessageBox QPushButton {
+        padding: 6px 12px;
+    }
+
     QComboBox {
         outline: 0;
         background-color: #FFFFFF;
@@ -396,6 +400,10 @@ const QString dark_theme = base_theme + R"(
         color: #6D6B66;
         border: none;
         border-radius: 5px;
+    }
+
+    QMessageBox QPushButton {
+        padding: 6px 12px;
     }
 
     QComboBox {

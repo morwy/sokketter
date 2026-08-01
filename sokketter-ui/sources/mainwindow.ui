@@ -506,6 +506,13 @@
             </widget>
            </item>
            <item>
+            <widget class="ButtonLabel" name="configure_delete_label">
+             <property name="text">
+              <string>Delete</string>
+             </property>
+            </widget>
+           </item>
+           <item>
             <widget class="ButtonLabel" name="configure_back_label">
              <property name="text">
               <string>Back</string>

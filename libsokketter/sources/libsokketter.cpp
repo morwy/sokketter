@@ -261,7 +261,7 @@ auto sokketter::power_strip::configure(const power_strip_configuration &configur
     m_configuration = configuration;
 }
 
-void sokketter::power_strip::save() const
+auto sokketter::power_strip::save() const -> void
 {
     sokketter_core::instance().database().save();
 }
@@ -421,4 +421,10 @@ auto sokketter::enumeration_status_to_string(const enumeration_status &status) n
     default:
         return "";
     }
+}
+
+auto sokketter::forget_device(std::shared_ptr<power_strip> &device) -> void
+{
+    sokketter_core::instance().database().remove(device);
+    sokketter_core::instance().database().save();
 }

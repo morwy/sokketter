@@ -77,6 +77,7 @@ private:
     auto repopulate_configure_list() -> void;
     auto redraw_configure_list() -> void;
     auto save_new_configuration() -> void;
+    auto forget_selected_device() -> void;
 
     auto populate_authentication_page() -> void;
     auto initialize_settings_page() -> void;
