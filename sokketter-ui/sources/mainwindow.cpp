@@ -681,27 +681,48 @@ auto MainWindow::populate_authentication_page() -> void
             }
             }
 
-            m_device->configure(_configuration);
+            auto device = m_device;
 
-            if (m_device->try_authenticate())
-            {
-                SPDLOG_LOGGER_INFO(APP_LOGGER, "Authentication successful.");
+            /**
+             * @brief authentication is blocking device I/O, so it runs on the worker pool to keep
+             * the UI responsive.
+             */
+            run_device_task(
+                [device, _configuration]() -> bool {
+                    device->configure(_configuration);
 
-                /**
-                 * Save the configuration and password if case of success.
-                 */
-                m_device->save();
+                    if (!device->try_authenticate())
+                    {
+                        return false;
+                    }
 
-                const int &index = m_ui->stackedWidget->indexOf(m_ui->socket_list_page);
-                m_ui->stackedWidget->setCurrentIndex(index);
+                    /**
+                     * Save the configuration and password in case of success.
+                     */
+                    device->save();
+                    return true;
+                },
+                [this, device](bool success) {
+                    if (m_device != device)
+                    {
+                        return;
+                    }
 
-                repopulate_socket_list();
-            }
-            else
-            {
-                SPDLOG_LOGGER_ERROR(APP_LOGGER, "Authentication failed.");
-                m_ui->authentication_failed_label->show();
-            }
+                    if (success)
+                    {
+                        SPDLOG_LOGGER_INFO(APP_LOGGER, "Authentication successful.");
+
+                        const int &index = m_ui->stackedWidget->indexOf(m_ui->socket_list_page);
+                        m_ui->stackedWidget->setCurrentIndex(index);
+
+                        repopulate_socket_list();
+                    }
+                    else
+                    {
+                        SPDLOG_LOGGER_ERROR(APP_LOGGER, "Authentication failed.");
+                        m_ui->authentication_failed_label->show();
+                    }
+                });
         });
 }
 
