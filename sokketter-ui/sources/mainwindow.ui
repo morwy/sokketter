@@ -295,6 +295,9 @@
                 <bold>false</bold>
                </font>
               </property>
+              <property name="styleSheet">
+               <string notr="true">color: red;</string>
+              </property>
               <property name="text">
                <string>Authentication failed! Please try again.</string>
               </property>
