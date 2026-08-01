@@ -9,6 +9,14 @@
  * @attention interaction with device is based on the protocol described in pysispm project.
  * @link https://github.com/xypron/pysispm/blob/master/sispm/__init__.py
  */
+energenie_eg_base::energenie_eg_base()
+{
+    /**
+     * @attention authentication is not required for USB-based Energenie devices.
+     */
+    m_configuration.authentication.type = sokketter::power_strip_authentication_type::NONE;
+}
+
 auto energenie_eg_base::initialize(std::shared_ptr<kommpot::device_communication> communication)
     -> bool
 {
@@ -16,8 +24,6 @@ auto energenie_eg_base::initialize(std::shared_ptr<kommpot::device_communication
     {
         return false;
     }
-
-    m_configuration.authentication.type = sokketter::power_strip_authentication_type::NONE;
 
     /**
      * Read device serial number from device since it is not available in USB descriptor.

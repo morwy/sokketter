@@ -12,6 +12,7 @@ energenie_eg_pmxx_lan::energenie_eg_pmxx_lan()
         SOKKETTER_LOGGER, "{}: constructed object {}.", __FUNCTION__, static_cast<void *>(this));
 
     m_configuration.type = sokketter::power_strip_type::ENERGENIE_EG_PMXX_LAN;
+    m_configuration.authentication.type = sokketter::power_strip_authentication_type::PASSWORD_ONLY;
 
     /**
      * Configure sockets.
@@ -60,7 +61,6 @@ auto energenie_eg_pmxx_lan::initialize(std::shared_ptr<kommpot::device_communica
 
     m_configuration.id = identification->mac;
     m_configuration.address = identification->ip;
-    m_configuration.authentication.type = sokketter::power_strip_authentication_type::PASSWORD_ONLY;
 
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: initialization.", this->to_string());
 

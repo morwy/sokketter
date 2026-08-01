@@ -9,6 +9,8 @@
 class energenie_eg_base : public power_strip_base
 {
 public:
+    energenie_eg_base();
+
     auto initialize(std::shared_ptr<kommpot::device_communication> communication) -> bool override;
 
     [[nodiscard]] auto try_authenticate() -> bool override;
