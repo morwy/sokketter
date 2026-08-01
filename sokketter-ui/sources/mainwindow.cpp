@@ -93,9 +93,9 @@ MainWindow::MainWindow(QWidget *parent)
         redraw_device_list();
     });
 
-    auto size_policy = m_ui->authentication_failed_label->sizePolicy();
+    auto size_policy = m_ui->authentication_status_label->sizePolicy();
     size_policy.setRetainSizeWhenHidden(true);
-    m_ui->authentication_failed_label->setSizePolicy(size_policy);
+    m_ui->authentication_status_label->setSizePolicy(size_policy);
 
     QObject::connect(m_ui->socket_list_edit_label, &ClickableLabel::clicked, [this]() {
         const int &index = m_ui->stackedWidget->indexOf(m_ui->device_configure_page);
@@ -642,7 +642,7 @@ auto MainWindow::populate_authentication_page() -> void
         return;
     }
 
-    m_ui->authentication_failed_label->hide();
+    m_ui->authentication_status_label->hide();
     m_ui->authentication_password_line_edit->clear();
 
     auto configuration = m_device->configuration();
@@ -664,7 +664,8 @@ auto MainWindow::populate_authentication_page() -> void
     QObject::disconnect(m_ui->authentication_login_label);
     QObject::connect(
         m_ui->authentication_login_label, &ClickableLabel::clicked, [this, configuration]() {
-            m_ui->authentication_failed_label->hide();
+            m_ui->authentication_status_label->show();
+            m_ui->authentication_status_label->setText("Authenticating...");
 
             auto _configuration = configuration;
 
@@ -712,6 +713,8 @@ auto MainWindow::populate_authentication_page() -> void
                     {
                         SPDLOG_LOGGER_INFO(APP_LOGGER, "Authentication successful.");
 
+                        m_ui->authentication_status_label->setText("Authentication succeed!");
+
                         const int &index = m_ui->stackedWidget->indexOf(m_ui->socket_list_page);
                         m_ui->stackedWidget->setCurrentIndex(index);
 
@@ -720,7 +723,11 @@ auto MainWindow::populate_authentication_page() -> void
                     else
                     {
                         SPDLOG_LOGGER_ERROR(APP_LOGGER, "Authentication failed.");
-                        m_ui->authentication_failed_label->show();
+
+                        m_ui->authentication_status_label->setText(
+                            "Authentication failed! Please try again.");
+
+                        m_ui->authentication_status_label->show();
                     }
                 });
         });

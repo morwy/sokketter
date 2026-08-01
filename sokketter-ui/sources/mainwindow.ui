@@ -288,7 +288,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QLabel" name="authentication_failed_label">
+             <widget class="QLabel" name="authentication_status_label">
               <property name="font">
                <font>
                 <italic>true</italic>
@@ -296,7 +296,7 @@
                </font>
               </property>
               <property name="styleSheet">
-               <string notr="true">color: red;</string>
+               <string notr="true"/>
               </property>
               <property name="text">
                <string>Authentication failed! Please try again.</string>
