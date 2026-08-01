@@ -27,6 +27,11 @@ gembird_msis_pm_2::gembird_msis_pm_2()
 
 gembird_msis_pm_2::~gembird_msis_pm_2()
 {
+    if (SOKKETTER_LOGGER == nullptr)
+    {
+        return;
+    }
+
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: destructed object {}.", this->to_string(),
         static_cast<void *>(this));
 }

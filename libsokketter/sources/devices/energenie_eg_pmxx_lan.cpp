@@ -30,6 +30,11 @@ energenie_eg_pmxx_lan::energenie_eg_pmxx_lan()
 
 energenie_eg_pmxx_lan::~energenie_eg_pmxx_lan()
 {
+    if (SOKKETTER_LOGGER == nullptr)
+    {
+        return;
+    }
+
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: destructed object {}.", this->to_string(),
         static_cast<void *>(this));
 }

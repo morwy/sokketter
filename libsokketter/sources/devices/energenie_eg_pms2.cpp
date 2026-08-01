@@ -27,6 +27,11 @@ energenie_eg_pms2::energenie_eg_pms2()
 
 energenie_eg_pms2::~energenie_eg_pms2()
 {
+    if (SOKKETTER_LOGGER == nullptr)
+    {
+        return;
+    }
+
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: destructed object {}.", this->to_string(),
         static_cast<void *>(this));
 }

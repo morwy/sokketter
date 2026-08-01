@@ -40,6 +40,11 @@ test_device::test_device(const size_t &index)
 
 test_device::~test_device()
 {
+    if (SOKKETTER_LOGGER == nullptr)
+    {
+        return;
+    }
+
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: destruction.", this->to_string());
 }
 
