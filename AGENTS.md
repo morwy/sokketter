@@ -48,5 +48,4 @@ Device configuration is persisted as JSON (nlohmann) to `devices.json` under the
 ## Gotchas
 
 - [Build.py](Build.py) is **GitHub-Actions-only** and raises `EnvironmentError` when run locally — use the raw `cmake` commands above instead.
-- CI scripts ([Build.py](Build.py), [get_coverage.sh](get_coverage.sh)) pass `-DENABLE_TESTING`/`-DENABLE_COVERAGE`, but the CMake options are actually named `SOKKETTER_ENABLE_TESTING`/`SOKKETTER_ENABLE_COVERAGE` ([CMakeLists.txt](CMakeLists.txt)). Use the `SOKKETTER_`-prefixed names.
 - Sources are collected with recursive globs; adding a new `.cpp`/`.h` under an existing component requires re-running CMake configure.

@@ -8,7 +8,7 @@ if [ -d "$build_directory" ]; then
     echo "Deleted existing coverage directory."
 fi
 
-cmake -B "$build_directory" -DCMAKE_CXX_COMPILER=clang++ -DIS_COMPILING_STATIC=true -DIS_COMPILING_SHARED=false -DENABLE_TESTING=true -DENABLE_COVERAGE=true
+cmake -B "$build_directory" -DCMAKE_CXX_COMPILER=clang++ -DIS_COMPILING_STATIC=true -DIS_COMPILING_SHARED=false -DSOKKETTER_ENABLE_TESTING=true -DSOKKETTER_ENABLE_COVERAGE=true
 
 cmake --build "$build_directory" --config Release
 

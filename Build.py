@@ -239,7 +239,7 @@ class Build:
             ]
 
             if BuildStage.TEST.value in self.stages and platform.system() != "Windows":
-                cmake_command.append("-DENABLE_TESTING=true")
+                cmake_command.append("-DSOKKETTER_ENABLE_TESTING=true")
 
             self.__execute_command(cmake_command)
         else:
