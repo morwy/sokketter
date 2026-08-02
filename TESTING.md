@@ -82,25 +82,27 @@ running USB cases.
 
 ### Result legend
 
-Use these values in the **Result** column: ✅ Pass · ❌ Fail · ⚠️ Blocked/NA · ⬜ Not run.
-Record the OS/architecture, build flavor (static/shared), and app version (`--version` / About page)
-for each execution.
+Each execution table has one result column per supported OS/architecture: **Result: Windows x86_64**
+(Windows 10/11), **Result: Linux x86_64** (Ubuntu 20.04+), **Result: macOS arm64** (macOS 10.15+ Apple
+Silicon), and **Result: macOS x86_64** (macOS 10.15+ Intel). Fill each cell with one of: ✅ Pass · ❌ Fail · ⚠️ Blocked/NA · ⬜ Not run. Note
+the build flavor (static/shared) and app version (`--version` / About page) with the run. Mark a cell
+⚠️ when a case does not apply to that platform (e.g. Windows-only title-bar theming).
 
 ---
 
 # Part 1 — Manual Test Plan
 
 Test-case IDs are prefixed `MAN-`. Unless a case is device-specific (group E) or hardware-only, run it
-with fake devices on **all three** target platforms.
+with fake devices on each supported OS/architecture and record the outcome in the matching result column.
 
 ## A. Build, packaging & smoke
 
-| ID | Steps | Expected | Platforms | Result |
-| --- | --- | --- | --- | --- |
-| MAN-BUILD-01 | Configure + build the **static** flavor. | Configure and build succeed with no errors. | Win/Linux/macOS | ⬜ |
-| MAN-BUILD-02 | Build with `-DSOKKETTER_ENABLE_TESTING=true`, run `ctest --test-dir build --output-on-failure`. | All discovered tests pass. | Win/Linux/macOS | ⬜ |
-| MAN-BUILD-03 | Launch `sokketter-cli --version` and `sokketter-ui` About page. | Both report the same version and git hash. | Win/Linux/macOS | ⬜ |
-| MAN-BUILD-04 | First run on a clean machine (no storage folder). | Storage + `logs` folders are created; no crash. | Win/Linux/macOS | ⬜ |
+| ID | Steps | Expected | Result: Windows x86_64 | Result: Linux x86_64 | Result: macOS arm64 | Result: macOS x86_64 |
+| --- | --- | --- | --- | --- | --- | --- |
+| MAN-BUILD-01 | Configure + build the **static** flavor. | Configure and build succeed with no errors. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-BUILD-02 | Build with `-DSOKKETTER_ENABLE_TESTING=true`, run `ctest --test-dir build --output-on-failure`. | All discovered tests pass. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-BUILD-03 | Launch `sokketter-cli --version` and `sokketter-ui` About page. | Both report the same version and git hash. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-BUILD-04 | First run on a clean machine (no storage folder). | Storage + `logs` folders are created; no crash. | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ## B. Library API (`libsokketter`)
 
@@ -108,42 +110,42 @@ Exercised through the CLI/UI with fake devices. Optionally re-enable
 [libsokketter-test-app](libsokketter-test-app) (currently commented out in
 [CMakeLists.txt](CMakeLists.txt)) as a direct API harness.
 
-| ID | Area | Steps | Expected | Result |
-| --- | --- | --- | --- | --- |
-| MAN-LIB-01 | init/deinit | Start then stop any front end. | `initialize()`/`deinitialize()` succeed; logging session opens and closes. | ⬜ |
-| MAN-LIB-02 | `devices()` | Enumerate with 0, 1, and N fake devices. | Returned list size matches the env var; names/serials indexed. | ⬜ |
-| MAN-LIB-03 | `device(index)` | Request valid and out-of-range indices. | Valid returns a device; out-of-range returns `nullptr` without crash. | ⬜ |
-| MAN-LIB-04 | `device(serial)` | Request an existing and a non-existent serial. | Existing returns the device; missing returns `nullptr` and logs a warning. | ⬜ |
-| MAN-LIB-05 | `socket` power | Power a socket on, off, and `toggle()`; read `is_powered_on()`. | State transitions and `to_string()` reflect the requested state. | ⬜ |
-| MAN-LIB-06 | `forget_device()` | Forget a saved device. | Device removed from `devices.json` and the enumerated list. | ⬜ |
-| MAN-LIB-07 | logging | Set each `logging_level` and a logging callback via `set_settings()`. | Callback receives messages at/above the level; `OFF` silences output. | ⬜ |
-| MAN-LIB-08 | paths | Call `storage_path()` / `logs_path()`. | Return the documented per-OS locations. | ⬜ |
+| ID | Area | Steps | Expected | Result: Windows x86_64 | Result: Linux x86_64 | Result: macOS arm64 | Result: macOS x86_64 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| MAN-LIB-01 | init/deinit | Start then stop any front end. | `initialize()`/`deinitialize()` succeed; logging session opens and closes. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-LIB-02 | `devices()` | Enumerate with 0, 1, and N fake devices. | Returned list size matches the env var; names/serials indexed. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-LIB-03 | `device(index)` | Request valid and out-of-range indices. | Valid returns a device; out-of-range returns `nullptr` without crash. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-LIB-04 | `device(serial)` | Request an existing and a non-existent serial. | Existing returns the device; missing returns `nullptr` and logs a warning. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-LIB-05 | `socket` power | Power a socket on, off, and `toggle()`; read `is_powered_on()`. | State transitions and `to_string()` reflect the requested state. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-LIB-06 | `forget_device()` | Forget a saved device. | Device removed from `devices.json` and the enumerated list. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-LIB-07 | logging | Set each `logging_level` and a logging callback via `set_settings()`. | Callback receives messages at/above the level; `OFF` silences output. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-LIB-08 | paths | Call `storage_path()` / `logs_path()`. | Return the documented per-OS locations. | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ## C. Command-line interface (`sokketter-cli`)
 
 Enable fake devices (`LIBSOKKETTER_TEST_DEVICE_NUMBER`) except where noted. Verify both `stdout`/`stderr`
 content and the process exit code.
 
-| ID | Command | Expected | Result |
-| --- | --- | --- | --- |
-| MAN-CLI-01 | `sokketter-cli` (no args) | Exit `106`; stderr `A subcommand is required`. | ⬜ |
-| MAN-CLI-02 | `sokketter-cli --help` / `-h` | Exit `0`; prints the descriptive help text. | ⬜ |
-| MAN-CLI-03 | `sokketter-cli --version` / `-v` | Exit `0`; prints `sokketter-cli version …`. | ⬜ |
-| MAN-CLI-04 | `sokketter-cli list` (no devices) | Exit `1`; stderr `No devices found.`. | ⬜ |
-| MAN-CLI-05 | `sokketter-cli list` (N fake devices) | Exit `0`; numbered device list printed. | ⬜ |
-| MAN-CLI-06 | `sokketter-cli list power` / `power list` | Exit `109`; stderr `The following argument was not expected: …`. | ⬜ |
-| MAN-CLI-07 | `power status -i 0 -s 1` | Exit `0`; prints device + `Socket 1: … status: off`. | ⬜ |
-| MAN-CLI-08 | `power status -n <serial> -s 1` | Exit `0`; same output selected by serial. | ⬜ |
-| MAN-CLI-09 | `power status -i 0 -n <serial>` | Exit `108`; stderr `--device-at-index excludes --device-with-serial`. | ⬜ |
-| MAN-CLI-10 | `power status` (no device flag) | Exit `1`; stderr `[Option Group: …] is required.`. | ⬜ |
-| MAN-CLI-11 | `power status -n <missing>` | Exit `1`; stderr `No device was found.`. | ⬜ |
-| MAN-CLI-12 | `power on -i 0` (no `--sockets`) | Exit `0`; **all** sockets report `turned on.`. | ⬜ |
-| MAN-CLI-13 | `power on -i 0 -s 1` | Exit `0`; only socket 1 reports `turned on.`. | ⬜ |
-| MAN-CLI-14 | `power off -i 0 -s 1 2` | Exit `0`; sockets 1 and 2 report `turned off.`. | ⬜ |
-| MAN-CLI-15 | `power toggle -i 0 -s 1` twice | Exit `0`; socket returns to its original state after two toggles. | ⬜ |
-| MAN-CLI-16 | `power status -i 0 -s 0` and `-s 99` | Exit `1`; stderr `Socket index … is out of range.` (1-based indices). | ⬜ |
-| MAN-CLI-17 | `power on --help` (and status/off/toggle) | Exit `0`; help text shown (help precedence over subcommand). | ⬜ |
-| MAN-CLI-18 | Windows-style `/help`, mixed case `LIST`, underscores | Parsed the same as canonical forms (`ignore_case` / `ignore_underscore` / windows options). | ⬜ |
+| ID | Command | Expected | Result: Windows x86_64 | Result: Linux x86_64 | Result: macOS arm64 | Result: macOS x86_64 |
+| --- | --- | --- | --- | --- | --- | --- |
+| MAN-CLI-01 | `sokketter-cli` (no args) | Exit `106`; stderr `A subcommand is required`. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-CLI-02 | `sokketter-cli --help` / `-h` | Exit `0`; prints the descriptive help text. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-CLI-03 | `sokketter-cli --version` / `-v` | Exit `0`; prints `sokketter-cli version …`. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-CLI-04 | `sokketter-cli list` (no devices) | Exit `1`; stderr `No devices found.`. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-CLI-05 | `sokketter-cli list` (N fake devices) | Exit `0`; numbered device list printed. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-CLI-06 | `sokketter-cli list power` / `power list` | Exit `109`; stderr `The following argument was not expected: …`. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-CLI-07 | `power status -i 0 -s 1` | Exit `0`; prints device + `Socket 1: … status: off`. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-CLI-08 | `power status -n <serial> -s 1` | Exit `0`; same output selected by serial. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-CLI-09 | `power status -i 0 -n <serial>` | Exit `108`; stderr `--device-at-index excludes --device-with-serial`. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-CLI-10 | `power status` (no device flag) | Exit `1`; stderr `[Option Group: …] is required.`. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-CLI-11 | `power status -n <missing>` | Exit `1`; stderr `No device was found.`. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-CLI-12 | `power on -i 0` (no `--sockets`) | Exit `0`; **all** sockets report `turned on.`. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-CLI-13 | `power on -i 0 -s 1` | Exit `0`; only socket 1 reports `turned on.`. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-CLI-14 | `power off -i 0 -s 1 2` | Exit `0`; sockets 1 and 2 report `turned off.`. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-CLI-15 | `power toggle -i 0 -s 1` twice | Exit `0`; socket returns to its original state after two toggles. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-CLI-16 | `power status -i 0 -s 0` and `-s 99` | Exit `1`; stderr `Socket index … is out of range.` (1-based indices). | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-CLI-17 | `power on --help` (and status/off/toggle) | Exit `0`; help text shown (help precedence over subcommand). | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-CLI-18 | Windows-style `/help`, mixed case `LIST`, underscores | Parsed the same as canonical forms (`ignore_case` / `ignore_underscore` / windows options). | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ## D. Graphical interface (`sokketter-ui`)
 
@@ -151,98 +153,98 @@ Run with fake devices unless a case is hardware-specific.
 
 ### D1. Device list & navigation
 
-| ID | Steps | Expected | Result |
-| --- | --- | --- | --- |
-| MAN-UI-01 | Launch the app. | Main window opens at the persisted geometry; device list populates. | ⬜ |
-| MAN-UI-02 | With no devices present. | The empty-list placeholder item is shown; clicking it does nothing. | ⬜ |
-| MAN-UI-03 | Click the refresh control. | Device list re-enumerates. | ⬜ |
-| MAN-UI-04 | Resize the window. | List items reflow to the available width without clipping. | ⬜ |
-| MAN-UI-05 | Toggle **USB devices** / **Ethernet devices** filters in Settings. | List updates to include only the allowed bus types. | ⬜ |
-| MAN-UI-06 | Observe a disconnected saved device. | Item shows disconnected state and is not interactive for switching. | ⬜ |
+| ID | Steps | Expected | Result: Windows x86_64 | Result: Linux x86_64 | Result: macOS arm64 | Result: macOS x86_64 |
+| --- | --- | --- | --- | --- | --- | --- |
+| MAN-UI-01 | Launch the app. | Main window opens at the persisted geometry; device list populates. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-02 | With no devices present. | The empty-list placeholder item is shown; clicking it does nothing. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-03 | Click the refresh control. | Device list re-enumerates. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-04 | Resize the window. | List items reflow to the available width without clipping. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-05 | Toggle **USB devices** / **Ethernet devices** filters in Settings. | List updates to include only the allowed bus types. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-06 | Observe a disconnected saved device. | Item shows disconnected state and is not interactive for switching. | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ### D2. Authentication
 
-| ID | Steps | Expected | Result |
-| --- | --- | --- | --- |
-| MAN-UI-07 | Click a device with **no** auth (USB/fake). | Goes straight to the socket list. | ⬜ |
-| MAN-UI-08 | Click an EG-PMxx-LAN device (password auth). | Redirected to the password page. | ⬜ |
-| MAN-UI-09 | Enter the correct password and log in (button or Enter). | `Authentication succeed!`; socket list opens; password saved. | ⬜ |
-| MAN-UI-10 | Enter a wrong password. | `Authentication failed! Please try again.`; stays on the page. | ⬜ |
-| MAN-UI-11 | Reconnect a device whose saved password no longer works. | Auto-redirect back to the authentication page. | ⬜ |
-| MAN-UI-12 | Use the back control on the auth page. | Returns to the device list. | ⬜ |
-| MAN-UI-32 | Click a **connected** device with no auth or valid saved credentials. | `try_authenticate()` runs on the worker thread; on success the socket list opens. | ⬜ |
-| MAN-UI-33 | Click a saved but **offline/disconnected** device (no auth or valid saved credentials). | Skips authentication and proceeds straight to the socket list; no connection attempt is forced. | ⬜ |
-| MAN-UI-34 | On an **offline** device's socket list, open the edit → Configure page, change device/socket fields, and Save. | Sockets are disabled (cannot toggle while offline), but configuration is still editable and persists. | ⬜ |
-| MAN-UI-35 | Click a **connected** device whose saved credentials no longer work. | `try_authenticate()` fails and the app redirects to the authentication page. | ⬜ |
+| ID | Steps | Expected | Result: Windows x86_64 | Result: Linux x86_64 | Result: macOS arm64 | Result: macOS x86_64 |
+| --- | --- | --- | --- | --- | --- | --- |
+| MAN-UI-07 | Click a device with **no** auth (USB/fake). | Goes straight to the socket list. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-08 | Click an EG-PMxx-LAN device (password auth). | Redirected to the password page. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-09 | Enter the correct password and log in (button or Enter). | `Authentication succeed!`; socket list opens; password saved. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-10 | Enter a wrong password. | `Authentication failed! Please try again.`; stays on the page. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-11 | Reconnect a device whose saved password no longer works. | Auto-redirect back to the authentication page. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-12 | Use the back control on the auth page. | Returns to the device list. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-32 | Click a **connected** device with no auth or valid saved credentials. | `try_authenticate()` runs on the worker thread; on success the socket list opens. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-33 | Click a saved but **offline/disconnected** device (no auth or valid saved credentials). | Skips authentication and proceeds straight to the socket list; no connection attempt is forced. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-34 | On an **offline** device's socket list, open the edit → Configure page, change device/socket fields, and Save. | Sockets are disabled (cannot toggle while offline), but configuration is still editable and persists. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-35 | Click a **connected** device whose saved credentials no longer work. | `try_authenticate()` fails and the app redirects to the authentication page. | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ### D3. Socket control
 
-| ID | Steps | Expected | Result |
-| --- | --- | --- | --- |
-| MAN-UI-13 | In **single-click** mode, click a socket. | Socket toggles; status LED updates after the async operation. | ⬜ |
-| MAN-UI-14 | Switch to **double-click** mode in Settings, single-click a socket. | Single click does nothing; double click toggles. | ⬜ |
-| MAN-UI-15 | For a socket with a configurable reset, press reset. | Socket powers off, waits the configured ms, powers back on; button disabled during reset. | ⬜ |
-| MAN-UI-16 | Socket with reset = 0 ms. | Reset button is hidden. | ⬜ |
-| MAN-UI-17 | Rapidly toggle multiple sockets. | UI stays responsive (I/O on worker thread); no stuck/disabled sockets. | ⬜ |
+| ID | Steps | Expected | Result: Windows x86_64 | Result: Linux x86_64 | Result: macOS arm64 | Result: macOS x86_64 |
+| --- | --- | --- | --- | --- | --- | --- |
+| MAN-UI-13 | In **single-click** mode, click a socket. | Socket toggles; status LED updates after the async operation. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-14 | Switch to **double-click** mode in Settings, single-click a socket. | Single click does nothing; double click toggles. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-15 | For a socket with a configurable reset, press reset. | Socket powers off, waits the configured ms, powers back on; button disabled during reset. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-16 | Socket with reset = 0 ms. | Reset button is hidden. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-17 | Rapidly toggle multiple sockets. | UI stays responsive (I/O on worker thread); no stuck/disabled sockets. | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ### D4. Configuration
 
-| ID | Steps | Expected | Result |
-| --- | --- | --- | --- |
-| MAN-UI-18 | Open the socket list edit → Configure page. | Device edit form + one form per socket are shown. | ⬜ |
-| MAN-UI-19 | Change device name/description and Save. | New values persist and appear in the device/socket lists after restart. | ⬜ |
-| MAN-UI-20 | Change socket name/description and Save. | New values persist. | ⬜ |
-| MAN-UI-21 | Set a socket configurable-reset value (validated integer). | Only non-negative integers accepted; reset button appears when > 0. | ⬜ |
-| MAN-UI-22 | Delete/forget the device, confirm the warning dialog with **Yes**. | Device removed from list and `devices.json`; returns to device list. | ⬜ |
-| MAN-UI-23 | Delete/forget the device, choose **No**. | Nothing is deleted. | ⬜ |
-| MAN-UI-24 | Use Configure/back controls. | Navigation returns without saving. | ⬜ |
+| ID | Steps | Expected | Result: Windows x86_64 | Result: Linux x86_64 | Result: macOS arm64 | Result: macOS x86_64 |
+| --- | --- | --- | --- | --- | --- | --- |
+| MAN-UI-18 | Open the socket list edit → Configure page. | Device edit form + one form per socket are shown. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-19 | Change device name/description and Save. | New values persist and appear in the device/socket lists after restart. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-20 | Change socket name/description and Save. | New values persist. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-21 | Set a socket configurable-reset value (validated integer). | Only non-negative integers accepted; reset button appears when > 0. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-22 | Delete/forget the device, confirm the warning dialog with **Yes**. | Device removed from list and `devices.json`; returns to device list. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-23 | Delete/forget the device, choose **No**. | Nothing is deleted. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-24 | Use Configure/back controls. | Navigation returns without saving. | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ### D5. Settings, About & theme
 
-| ID | Steps | Expected | Result |
-| --- | --- | --- | --- |
-| MAN-UI-25 | Open Settings; click "open data folder". | Storage folder opens in the OS file manager. | ⬜ |
-| MAN-UI-26 | Change socket-toggle radio (single/double). | Saved immediately; socket list click behavior updates. | ⬜ |
-| MAN-UI-27 | Change theme radio (Auto/Light/Dark). | Whole app (incl. dialogs, list items) restyles live. | ⬜ |
-| MAN-UI-28 | With theme = Auto, change the OS light/dark mode. | App follows the OS theme; Windows title bar switches; macOS detection fires. | ⬜ |
-| MAN-UI-29 | Open About. | Shows version, git hash, build date, license line, and components list. | ⬜ |
-| MAN-UI-30 | Open the License dialog; switch tabs. | Dialog opens, tabs render, OK closes it; respects the current theme. | ⬜ |
-| MAN-UI-31 | Move/resize the window, close, relaunch. | Geometry restored from `sokketter-ui.json`. | ⬜ |
+| ID | Steps | Expected | Result: Windows x86_64 | Result: Linux x86_64 | Result: macOS arm64 | Result: macOS x86_64 |
+| --- | --- | --- | --- | --- | --- | --- |
+| MAN-UI-25 | Open Settings; click "open data folder". | Storage folder opens in the OS file manager. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-26 | Change socket-toggle radio (single/double). | Saved immediately; socket list click behavior updates. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-27 | Change theme radio (Auto/Light/Dark). | Whole app (incl. dialogs, list items) restyles live. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-28 | With theme = Auto, change the OS light/dark mode. | App follows the OS theme; Windows title bar switches; macOS detection fires. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-29 | Open About. | Shows version, git hash, build date, license line, and components list. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-30 | Open the License dialog; switch tabs. | Dialog opens, tabs render, OK closes it; respects the current theme. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-UI-31 | Move/resize the window, close, relaunch. | Geometry restored from `sokketter-ui.json`. | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ## E. Device-specific (hardware)
 
 Run per attached device. Verify the device is matched to the correct class and that physical switching
 works. Confirm the **socket count** matches the table above.
 
-| ID | Device | Steps | Expected | Result |
-| --- | --- | --- | --- | --- |
-| MAN-DEV-01 | Gembird SIS-PM | Plug in; `list`; toggle each of 4 sockets. | Detected as `Gembird SIS-PM`; 4 sockets switch physically; status reads back. | ⬜ |
-| MAN-DEV-02 | Gembird MSIS-PM | Plug in; toggle the single socket. | Detected as `Gembird MSIS-PM`; 1 socket switches. | ⬜ |
-| MAN-DEV-03 | Gembird MSIS-PM (2) | Plug in; toggle the single socket. | Detected as `Gembird MSIS-PM (2)`; 1 socket switches. | ⬜ |
-| MAN-DEV-04 | Energenie EG-PMS | Plug in; toggle each of 4 sockets. | Detected as `Energenie EG-PMS`; serial read from device; 4 sockets switch. | ⬜ |
-| MAN-DEV-05 | Energenie EG-PMS2 | Plug in; toggle each of 4 sockets. | Detected as `Energenie EG-PMS2`; 4 sockets switch. | ⬜ |
-| MAN-DEV-06 | EG-PMxx-LAN | Discover on LAN; authenticate; toggle each of 4 sockets; read status. | Detected via MAC/port; password login works; 4 sockets switch; status echoed back. | ⬜ |
-| MAN-DEV-07 | Any USB | Unplug the device mid-session. | Device shown as disconnected; operations fail gracefully; no crash. | ⬜ |
-| MAN-DEV-08 | Linux, any USB | Run without udev rules, then with them. | Without rules: access denied/enumeration fails; with rules: works. | ⬜ |
+| ID | Device | Steps | Expected | Result: Windows x86_64 | Result: Linux x86_64 | Result: macOS arm64 | Result: macOS x86_64 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| MAN-DEV-01 | Gembird SIS-PM | Plug in; `list`; toggle each of 4 sockets. | Detected as `Gembird SIS-PM`; 4 sockets switch physically; status reads back. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-DEV-02 | Gembird MSIS-PM | Plug in; toggle the single socket. | Detected as `Gembird MSIS-PM`; 1 socket switches. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-DEV-03 | Gembird MSIS-PM (2) | Plug in; toggle the single socket. | Detected as `Gembird MSIS-PM (2)`; 1 socket switches. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-DEV-04 | Energenie EG-PMS | Plug in; toggle each of 4 sockets. | Detected as `Energenie EG-PMS`; serial read from device; 4 sockets switch. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-DEV-05 | Energenie EG-PMS2 | Plug in; toggle each of 4 sockets. | Detected as `Energenie EG-PMS2`; 4 sockets switch. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-DEV-06 | EG-PMxx-LAN | Discover on LAN; authenticate; toggle each of 4 sockets; read status. | Detected via MAC/port; password login works; 4 sockets switch; status echoed back. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-DEV-07 | Any USB | Unplug the device mid-session. | Device shown as disconnected; operations fail gracefully; no crash. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-DEV-08 | Linux, any USB | Run without udev rules, then with them. | Without rules: access denied/enumeration fails; with rules: works. | ⚠️ | ⬜ | ⚠️ | ⚠️ |
 
 ## F. Persistence & migration
 
-| ID | Steps | Expected | Result |
-| --- | --- | --- | --- |
-| MAN-PER-01 | Connect a new device, then inspect `devices.json`. | Device appended with type/id/name/description/auth/sockets. | ⬜ |
-| MAN-PER-02 | Edit config, restart the app. | Edited values survive the restart. | ⬜ |
-| MAN-PER-03 | Enumerate with fake devices, inspect `devices.json`. | Test devices are **not** persisted. | ⬜ |
-| MAN-PER-04 | Load an old `devices.json` with no `authentication-type`. | Loads without error; auth type defaults from the device class (backwards compatible). | ⬜ |
-| MAN-PER-05 | Corrupt/partial `devices.json`. | App logs an error and starts with a usable (empty) database instead of crashing. | ⬜ |
-| MAN-PER-06 | Change UI settings, inspect `sokketter-ui.json`. | Window geometry, socket-toggle, theme, and bus filters are persisted. | ⬜ |
+| ID | Steps | Expected | Result: Windows x86_64 | Result: Linux x86_64 | Result: macOS arm64 | Result: macOS x86_64 |
+| --- | --- | --- | --- | --- | --- | --- |
+| MAN-PER-01 | Connect a new device, then inspect `devices.json`. | Device appended with type/id/name/description/auth/sockets. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-PER-02 | Edit config, restart the app. | Edited values survive the restart. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-PER-03 | Enumerate with fake devices, inspect `devices.json`. | Test devices are **not** persisted. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-PER-04 | Load an old `devices.json` with no `authentication-type`. | Loads without error; auth type defaults from the device class (backwards compatible). | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-PER-05 | Corrupt/partial `devices.json`. | App logs an error and starts with a usable (empty) database instead of crashing. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-PER-06 | Change UI settings, inspect `sokketter-ui.json`. | Window geometry, socket-toggle, theme, and bus filters are persisted. | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ## G. Logging & robustness
 
-| ID | Steps | Expected | Result |
-| --- | --- | --- | --- |
-| MAN-LOG-01 | Run any component and inspect the `logs` folder. | A daily log file is written; no secrets (e.g. passwords) are logged. | ⬜ |
-| MAN-LOG-02 | Trigger error paths (missing device, bad index). | Errors are logged at the appropriate level with useful context. | ⬜ |
-| MAN-ROB-01 | Leave the UI idle, then refresh repeatedly. | No leaks/hangs; enumeration completes each time. | ⬜ |
+| ID | Steps | Expected | Result: Windows x86_64 | Result: Linux x86_64 | Result: macOS arm64 | Result: macOS x86_64 |
+| --- | --- | --- | --- | --- | --- | --- |
+| MAN-LOG-01 | Run any component and inspect the `logs` folder. | A daily log file is written; no secrets (e.g. passwords) are logged. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-LOG-02 | Trigger error paths (missing device, bad index). | Errors are logged at the appropriate level with useful context. | ⬜ | ⬜ | ⬜ | ⬜ |
+| MAN-ROB-01 | Leave the UI idle, then refresh repeatedly. | No leaks/hangs; enumeration completes each time. | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ---
 
