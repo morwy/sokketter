@@ -39,16 +39,12 @@ described in [README.md](README.md) and [AGENTS.md](AGENTS.md).
 
 ### Build
 
-Build each library flavor explicitly; `IS_COMPILING_STATIC` / `IS_COMPILING_SHARED` must be set.
+Build each library flavor explicitly; `IS_COMPILING_STATIC` must be set.
 
 ```powershell
 # Static library flavor
 cmake -B build -DIS_COMPILING_STATIC=true -DIS_COMPILING_SHARED=false
 cmake --build build --config Debug
-
-# Shared library flavor
-cmake -B build-shared -DIS_COMPILING_STATIC=false -DIS_COMPILING_SHARED=true
-cmake --build build-shared --config Debug
 ```
 
 To build the automated tests, add `-DSOKKETTER_ENABLE_TESTING=true` and run them with
