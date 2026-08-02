@@ -170,6 +170,10 @@ Run with fake devices unless a case is hardware-specific.
 | MAN-UI-10 | Enter a wrong password. | `Authentication failed! Please try again.`; stays on the page. | ⬜ |
 | MAN-UI-11 | Reconnect a device whose saved password no longer works. | Auto-redirect back to the authentication page. | ⬜ |
 | MAN-UI-12 | Use the back control on the auth page. | Returns to the device list. | ⬜ |
+| MAN-UI-32 | Click a **connected** device with no auth or valid saved credentials. | `try_authenticate()` runs on the worker thread; on success the socket list opens. | ⬜ |
+| MAN-UI-33 | Click a saved but **offline/disconnected** device (no auth or valid saved credentials). | Skips authentication and proceeds straight to the socket list; no connection attempt is forced. | ⬜ |
+| MAN-UI-34 | On an **offline** device's socket list, open the edit → Configure page, change device/socket fields, and Save. | Sockets are disabled (cannot toggle while offline), but configuration is still editable and persists. | ⬜ |
+| MAN-UI-35 | Click a **connected** device whose saved credentials no longer work. | `try_authenticate()` fails and the app redirects to the authentication page. | ⬜ |
 
 ### D3. Socket control
 
@@ -334,6 +338,7 @@ Widget-level tests with `QtTest`, driving fake devices via the env var. Keep the
 | AUTO-UI-06 | Settings persistence | MAN-UI-26/31 | `app_settings_storage` round-trip for toggle/theme/geometry/filters. |
 | AUTO-UI-07 | Theme switch | MAN-UI-27 | Stylesheet changes on `ThemeChange`. |
 | AUTO-UI-08 | Auth page routing | MAN-UI-07/08 | No-auth → socket list; password device → auth page. |
+| AUTO-UI-09 | Offline-device click routing | MAN-UI-33/35 | Offline saved device → socket list without `try_authenticate()`; connected device with failing auth → auth page. Needs a saved-but-disconnected fixture (fake test devices always report connected). |
 
 ## Cross-cutting jobs
 
