@@ -1013,7 +1013,21 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
     }
     else
     {
-        run_device_task([this]() -> bool { return m_device->try_authenticate(); },
+        run_device_task(
+            [this]() -> bool {
+                if (m_device->is_connected())
+                {
+                    return m_device->try_authenticate();
+                }
+
+                /**
+                 * If device is offline, allow to proceed to the socket list page, as user can still
+                 * configure the device and its sockets without being connected. The device will be
+                 * connected when user tries to toggle a socket or perform any other action that
+                 * requires a connection.
+                 */
+                return true;
+            },
             [this](bool state) {
                 if (state)
                 {
