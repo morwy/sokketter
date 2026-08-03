@@ -42,9 +42,9 @@ jobs:
         brew install lcov
 
     - name: Install Qt6 dependencies
-      uses: jurplel/install-qt-action@v3
+      uses: jurplel/install-qt-action@v4
       with:
-        version: '6.5.*'
+        version: '6.8.*'
 
     - name: Run Python build script
       run: python -m Build
