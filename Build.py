@@ -420,23 +420,34 @@ class Build:
                     self.temp_binary_output_dir, "bin", "sokketter-ui.app"
                 ),
                 dst=os.path.join(sokketter_ui_zip_folder, "sokketter-ui.app"),
+                symlinks=True,
             )
 
             packing_command = [
                 "macdeployqt",
                 os.path.join(sokketter_ui_zip_folder, "sokketter-ui.app"),
-                sokketter_ui_zip_folder,
+                "-verbose=2",
             ]
             self.__execute_command(packing_command)
 
-            zip_name = shutil.make_archive(
-                base_name=f"sokketter-ui-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}",
-                format="zip",
-                root_dir=sokketter_ui_zip_folder,
+            zip_name = os.path.join(
+                self.workspace,
+                f"sokketter-ui-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}.zip",
             )
 
+            packing_command = [
+                "ditto",
+                "-c",
+                "-k",
+                "--keepParent",
+                "--sequesterRsrc",
+                os.path.join(sokketter_ui_zip_folder, "sokketter-ui.app"),
+                zip_name,
+            ]
+            self.__execute_command(packing_command)
+
             shutil.move(
-                src=os.path.join(self.workspace, zip_name),
+                src=zip_name,
                 dst=sokketter_ui_folder,
             )
 
