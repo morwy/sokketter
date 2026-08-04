@@ -430,6 +430,17 @@ class Build:
             ]
             self.__execute_command(packing_command)
 
+            packing_command = [
+                "codesign",
+                "--force",
+                "--deep",
+                "--sign",
+                "-",
+                "--timestamp=none",
+                os.path.join(sokketter_ui_zip_folder, "sokketter-ui.app"),
+            ]
+            self.__execute_command(packing_command)
+
             zip_name = os.path.join(
                 self.workspace,
                 f"sokketter-ui-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}.zip",
