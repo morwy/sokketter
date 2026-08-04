@@ -995,7 +995,8 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
         return;
     }
 
-    if (configuration.authentication.type != sokketter::power_strip_authentication_type::NONE &&
+    if (m_device->is_connected() &&
+        configuration.authentication.type != sokketter::power_strip_authentication_type::NONE &&
         !configuration.authentication.is_valid())
     {
         /**
