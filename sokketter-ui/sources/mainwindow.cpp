@@ -634,7 +634,7 @@ auto MainWindow::forget_selected_device() -> void
     sokketter::forget_device(m_device);
 }
 
-auto MainWindow::populate_authentication_page() -> void
+auto MainWindow::populate_authentication_page(power_strip_list_item *item) -> void
 {
     if (m_device == nullptr)
     {
@@ -645,9 +645,7 @@ auto MainWindow::populate_authentication_page() -> void
     m_ui->authentication_status_label->hide();
     m_ui->authentication_password_line_edit->clear();
 
-    auto configuration = m_device->configuration();
-
-    switch (configuration.authentication.type)
+    switch (m_device->configuration().authentication.type)
     {
     default:
     case sokketter::power_strip_authentication_type::UNKNOWN:
@@ -661,11 +659,11 @@ auto MainWindow::populate_authentication_page() -> void
     }
     }
 
-    auto authenticate = [this, configuration]() {
+    auto authenticate = [this, item]() {
         m_ui->authentication_status_label->show();
         m_ui->authentication_status_label->setText("Authenticating...");
 
-        auto _configuration = configuration;
+        auto _configuration = m_device->configuration();
 
         switch (_configuration.authentication.type)
         {
@@ -687,7 +685,7 @@ auto MainWindow::populate_authentication_page() -> void
          * the UI responsive.
          */
         run_device_task(
-            [device, _configuration]() -> bool {
+            [device, _configuration, item]() -> bool {
                 device->configure(_configuration);
 
                 if (!device->try_authenticate())
@@ -699,6 +697,12 @@ auto MainWindow::populate_authentication_page() -> void
                  * Save the configuration and password in case of success.
                  */
                 device->save();
+
+                /**
+                 * Inject new configuration into existing power strip list item.
+                 */
+                item->configure(_configuration);
+
                 return true;
             },
             [this, device](bool success) {
@@ -978,15 +982,14 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
         return;
     }
 
-    const auto &configuration =
-        dynamic_cast<power_strip_list_item *>(m_ui->power_strip_list_widget->itemWidget(item))
-            ->configuration();
-
     if (m_device != nullptr)
     {
         m_device.reset();
         m_device = nullptr;
     }
+
+    auto *list_item = dynamic_cast<power_strip_list_item *>(widget);
+    const auto &configuration = list_item->configuration();
 
     m_device = sokketter::device(configuration.id);
     if (m_device == nullptr)
@@ -1007,7 +1010,7 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
             "Device requires authentication but no authentication parameters were "
             "provided or are incorrect. Redirecting to authentication page.");
 
-        populate_authentication_page();
+        populate_authentication_page(list_item);
 
         const int &index = m_ui->stackedWidget->indexOf(m_ui->device_authentication_page);
         m_ui->stackedWidget->setCurrentIndex(index);
@@ -1029,7 +1032,7 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
                  */
                 return true;
             },
-            [this](bool state) {
+            [this, list_item](bool state) {
                 if (state)
                 {
                     const int &index = m_ui->stackedWidget->indexOf(m_ui->socket_list_page);
@@ -1046,7 +1049,7 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
                     SPDLOG_LOGGER_DEBUG(APP_LOGGER,
                         "Device authentication failed. Redirecting to authentication page.");
 
-                    populate_authentication_page();
+                    populate_authentication_page(list_item);
 
                     const int &index =
                         m_ui->stackedWidget->indexOf(m_ui->device_authentication_page);

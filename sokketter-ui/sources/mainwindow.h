@@ -5,6 +5,7 @@
 
 #include <SocketListItem.h>
 #include <libsokketter.h>
+#include <power_strip_list_item.h>
 
 #include <QListWidget>
 #include <QMainWindow>
@@ -79,7 +80,7 @@ private:
     auto save_new_configuration() -> void;
     auto forget_selected_device() -> void;
 
-    auto populate_authentication_page() -> void;
+    auto populate_authentication_page(power_strip_list_item *item) -> void;
     auto initialize_settings_page() -> void;
     auto initialize_about_page() -> void;
 

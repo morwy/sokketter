@@ -20,13 +20,14 @@ public:
         const sokketter::power_strip_configuration &configuration, QWidget *parent = nullptr);
     ~power_strip_list_item();
 
+    auto configure(const sokketter::power_strip_configuration &configuration) -> void;
     auto configuration() const -> const sokketter::power_strip_configuration &;
 
     auto set_state(const bool is_on) const -> void;
 
 private:
     Ui::power_strip_list_item *m_ui;
-    const sokketter::power_strip_configuration m_configuration;
+    sokketter::power_strip_configuration m_configuration;
 
     auto event(QEvent *event) -> bool override;
     auto setThemeAccordingToMode() -> void;
