@@ -20,9 +20,9 @@ TEST(cli_option_tests, help_long_flag)
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(
-        stdout, ContainsRegex(
-                    "A command-line interface for controlling attached power strips and sockets."));
-    ASSERT_EQ(stderr, "");
+        out, ContainsRegex(
+                 "A command-line interface for controlling attached power strips and sockets."));
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_option_tests, help_short_flag)
@@ -39,9 +39,9 @@ TEST(cli_option_tests, help_short_flag)
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(
-        stdout, ContainsRegex(
-                    "A command-line interface for controlling attached power strips and sockets."));
-    ASSERT_EQ(stderr, "");
+        out, ContainsRegex(
+                 "A command-line interface for controlling attached power strips and sockets."));
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_option_tests, version_long_flag)
@@ -57,8 +57,8 @@ TEST(cli_option_tests, version_long_flag)
     const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_THAT(stdout, ContainsRegex("sokketter-cli version "));
-    ASSERT_EQ(stderr, "");
+    ASSERT_THAT(out, ContainsRegex("sokketter-cli version "));
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_option_tests, version_short_flag)
@@ -74,8 +74,8 @@ TEST(cli_option_tests, version_short_flag)
     const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_THAT(stdout, ContainsRegex("sokketter-cli version "));
-    ASSERT_EQ(stderr, "");
+    ASSERT_THAT(out, ContainsRegex("sokketter-cli version "));
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_option_tests, help_precedence_over_list_1)
@@ -92,9 +92,9 @@ TEST(cli_option_tests, help_precedence_over_list_1)
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(
-        stdout, ContainsRegex(
-                    "A command-line interface for controlling attached power strips and sockets."));
-    ASSERT_EQ(stderr, "");
+        out, ContainsRegex(
+                 "A command-line interface for controlling attached power strips and sockets."));
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_option_tests, help_precedence_over_list_2)
@@ -111,9 +111,9 @@ TEST(cli_option_tests, help_precedence_over_list_2)
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(
-        stdout, ContainsRegex(
-                    "A command-line interface for controlling attached power strips and sockets."));
-    ASSERT_EQ(stderr, "");
+        out, ContainsRegex(
+                 "A command-line interface for controlling attached power strips and sockets."));
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_option_tests, help_precedence_over_power_1)
@@ -130,9 +130,9 @@ TEST(cli_option_tests, help_precedence_over_power_1)
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(
-        stdout, ContainsRegex(
-                    "A command-line interface for controlling attached power strips and sockets."));
-    ASSERT_EQ(stderr, "");
+        out, ContainsRegex(
+                 "A command-line interface for controlling attached power strips and sockets."));
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_option_tests, help_precedence_over_power_2)
@@ -149,9 +149,9 @@ TEST(cli_option_tests, help_precedence_over_power_2)
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(
-        stdout, ContainsRegex(
-                    "A command-line interface for controlling attached power strips and sockets."));
-    ASSERT_EQ(stderr, "");
+        out, ContainsRegex(
+                 "A command-line interface for controlling attached power strips and sockets."));
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_option_tests, help_precedence_over_power_on)
@@ -169,9 +169,9 @@ TEST(cli_option_tests, help_precedence_over_power_on)
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(
-        stdout, ContainsRegex(
-                    "A command-line interface for controlling attached power strips and sockets."));
-    ASSERT_EQ(stderr, "");
+        out, ContainsRegex(
+                 "A command-line interface for controlling attached power strips and sockets."));
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_option_tests, help_precedence_over_power_off)
@@ -189,9 +189,9 @@ TEST(cli_option_tests, help_precedence_over_power_off)
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(
-        stdout, ContainsRegex(
-                    "A command-line interface for controlling attached power strips and sockets."));
-    ASSERT_EQ(stderr, "");
+        out, ContainsRegex(
+                 "A command-line interface for controlling attached power strips and sockets."));
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_option_tests, help_precedence_over_power_toggle)
@@ -209,9 +209,9 @@ TEST(cli_option_tests, help_precedence_over_power_toggle)
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(
-        stdout, ContainsRegex(
-                    "A command-line interface for controlling attached power strips and sockets."));
-    ASSERT_EQ(stderr, "");
+        out, ContainsRegex(
+                 "A command-line interface for controlling attached power strips and sockets."));
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_option_tests, help_precedence_over_power_status)
@@ -229,9 +229,9 @@ TEST(cli_option_tests, help_precedence_over_power_status)
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(
-        stdout, ContainsRegex(
-                    "A command-line interface for controlling attached power strips and sockets."));
-    ASSERT_EQ(stderr, "");
+        out, ContainsRegex(
+                 "A command-line interface for controlling attached power strips and sockets."));
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_option_tests, version_precedence_over_list_1)
@@ -247,8 +247,8 @@ TEST(cli_option_tests, version_precedence_over_list_1)
     const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_THAT(stdout, ContainsRegex("sokketter-cli version "));
-    ASSERT_EQ(stderr, "");
+    ASSERT_THAT(out, ContainsRegex("sokketter-cli version "));
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_option_tests, version_precedence_over_list_2)
@@ -264,8 +264,8 @@ TEST(cli_option_tests, version_precedence_over_list_2)
     const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_THAT(stdout, ContainsRegex("sokketter-cli version "));
-    ASSERT_EQ(stderr, "");
+    ASSERT_THAT(out, ContainsRegex("sokketter-cli version "));
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_option_tests, version_precedence_over_power_1)
@@ -281,8 +281,8 @@ TEST(cli_option_tests, version_precedence_over_power_1)
     const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_THAT(stdout, ContainsRegex("sokketter-cli version "));
-    ASSERT_EQ(stderr, "");
+    ASSERT_THAT(out, ContainsRegex("sokketter-cli version "));
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_option_tests, version_precedence_over_power_2)
@@ -298,8 +298,8 @@ TEST(cli_option_tests, version_precedence_over_power_2)
     const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_THAT(stdout, ContainsRegex("sokketter-cli version "));
-    ASSERT_EQ(stderr, "");
+    ASSERT_THAT(out, ContainsRegex("sokketter-cli version "));
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_option_tests, version_precedence_over_power_on)
@@ -316,8 +316,8 @@ TEST(cli_option_tests, version_precedence_over_power_on)
     const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_THAT(stdout, ContainsRegex("sokketter-cli version "));
-    ASSERT_EQ(stderr, "");
+    ASSERT_THAT(out, ContainsRegex("sokketter-cli version "));
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_option_tests, version_precedence_over_power_off)
@@ -334,8 +334,8 @@ TEST(cli_option_tests, version_precedence_over_power_off)
     const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_THAT(stdout, ContainsRegex("sokketter-cli version "));
-    ASSERT_EQ(stderr, "");
+    ASSERT_THAT(out, ContainsRegex("sokketter-cli version "));
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_option_tests, version_precedence_over_power_toggle)
@@ -352,8 +352,8 @@ TEST(cli_option_tests, version_precedence_over_power_toggle)
     const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_THAT(stdout, ContainsRegex("sokketter-cli version "));
-    ASSERT_EQ(stderr, "");
+    ASSERT_THAT(out, ContainsRegex("sokketter-cli version "));
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_option_tests, version_precedence_over_power_status)
@@ -370,6 +370,6 @@ TEST(cli_option_tests, version_precedence_over_power_status)
     const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_THAT(stdout, ContainsRegex("sokketter-cli version "));
-    ASSERT_EQ(stderr, "");
+    ASSERT_THAT(out, ContainsRegex("sokketter-cli version "));
+    ASSERT_EQ(err, "");
 }

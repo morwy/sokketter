@@ -41,8 +41,8 @@ TEST(cli_subcommand_tests, list_and_power_together)
     const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, 109);
-    ASSERT_EQ(stdout, "");
-    ASSERT_EQ(stderr,
+    ASSERT_EQ(out, "");
+    ASSERT_EQ(err,
         "The following argument was not expected: power\nRun with --help for more information.\n");
 }
 
@@ -59,8 +59,8 @@ TEST(cli_subcommand_tests, power_and_list_together)
     const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, 109);
-    ASSERT_EQ(stdout, "");
-    ASSERT_EQ(stderr,
+    ASSERT_EQ(out, "");
+    ASSERT_EQ(err,
         "The following argument was not expected: list\nRun with --help for more information.\n");
 }
 
@@ -77,8 +77,8 @@ TEST(cli_subcommand_tests, list_no_devices)
     const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_FAILURE);
-    ASSERT_EQ(stdout, "");
-    ASSERT_EQ(stderr, "No devices found.\n");
+    ASSERT_EQ(out, "");
+    ASSERT_EQ(err, "No devices found.\n");
 }
 
 TEST(cli_subcommand_tests, list_test_devices)
@@ -98,9 +98,9 @@ TEST(cli_subcommand_tests, list_test_devices)
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(stdout, "Available devices:\n1. Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, "
-                      "located at TEST_ADDRESS)\n");
-    ASSERT_EQ(stderr, "");
+    ASSERT_EQ(out, "Available devices:\n1. Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, "
+                   "located at TEST_ADDRESS)\n");
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, list_random_subcommand)
@@ -120,8 +120,8 @@ TEST(cli_subcommand_tests, list_random_subcommand)
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, 109);
-    ASSERT_EQ(stdout, "");
-    ASSERT_EQ(stderr,
+    ASSERT_EQ(out, "");
+    ASSERT_EQ(err,
         "The following argument was not expected: random\nRun with --help for more information.\n");
 }
 
@@ -143,8 +143,8 @@ TEST(cli_subcommand_tests, test_power_both_access_flags)
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, 108);
-    ASSERT_EQ(stdout, "");
-    ASSERT_EQ(stderr,
+    ASSERT_EQ(out, "");
+    ASSERT_EQ(err,
         "--device-at-index excludes --device-with-serial\nRun with --help for more information.\n");
 }
 
@@ -165,9 +165,9 @@ TEST(cli_subcommand_tests, test_power_no_access_flags)
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, EXIT_FAILURE);
-    ASSERT_EQ(stdout, "");
-    ASSERT_EQ(stderr, "[Option Group: --device-at-index or --device-with-serial] is required.\nRun "
-                      "with --help for more information.\n");
+    ASSERT_EQ(out, "");
+    ASSERT_EQ(err, "[Option Group: --device-at-index or --device-with-serial] is required.\nRun "
+                   "with --help for more information.\n");
 }
 
 TEST(cli_subcommand_tests, test_power_status_no_device)
@@ -188,8 +188,8 @@ TEST(cli_subcommand_tests, test_power_status_no_device)
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, EXIT_FAILURE);
-    ASSERT_EQ(stdout, "");
-    ASSERT_EQ(stderr, "No device was found.\n");
+    ASSERT_EQ(out, "");
+    ASSERT_EQ(err, "No device was found.\n");
 }
 
 TEST(cli_subcommand_tests, test_power_status_via_index)
@@ -210,10 +210,10 @@ TEST(cli_subcommand_tests, test_power_status_via_index)
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(stdout,
+    ASSERT_EQ(out,
         "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n  Socket 1: "
         "Unnamed socket, status: off\n");
-    ASSERT_EQ(stderr, "");
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, test_power_status_via_serial)
@@ -235,10 +235,10 @@ TEST(cli_subcommand_tests, test_power_status_via_serial)
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(stdout,
+    ASSERT_EQ(out,
         "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n  Socket 1: "
         "Unnamed socket, status: off\n");
-    ASSERT_EQ(stderr, "");
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, test_power_on_specified_socket)
@@ -259,9 +259,9 @@ TEST(cli_subcommand_tests, test_power_on_specified_socket)
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(stdout, "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n  "
-                      "Socket 1: turned on.\n");
-    ASSERT_EQ(stderr, "");
+    ASSERT_EQ(out, "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n  "
+                   "Socket 1: turned on.\n");
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, test_power_off_specified_socket)
@@ -282,9 +282,9 @@ TEST(cli_subcommand_tests, test_power_off_specified_socket)
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(stdout, "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n  "
-                      "Socket 1: turned off.\n");
-    ASSERT_EQ(stderr, "");
+    ASSERT_EQ(out, "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n  "
+                   "Socket 1: turned off.\n");
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, test_power_toggle_specified_socket)
@@ -305,9 +305,9 @@ TEST(cli_subcommand_tests, test_power_toggle_specified_socket)
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(stdout, "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n  "
-                      "Socket 1: toggled.\n");
-    ASSERT_EQ(stderr, "");
+    ASSERT_EQ(out, "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n  "
+                   "Socket 1: toggled.\n");
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, test_power_status_all)
@@ -328,11 +328,11 @@ TEST(cli_subcommand_tests, test_power_status_all)
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(stdout,
+    ASSERT_EQ(out,
         "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n  Socket 1: "
         "Unnamed socket, status: off\n  Socket 2: Unnamed socket, status: off\n  Socket 3: "
         "Unnamed socket, status: off\n  Socket 4: Unnamed socket, status: off\n");
-    ASSERT_EQ(stderr, "");
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, test_power_on_all)
@@ -353,10 +353,10 @@ TEST(cli_subcommand_tests, test_power_on_all)
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(stdout,
+    ASSERT_EQ(out,
         "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n  Socket 1: "
         "turned on.\n  Socket 2: turned on.\n  Socket 3: turned on.\n  Socket 4: turned on.\n");
-    ASSERT_EQ(stderr, "");
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, test_power_off_all)
@@ -377,10 +377,10 @@ TEST(cli_subcommand_tests, test_power_off_all)
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(stdout,
+    ASSERT_EQ(out,
         "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n  Socket 1: "
         "turned off.\n  Socket 2: turned off.\n  Socket 3: turned off.\n  Socket 4: turned off.\n");
-    ASSERT_EQ(stderr, "");
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, test_power_toggle_all)
@@ -401,10 +401,10 @@ TEST(cli_subcommand_tests, test_power_toggle_all)
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(stdout,
+    ASSERT_EQ(out,
         "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n  Socket 1: "
         "toggled.\n  Socket 2: toggled.\n  Socket 3: toggled.\n  Socket 4: toggled.\n");
-    ASSERT_EQ(stderr, "");
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, test_power_too_big_socket_index)
@@ -425,8 +425,8 @@ TEST(cli_subcommand_tests, test_power_too_big_socket_index)
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, EXIT_FAILURE);
-    ASSERT_EQ(stdout, "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n");
-    ASSERT_EQ(stderr, "Socket index 99 is out of range.\n");
+    ASSERT_EQ(out, "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n");
+    ASSERT_EQ(err, "Socket index 99 is out of range.\n");
 }
 
 TEST(cli_subcommand_tests, test_power_zero_socket_index)
@@ -447,8 +447,8 @@ TEST(cli_subcommand_tests, test_power_zero_socket_index)
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, EXIT_FAILURE);
-    ASSERT_EQ(stdout, "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n");
-    ASSERT_EQ(stderr, "Socket index 0 is out of range.\n");
+    ASSERT_EQ(out, "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n");
+    ASSERT_EQ(err, "Socket index 0 is out of range.\n");
 }
 
 TEST(cli_subcommand_tests, test_power_negative_socket_index)
@@ -469,8 +469,8 @@ TEST(cli_subcommand_tests, test_power_negative_socket_index)
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, 104);
-    ASSERT_EQ(stdout, "");
-    ASSERT_EQ(stderr, "Could not convert: --sockets = -1\nRun with --help for more information.\n");
+    ASSERT_EQ(out, "");
+    ASSERT_EQ(err, "Could not convert: --sockets = -1\nRun with --help for more information.\n");
 }
 
 TEST(cli_subcommand_tests, test_power_random_subcommand)
@@ -490,9 +490,9 @@ TEST(cli_subcommand_tests, test_power_random_subcommand)
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, 109);
-    ASSERT_EQ(stdout, "");
-    ASSERT_EQ(stderr, "The following argument was not expected: random\nRun with --help for more "
-                      "information.\n");
+    ASSERT_EQ(out, "");
+    ASSERT_EQ(err, "The following argument was not expected: random\nRun with --help for more "
+                   "information.\n");
 }
 
 TEST(cli_subcommand_tests, test_power_on_random_subcommand)
@@ -513,7 +513,7 @@ TEST(cli_subcommand_tests, test_power_on_random_subcommand)
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, 109);
-    ASSERT_EQ(stdout, "");
-    ASSERT_EQ(stderr, "The following argument was not expected: random\nRun with --help for more "
-                      "information.\n");
+    ASSERT_EQ(out, "");
+    ASSERT_EQ(err, "The following argument was not expected: random\nRun with --help for more "
+                   "information.\n");
 }
