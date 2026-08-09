@@ -1,10 +1,31 @@
 #include "cli_parser.h"
+#include "libsokketter.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <vector>
 
 using namespace testing;
+
+namespace
+{
+class cli_test_environment final : public testing::Environment
+{
+public:
+    auto SetUp() -> void override
+    {
+        ASSERT_TRUE(sokketter::initialize());
+    }
+
+    auto TearDown() -> void override
+    {
+        ASSERT_TRUE(sokketter::deinitialize());
+    }
+};
+
+const auto *cli_tests_environment =
+    testing::AddGlobalTestEnvironment(new cli_test_environment());
+} // namespace
 
 TEST(cli_general_tests, no_args)
 {
