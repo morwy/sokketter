@@ -108,7 +108,7 @@ auto energenie_eg_pmxx_lan::identification() -> const kommpot::ethernet_device_i
     kommpot::ethernet_device_identification identification;
 
     identification.ip = "*";
-    identification.port = 5000;
+    identification.port = 80;
     identification.mac = "88:B6:27:*";
     identification.protocol = kommpot::ethernet_protocol_type::TCP;
 
