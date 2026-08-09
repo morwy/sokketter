@@ -15,10 +15,10 @@ TEST(cli_general_tests, no_args)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, 106);
-    ASSERT_EQ(stdout, "");
-    ASSERT_EQ(stderr, "A subcommand is required\nRun with --help for more information.\n");
+    ASSERT_EQ(out, "");
+    ASSERT_EQ(err, "A subcommand is required\nRun with --help for more information.\n");
 }

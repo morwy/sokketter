@@ -37,8 +37,8 @@ TEST(cli_subcommand_tests, list_and_power_together)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, 109);
     ASSERT_EQ(stdout, "");
@@ -55,8 +55,8 @@ TEST(cli_subcommand_tests, power_and_list_together)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, 109);
     ASSERT_EQ(stdout, "");
@@ -73,8 +73,8 @@ TEST(cli_subcommand_tests, list_no_devices)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(stdout, "");
@@ -92,8 +92,8 @@ TEST(cli_subcommand_tests, list_test_devices)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
@@ -114,8 +114,8 @@ TEST(cli_subcommand_tests, list_random_subcommand)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
@@ -137,8 +137,8 @@ TEST(cli_subcommand_tests, test_power_both_access_flags)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
@@ -159,8 +159,8 @@ TEST(cli_subcommand_tests, test_power_no_access_flags)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
@@ -182,8 +182,8 @@ TEST(cli_subcommand_tests, test_power_status_no_device)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
@@ -204,8 +204,8 @@ TEST(cli_subcommand_tests, test_power_status_via_index)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
@@ -229,8 +229,8 @@ TEST(cli_subcommand_tests, test_power_status_via_serial)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
@@ -253,8 +253,8 @@ TEST(cli_subcommand_tests, test_power_on_specified_socket)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
@@ -276,8 +276,8 @@ TEST(cli_subcommand_tests, test_power_off_specified_socket)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
@@ -299,8 +299,8 @@ TEST(cli_subcommand_tests, test_power_toggle_specified_socket)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
@@ -322,8 +322,8 @@ TEST(cli_subcommand_tests, test_power_status_all)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
@@ -347,8 +347,8 @@ TEST(cli_subcommand_tests, test_power_on_all)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
@@ -371,8 +371,8 @@ TEST(cli_subcommand_tests, test_power_off_all)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
@@ -395,8 +395,8 @@ TEST(cli_subcommand_tests, test_power_toggle_all)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
@@ -419,8 +419,8 @@ TEST(cli_subcommand_tests, test_power_too_big_socket_index)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
@@ -441,8 +441,8 @@ TEST(cli_subcommand_tests, test_power_zero_socket_index)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
@@ -463,8 +463,8 @@ TEST(cli_subcommand_tests, test_power_negative_socket_index)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
@@ -484,8 +484,8 @@ TEST(cli_subcommand_tests, test_power_random_subcommand)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
@@ -507,8 +507,8 @@ TEST(cli_subcommand_tests, test_power_on_random_subcommand)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 

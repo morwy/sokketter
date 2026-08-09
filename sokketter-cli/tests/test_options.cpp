@@ -15,8 +15,8 @@ TEST(cli_option_tests, help_long_flag)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(
@@ -34,8 +34,8 @@ TEST(cli_option_tests, help_short_flag)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(
@@ -53,8 +53,8 @@ TEST(cli_option_tests, version_long_flag)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(stdout, ContainsRegex("sokketter-cli version "));
@@ -70,8 +70,8 @@ TEST(cli_option_tests, version_short_flag)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(stdout, ContainsRegex("sokketter-cli version "));
@@ -87,8 +87,8 @@ TEST(cli_option_tests, help_precedence_over_list_1)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(
@@ -106,8 +106,8 @@ TEST(cli_option_tests, help_precedence_over_list_2)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(
@@ -125,8 +125,8 @@ TEST(cli_option_tests, help_precedence_over_power_1)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(
@@ -144,8 +144,8 @@ TEST(cli_option_tests, help_precedence_over_power_2)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(
@@ -164,8 +164,8 @@ TEST(cli_option_tests, help_precedence_over_power_on)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(
@@ -184,8 +184,8 @@ TEST(cli_option_tests, help_precedence_over_power_off)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(
@@ -204,8 +204,8 @@ TEST(cli_option_tests, help_precedence_over_power_toggle)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(
@@ -224,8 +224,8 @@ TEST(cli_option_tests, help_precedence_over_power_status)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(
@@ -243,8 +243,8 @@ TEST(cli_option_tests, version_precedence_over_list_1)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(stdout, ContainsRegex("sokketter-cli version "));
@@ -260,8 +260,8 @@ TEST(cli_option_tests, version_precedence_over_list_2)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(stdout, ContainsRegex("sokketter-cli version "));
@@ -277,8 +277,8 @@ TEST(cli_option_tests, version_precedence_over_power_1)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(stdout, ContainsRegex("sokketter-cli version "));
@@ -294,8 +294,8 @@ TEST(cli_option_tests, version_precedence_over_power_2)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(stdout, ContainsRegex("sokketter-cli version "));
@@ -312,8 +312,8 @@ TEST(cli_option_tests, version_precedence_over_power_on)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(stdout, ContainsRegex("sokketter-cli version "));
@@ -330,8 +330,8 @@ TEST(cli_option_tests, version_precedence_over_power_off)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(stdout, ContainsRegex("sokketter-cli version "));
@@ -348,8 +348,8 @@ TEST(cli_option_tests, version_precedence_over_power_toggle)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(stdout, ContainsRegex("sokketter-cli version "));
@@ -366,8 +366,8 @@ TEST(cli_option_tests, version_precedence_over_power_status)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    const auto &stdout = testing::internal::GetCapturedStdout();
-    const auto &stderr = testing::internal::GetCapturedStderr();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_THAT(stdout, ContainsRegex("sokketter-cli version "));
