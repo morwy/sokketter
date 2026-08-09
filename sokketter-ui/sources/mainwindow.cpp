@@ -86,6 +86,10 @@ MainWindow::MainWindow(QWidget *parent)
         m_ui->stackedWidget->setCurrentIndex(index);
     });
 
+    auto size_policy = m_ui->power_strip_enumeration_status_label->sizePolicy();
+    size_policy.setRetainSizeWhenHidden(true);
+    m_ui->power_strip_enumeration_status_label->setSizePolicy(size_policy);
+
     QObject::connect(m_ui->authentication_back_label, &ClickableLabel::clicked, [this]() {
         const int &index = m_ui->stackedWidget->indexOf(m_ui->power_strip_list_page);
         m_ui->stackedWidget->setCurrentIndex(index);
@@ -93,9 +97,9 @@ MainWindow::MainWindow(QWidget *parent)
         redraw_device_list();
     });
 
-    auto size_policy = m_ui->authentication_status_label->sizePolicy();
-    size_policy.setRetainSizeWhenHidden(true);
-    m_ui->authentication_status_label->setSizePolicy(size_policy);
+    auto size_policy2 = m_ui->authentication_status_label->sizePolicy();
+    size_policy2.setRetainSizeWhenHidden(true);
+    m_ui->authentication_status_label->setSizePolicy(size_policy2);
 
     QObject::connect(m_ui->socket_list_edit_label, &ClickableLabel::clicked, [this]() {
         const int &index = m_ui->stackedWidget->indexOf(m_ui->device_configure_page);
@@ -242,6 +246,22 @@ auto MainWindow::onNewStatusReceived(sokketter::enumeration_status status) -> vo
 {
     SPDLOG_LOGGER_INFO(
         APP_LOGGER, "New status: {}.", sokketter::enumeration_status_to_string(status));
+    switch (status)
+    {
+    case sokketter::enumeration_status::ENUMERATING_USB_DEVICES: {
+        m_ui->power_strip_enumeration_status_label->setText("Enumerating USB devices...");
+        break;
+    }
+    case sokketter::enumeration_status::ENUMERATING_ETHERNET_DEVICES: {
+        m_ui->power_strip_enumeration_status_label->setText("Enumerating Ethernet devices...");
+        break;
+    }
+    case sokketter::enumeration_status::UNKNOWN:
+    case sokketter::enumeration_status::COMPLETED: {
+        m_ui->power_strip_enumeration_status_label->clear();
+        break;
+    }
+    }
 }
 
 auto MainWindow::repopulate_device_list() -> void
