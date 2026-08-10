@@ -230,23 +230,25 @@ TEST(cli_subcommand_tests, list_random_subcommand)
 
 TEST(cli_subcommand_tests, list_include_device_types_is_case_insensitive)
 {
-    std::vector<char *> args_lower = {(char *)"sokketter-cli", (char *)"list",
-        (char *)"--include-device-types", (char *)"usb"};
+    std::vector<char *> args_lower = {
+        (char *)"sokketter-cli", (char *)"list", (char *)"--include-device-types", (char *)"usb"};
 
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
-    const auto return_code_lower = cli_parser::parse_and_process(args_lower.size(), args_lower.data());
+    const auto return_code_lower =
+        cli_parser::parse_and_process(args_lower.size(), args_lower.data());
     const auto out_lower = testing::internal::GetCapturedStdout();
     const auto err_lower = testing::internal::GetCapturedStderr();
 
-    std::vector<char *> args_upper = {(char *)"sokketter-cli", (char *)"list",
-        (char *)"--include-device-types", (char *)"USB"};
+    std::vector<char *> args_upper = {
+        (char *)"sokketter-cli", (char *)"list", (char *)"--include-device-types", (char *)"USB"};
 
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
-    const auto return_code_upper = cli_parser::parse_and_process(args_upper.size(), args_upper.data());
+    const auto return_code_upper =
+        cli_parser::parse_and_process(args_upper.size(), args_upper.data());
     const auto out_upper = testing::internal::GetCapturedStdout();
     const auto err_upper = testing::internal::GetCapturedStderr();
 
@@ -820,9 +822,8 @@ TEST(cli_subcommand_tests, underscore_option_syntax)
     }
     else
     {
-        ASSERT_EQ(return_code, EXIT_SUCCESS);
-        ASSERT_EQ(out,
-            expected_device_header(device) + expected_selected_socket_status_output(device, {1}));
-        ASSERT_EQ(err, "");
+        ASSERT_EQ(return_code, 109);
+        ASSERT_EQ(err, "The following arguments were not expected: 0 --device_at_index\nRun with "
+                       "--help for more information.\n");
     }
 }
