@@ -46,7 +46,7 @@ public:
 
         help << "  Options:" << std::endl;
         help << "    -t,--include-device-types TEXT\tStates which device types to include in the "
-                "list. Available types are: USB, ETHERNET. Default: USB."
+                "list. Case-insensitive. Available types are: USB, ETHERNET, LAN. Default: USB."
              << std::endl;
         help << "    -i,--device-at-index UINT\t\tStates which power strip to use by its index. "
                 "Excludes --device-with-serial option."

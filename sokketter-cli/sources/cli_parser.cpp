@@ -155,7 +155,11 @@ int cli_parser::parse_and_process(int argc, char *argv[])
 
             using underlying_type = std::underlying_type_t<sokketter::power_strip_type>;
 
-            if (normalized_device_types.find("ethernet") != std::string::npos)
+            const bool include_ethernet_devices =
+                normalized_device_types.find("ethernet") != std::string::npos ||
+                normalized_device_types.find("lan") != std::string::npos;
+
+            if (include_ethernet_devices)
             {
                 filter.included_types = static_cast<sokketter::power_strip_type>(
                     static_cast<underlying_type>(filter.included_types) |

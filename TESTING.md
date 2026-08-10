@@ -142,6 +142,8 @@ content and the process exit code.
 | MAN-CLI-16 | `power status -i 0 -s 0` and `-s 99`                  | Exit `1`; stderr `Socket index … is out of range.` (1-based indices).                       | ⬜                      | ⬜                    | ⬜                   | ⬜                    |
 | MAN-CLI-17 | `power on --help` (and status/off/toggle)             | Exit `0`; help text shown (help precedence over subcommand).                                | ⬜                      | ⬜                    | ⬜                   | ⬜                    |
 | MAN-CLI-18 | Windows-style `/help`, mixed case `LIST`, underscores | Parsed the same as canonical forms (`ignore_case` / `ignore_underscore` / windows options). | ⬜                      | ⬜                    | ⬜                   | ⬜                    |
+| MAN-CLI-19 | `sokketter-cli list --include-device-types ethernet` | Exit `0`; Ethernet/LAN include filter is accepted and lists devices consistently.           | ⬜                      | ⬜                    | ⬜                   | ⬜                    |
+| MAN-CLI-20 | `sokketter-cli list --include-device-types lan`      | Exit `0`; LAN alias is accepted and behaves the same as `ethernet`.                        | ⬜                      | ⬜                    | ⬜                   | ⬜                    |
 
 ## D. Graphical interface (`sokketter-ui`)
 
