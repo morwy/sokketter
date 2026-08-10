@@ -807,7 +807,8 @@ TEST(cli_subcommand_tests, underscore_option_syntax)
         GTEST_SKIP() << "no device is available";
     }
 
-    ASSERT_EQ(return_code, 109);
-    ASSERT_EQ(err, "The following arguments were not expected: 0 --device_at_index\nRun with "
-                   "--help for more information.\n");
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(
+        out, expected_device_header(device) + expected_selected_socket_status_output(device, {1}));
+    ASSERT_EQ(err, "");
 }
