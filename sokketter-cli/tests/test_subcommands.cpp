@@ -194,6 +194,7 @@ TEST(cli_subcommand_tests, list_no_devices)
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"list"};
 
     set_test_device_number("0");
+
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
@@ -214,10 +215,14 @@ TEST(cli_subcommand_tests, list_test_devices)
     // MAN-CLI-05
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"list"};
 
+    set_test_device_number("3");
+
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    unset_test_device_number();
 
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
