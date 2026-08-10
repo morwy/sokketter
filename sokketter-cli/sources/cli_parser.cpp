@@ -83,6 +83,12 @@ int cli_parser::parse_and_process(int argc, char *argv[])
     /**
      * @brief adding an option to include disconnected devices in the list and power subcommands.
      */
+    auto option_include_disconnected_devices =
+        subcommand_list->add_flag("--include-disconnected-devices,-d");
+
+    /**
+     * @brief adding an option to include disconnected devices in the list and power subcommands.
+     */
     std::string included_device_types = "";
     auto option_included_devices_types =
         subcommand_list->add_option("--include-device-types,-t", included_device_types);
@@ -110,7 +116,13 @@ int cli_parser::parse_and_process(int argc, char *argv[])
     {
         sokketter::device_filter filter;
 
+        filter.include_disconnected_devices = false;
         filter.included_types = sokketter::power_strip_type::UNKNOWN;
+
+        if (option_include_disconnected_devices->count() > 0)
+        {
+            filter.include_disconnected_devices = true;
+        }
 
         if (option_included_devices_types->count() > 0)
         {
