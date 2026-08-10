@@ -396,8 +396,8 @@ namespace sokketter {
      */
     struct EXPORTED device_filter
     {
-        bool allow_disconnected_devices = true;
-        power_strip_type allowed_types = power_strip_type::ALL_DEVICES;
+        bool include_disconnected_devices = true;
+        power_strip_type included_types = power_strip_type::ALL_DEVICES;
     };
 
     /**

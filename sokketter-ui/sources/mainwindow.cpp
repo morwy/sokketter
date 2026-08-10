@@ -269,19 +269,19 @@ auto MainWindow::repopulate_device_list() -> void
     auto &settings = app_settings_storage::instance().get();
 
     sokketter::device_filter filter;
-    filter.allowed_types = sokketter::power_strip_type::UNKNOWN;
+    filter.included_types = sokketter::power_strip_type::UNKNOWN;
 
     if (settings.is_usb_devices_allowed)
     {
-        filter.allowed_types = static_cast<sokketter::power_strip_type>(
-            static_cast<int>(filter.allowed_types) |
+        filter.included_types = static_cast<sokketter::power_strip_type>(
+            static_cast<int>(filter.included_types) |
             static_cast<int>(sokketter::power_strip_type::USB_DEVICES));
     }
 
     if (settings.is_ethernet_devices_allowed)
     {
-        filter.allowed_types = static_cast<sokketter::power_strip_type>(
-            static_cast<int>(filter.allowed_types) |
+        filter.included_types = static_cast<sokketter::power_strip_type>(
+            static_cast<int>(filter.included_types) |
             static_cast<int>(sokketter::power_strip_type::ETHERNET_DEVICES));
     }
 

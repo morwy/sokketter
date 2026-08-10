@@ -18,7 +18,7 @@ auto power_strip_factory::supported_devices(const sokketter::device_filter &filt
 
     const auto is_allowed = [&filter](const sokketter::power_strip_type &type) -> bool {
         using underlying = std::underlying_type_t<sokketter::power_strip_type>;
-        return (static_cast<underlying>(filter.allowed_types) & static_cast<underlying>(type)) != 0;
+        return (static_cast<underlying>(filter.included_types) & static_cast<underlying>(type)) != 0;
     };
 
     if (is_allowed(sokketter::power_strip_type::GEMBIRD_MSIS_PM))
