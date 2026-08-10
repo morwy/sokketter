@@ -205,7 +205,7 @@ TEST(cli_subcommand_tests, list_no_devices)
     const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_FAILURE);
-    ASSERT_EQ(out, "");
+    ASSERT_EQ(out, "Listing available devices...\n");
     ASSERT_EQ(err, "No devices found.\n");
 }
 
