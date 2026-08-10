@@ -108,6 +108,8 @@ int cli_parser::parse_and_process(int argc, char *argv[])
      ** ***********************************************************************/
     if (subcommand_list->parsed())
     {
+        std::cout << "Listing available devices..." << std::endl;
+
         sokketter::device_filter filter;
 
         filter.included_types = sokketter::power_strip_type::USB_DEVICES;
