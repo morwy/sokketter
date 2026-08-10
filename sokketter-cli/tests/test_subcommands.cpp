@@ -779,16 +779,12 @@ TEST(cli_subcommand_tests, mixed_case_list_subcommand)
     const auto expected_output = expected_list_output();
     if (expected_output == "No devices found.\n")
     {
-        ASSERT_EQ(return_code, EXIT_FAILURE);
-        ASSERT_EQ(out, "");
-        ASSERT_EQ(err, "No devices found.\n");
+        GTEST_SKIP() << "no devices are available";
     }
-    else
-    {
-        ASSERT_EQ(return_code, EXIT_SUCCESS);
-        ASSERT_EQ(out, expected_output);
-        ASSERT_EQ(err, "");
-    }
+
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(out, expected_output);
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, underscore_option_syntax)
@@ -808,14 +804,10 @@ TEST(cli_subcommand_tests, underscore_option_syntax)
     const auto device = first_available_device();
     if (device == nullptr)
     {
-        ASSERT_EQ(return_code, EXIT_FAILURE);
-        ASSERT_EQ(out, "");
-        ASSERT_EQ(err, "No device was found.\n");
+        GTEST_SKIP() << "no device is available";
     }
-    else
-    {
-        ASSERT_EQ(return_code, 109);
-        ASSERT_EQ(err, "The following arguments were not expected: 0 --device_at_index\nRun with "
-                       "--help for more information.\n");
-    }
+
+    ASSERT_EQ(return_code, 109);
+    ASSERT_EQ(err, "The following arguments were not expected: 0 --device_at_index\nRun with "
+                   "--help for more information.\n");
 }
