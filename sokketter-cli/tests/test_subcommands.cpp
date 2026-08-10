@@ -221,6 +221,7 @@ TEST(cli_subcommand_tests, list_test_devices)
     testing::internal::CaptureStderr();
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+    const auto &expected_output = expected_list_output();
 
     unset_test_device_number();
 
@@ -228,7 +229,7 @@ TEST(cli_subcommand_tests, list_test_devices)
     const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(out, expected_list_output());
+    ASSERT_EQ(out, expected_output);
     ASSERT_EQ(err, "");
 }
 
@@ -352,19 +353,12 @@ TEST(cli_subcommand_tests, test_power_status_via_index)
     const auto &err = testing::internal::GetCapturedStderr();
 
     const auto device = first_available_device();
-    if (device == nullptr)
-    {
-        ASSERT_EQ(return_code, EXIT_FAILURE);
-        ASSERT_EQ(out, "");
-        ASSERT_EQ(err, "No device was found.\n");
-    }
-    else
-    {
-        ASSERT_EQ(return_code, EXIT_SUCCESS);
-        ASSERT_EQ(out,
-            expected_device_header(device) + expected_selected_socket_status_output(device, {1}));
-        ASSERT_EQ(err, "");
-    }
+
+    ASSERT_NE(device, nullptr);
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(
+        out, expected_device_header(device) + expected_selected_socket_status_output(device, {1}));
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, test_power_status_via_serial)
