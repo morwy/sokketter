@@ -363,6 +363,7 @@ TEST(cli_subcommand_tests, test_power_status_via_index)
 
 TEST(cli_subcommand_tests, test_power_status_via_serial)
 {
+    // MAN-CLI-08
     const auto device = first_available_device();
     std::string serial = device != nullptr ? device->configuration().id : "missing";
 
@@ -383,19 +384,11 @@ TEST(cli_subcommand_tests, test_power_status_via_serial)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    if (device == nullptr)
-    {
-        ASSERT_EQ(return_code, EXIT_FAILURE);
-        ASSERT_EQ(out, "");
-        ASSERT_EQ(err, "No device was found.\n");
-    }
-    else
-    {
-        ASSERT_EQ(return_code, EXIT_SUCCESS);
-        ASSERT_EQ(out,
-            expected_device_header(device) + expected_selected_socket_status_output(device, {1}));
-        ASSERT_EQ(err, "");
-    }
+    ASSERT_NE(device, nullptr);
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(out,
+        expected_device_header(device) + expected_selected_socket_status_output(device, {1}));
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, test_power_on_specified_socket)
