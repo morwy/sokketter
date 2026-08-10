@@ -29,6 +29,7 @@ const auto *cli_tests_environment =
 
 TEST(cli_general_tests, no_args)
 {
+    // MAN-CLI-01
     std::vector<char *> args = {(char *)"sokketter-cli"};
 
     testing::internal::CaptureStdout();
