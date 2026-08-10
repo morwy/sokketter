@@ -48,13 +48,15 @@ auto sokketter::logs_path() -> std::filesystem::path
     return storage_path() / "logs";
 }
 
+static constexpr size_t LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET = -1;
+
 auto get_requested_test_device_number() -> size_t
 {
     const std::string &name = "LIBSOKKETTER_TEST_DEVICE_NUMBER";
     const char *value = std::getenv(name.c_str());
     if (value == nullptr)
     {
-        return 0;
+        return LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET;
     }
 
     try
@@ -63,11 +65,11 @@ auto get_requested_test_device_number() -> size_t
     }
     catch (const std::invalid_argument &)
     {
-        return 0;
+        return LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET;
     }
     catch (const std::out_of_range &)
     {
-        return 0;
+        return LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET;
     }
 }
 
@@ -314,7 +316,7 @@ auto sokketter::devices(const device_filter &filter)
     -> const std::vector<std::shared_ptr<sokketter::power_strip>> &
 {
     auto requested_test_device_number = get_requested_test_device_number();
-    if (requested_test_device_number > 0)
+    if (requested_test_device_number != LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET)
     {
         static std::vector<std::shared_ptr<sokketter::power_strip>> devices;
 
@@ -338,7 +340,7 @@ auto sokketter::devices(
     const device_filter &filter, device_callback device_cb, status_callback status_cb) -> void
 {
     auto requested_test_device_number = get_requested_test_device_number();
-    if (requested_test_device_number > 0)
+    if (get_requested_test_device_number() != LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET)
     {
         static std::vector<std::shared_ptr<sokketter::power_strip>> devices;
 
@@ -367,7 +369,7 @@ auto sokketter::devices(
 
 auto sokketter::device(const size_t &index) -> std::shared_ptr<sokketter::power_strip>
 {
-    if (get_requested_test_device_number())
+    if (get_requested_test_device_number() != LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET)
     {
         SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Creating debug device at index {}.", index);
         return std::make_shared<test_device>(index);
@@ -378,7 +380,7 @@ auto sokketter::device(const size_t &index) -> std::shared_ptr<sokketter::power_
 
 auto sokketter::device(const std::string &serial_number) -> std::shared_ptr<sokketter::power_strip>
 {
-    if (get_requested_test_device_number())
+    if (get_requested_test_device_number() != LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET)
     {
         const std::string test_device_prefix = "TEST_SERIAL_NUMBER_";
         if (serial_number.rfind(test_device_prefix, 0) == 0)
