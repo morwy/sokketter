@@ -5,6 +5,19 @@
 #include <algorithm>
 #include <cctype>
 #include <type_traits>
+#include <vector>
+
+namespace {
+    auto normalize_cli_argument(std::string argument) -> std::string
+    {
+        if (argument.size() > 1 && (argument[0] == '-' || argument[0] == '/'))
+        {
+            std::replace(argument.begin(), argument.end(), '_', '-');
+        }
+
+        return argument;
+    }
+} // namespace
 
 int cli_parser::parse_and_process(int argc, char *argv[])
 {
@@ -92,9 +105,23 @@ int cli_parser::parse_and_process(int argc, char *argv[])
      * @brief parameter parsing section.
      *
      ** ***********************************************************************/
+    std::vector<std::string> normalized_arguments;
+    normalized_arguments.reserve(argc);
+    for (int index = 0; index < argc; ++index)
+    {
+        normalized_arguments.emplace_back(normalize_cli_argument(argv[index]));
+    }
+
+    std::vector<char *> normalized_argv;
+    normalized_argv.reserve(argc);
+    for (auto &argument : normalized_arguments)
+    {
+        normalized_argv.push_back(argument.data());
+    }
+
     try
     {
-        application.parse(argc, argv);
+        application.parse(argc, normalized_argv.data());
     }
     catch (const CLI::ParseError &e)
     {
