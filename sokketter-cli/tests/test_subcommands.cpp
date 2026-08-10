@@ -353,8 +353,11 @@ TEST(cli_subcommand_tests, test_power_status_via_index)
     const auto &err = testing::internal::GetCapturedStderr();
 
     const auto device = first_available_device();
+    if (device == nullptr)
+    {
+        GTEST_SKIP() << "no device is available";
+    }
 
-    ASSERT_NE(device, nullptr);
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_EQ(
         out, expected_device_header(device) + expected_selected_socket_status_output(device, {1}));
@@ -384,7 +387,11 @@ TEST(cli_subcommand_tests, test_power_status_via_serial)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_NE(device, nullptr);
+    if (device == nullptr)
+    {
+        GTEST_SKIP() << "no device is available";
+    }
+
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_EQ(
         out, expected_device_header(device) + expected_selected_socket_status_output(device, {1}));
@@ -406,8 +413,11 @@ TEST(cli_subcommand_tests, test_power_on_specified_socket)
     const auto &err = testing::internal::GetCapturedStderr();
 
     const auto device = first_available_device();
+    if (device == nullptr)
+    {
+        GTEST_SKIP() << "no device is available";
+    }
 
-    ASSERT_NE(device, nullptr);
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_EQ(out, expected_device_header(device) +
                        expected_selected_socket_action_output(device, {1}, "turned on."));
@@ -515,8 +525,11 @@ TEST(cli_subcommand_tests, test_power_on_all)
     const auto &err = testing::internal::GetCapturedStderr();
 
     const auto device = first_available_device();
+    if (device == nullptr)
+    {
+        GTEST_SKIP() << "no device is available";
+    }
 
-    ASSERT_NE(device, nullptr);
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_EQ(
         out, expected_device_header(device) + expected_socket_action_output(device, "turned on."));
