@@ -23,13 +23,16 @@
 #include <QDesktopServices>
 #include <QEvent>
 #include <QFileInfo>
+#include <QFutureWatcher>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidgetItem>
 #include <QMessageBox>
+#include <QPointer>
 #include <QScrollBar>
 #include <QTimer>
 #include <QUrl>
+#include <QtConcurrent>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -40,6 +43,12 @@ MainWindow::MainWindow(QWidget *parent)
     sokketter::initialize();
 
     m_ui->setupUi(this);
+
+    /**
+     * @brief a single worker keeps device network I/O off the UI thread and serialized, matching
+     * the device's single-session nature.
+     */
+    m_device_pool.setMaxThreadCount(1);
 
     app_settings_storage::instance().load();
 
@@ -54,6 +63,9 @@ MainWindow::MainWindow(QWidget *parent)
     /**
      * @brief connect the signals to the slots.
      */
+    QObject::connect(
+        this, &MainWindow::newPowerStripReceived, this, &MainWindow::onNewPowerStripReceived);
+    QObject::connect(this, &MainWindow::newStatusReceived, this, &MainWindow::onNewStatusReceived);
     QObject::connect(this, &MainWindow::toggleResetButton, this, &MainWindow::onResetButtonToggled);
 
     QObject::connect(m_ui->power_strip_list_widget, &QListWidget::itemClicked, this,
@@ -73,6 +85,21 @@ MainWindow::MainWindow(QWidget *parent)
         const int &index = m_ui->stackedWidget->indexOf(m_ui->about_page);
         m_ui->stackedWidget->setCurrentIndex(index);
     });
+
+    auto size_policy = m_ui->power_strip_enumeration_status_label->sizePolicy();
+    size_policy.setRetainSizeWhenHidden(true);
+    m_ui->power_strip_enumeration_status_label->setSizePolicy(size_policy);
+
+    QObject::connect(m_ui->authentication_back_label, &ClickableLabel::clicked, [this]() {
+        const int &index = m_ui->stackedWidget->indexOf(m_ui->power_strip_list_page);
+        m_ui->stackedWidget->setCurrentIndex(index);
+
+        redraw_device_list();
+    });
+
+    auto size_policy2 = m_ui->authentication_status_label->sizePolicy();
+    size_policy2.setRetainSizeWhenHidden(true);
+    m_ui->authentication_status_label->setSizePolicy(size_policy2);
 
     QObject::connect(m_ui->socket_list_edit_label, &ClickableLabel::clicked, [this]() {
         const int &index = m_ui->stackedWidget->indexOf(m_ui->device_configure_page);
@@ -135,6 +162,9 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    m_device_pool.clear();
+    m_device_pool.waitForDone();
+
     if (m_device != nullptr)
     {
         m_device.reset();
@@ -160,7 +190,8 @@ auto MainWindow::closeEvent(QCloseEvent *event) -> void
     QMainWindow::closeEvent(event);
 }
 
-auto MainWindow::repopulate_device_list() -> void
+auto MainWindow::onNewPowerStripReceived(
+    std::vector<std::shared_ptr<sokketter::power_strip>> power_strips) -> void
 {
     SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Repopulating power strip list.");
 
@@ -181,7 +212,6 @@ auto MainWindow::repopulate_device_list() -> void
         visible_height -= (m_ui->power_strip_list_widget->horizontalScrollBar()->height() * 2);
     }
 
-    const auto &power_strips = sokketter::devices();
     for (const auto &power_strip : power_strips)
     {
         auto *power_strip_item = new power_strip_list_item(power_strip->configuration());
@@ -210,6 +240,54 @@ auto MainWindow::repopulate_device_list() -> void
     }
 
     redraw_device_list();
+}
+
+auto MainWindow::onNewStatusReceived(sokketter::enumeration_status status) -> void
+{
+    SPDLOG_LOGGER_INFO(
+        APP_LOGGER, "New status: {}.", sokketter::enumeration_status_to_string(status));
+    switch (status)
+    {
+    case sokketter::enumeration_status::ENUMERATING_USB_DEVICES: {
+        m_ui->power_strip_enumeration_status_label->setText("Enumerating USB devices...");
+        break;
+    }
+    case sokketter::enumeration_status::ENUMERATING_ETHERNET_DEVICES: {
+        m_ui->power_strip_enumeration_status_label->setText("Enumerating Ethernet devices...");
+        break;
+    }
+    case sokketter::enumeration_status::UNKNOWN:
+    case sokketter::enumeration_status::COMPLETED: {
+        m_ui->power_strip_enumeration_status_label->clear();
+        break;
+    }
+    }
+}
+
+auto MainWindow::repopulate_device_list() -> void
+{
+    auto &settings = app_settings_storage::instance().get();
+
+    sokketter::device_filter filter;
+    filter.included_types = sokketter::power_strip_type::UNKNOWN;
+
+    if (settings.is_usb_devices_allowed)
+    {
+        filter.included_types = static_cast<sokketter::power_strip_type>(
+            static_cast<int>(filter.included_types) |
+            static_cast<int>(sokketter::power_strip_type::USB_DEVICES));
+    }
+
+    if (settings.is_ethernet_devices_allowed)
+    {
+        filter.included_types = static_cast<sokketter::power_strip_type>(
+            static_cast<int>(filter.included_types) |
+            static_cast<int>(sokketter::power_strip_type::ETHERNET_DEVICES));
+    }
+
+    sokketter::devices(filter,
+        std::bind(&MainWindow::new_devices_received, this, std::placeholders::_1),
+        std::bind(&MainWindow::new_status_received, this, std::placeholders::_1));
 }
 
 auto MainWindow::redraw_device_list() -> void
@@ -284,16 +362,16 @@ auto MainWindow::repopulate_socket_list() -> void
         "of " + QString::fromStdString(device_configuration.name));
 
     const auto &sockets = m_device->sockets();
+    const bool is_connected = m_device->is_connected();
     for (size_t socket_index = 0; socket_index < sockets.size(); socket_index++)
     {
         const auto &socket = sockets[socket_index];
 
         auto *socket_item =
             new SocketListItem(device_configuration, socket.configuration(), socket_index);
-        socket_item->setEnabled(m_device->is_connected());
-        if (m_device->is_connected())
+        socket_item->setEnabled(is_connected);
+        if (is_connected)
         {
-            socket_item->set_state(socket.is_powered_on());
             QObject::connect(socket_item, &SocketListItem::configurableResetRequested, this,
                 &MainWindow::onSocketResetClicked);
         }
@@ -307,9 +385,80 @@ auto MainWindow::repopulate_socket_list() -> void
         m_ui->socket_list_widget->setItemWidget(item, socket_item);
     }
 
-    m_ui->socket_list_widget->setEnabled(m_device->is_connected());
+    m_ui->socket_list_widget->setEnabled(is_connected);
 
     redraw_socket_list();
+
+    if (is_connected)
+    {
+        refresh_socket_states_async();
+    }
+}
+
+auto MainWindow::refresh_socket_states_async() -> void
+{
+    auto device = m_device;
+    if (device == nullptr)
+    {
+        return;
+    }
+
+    auto *watcher = new QFutureWatcher<std::vector<bool>>(this);
+    QObject::connect(
+        watcher, &QFutureWatcher<std::vector<bool>>::finished, this, [this, watcher, device]() {
+            const std::vector<bool> states = watcher->result();
+            watcher->deleteLater();
+
+            if (m_device != device)
+            {
+                return;
+            }
+
+            const int item_count = m_ui->socket_list_widget->count();
+            for (int item_index = 0; item_index < item_count && item_index < int(states.size());
+                ++item_index)
+            {
+                auto *list_widget = m_ui->socket_list_widget->item(item_index);
+                if (list_widget == nullptr)
+                {
+                    continue;
+                }
+
+                auto *socket_item = qobject_cast<SocketListItem *>(
+                    m_ui->socket_list_widget->itemWidget(list_widget));
+                if (socket_item == nullptr)
+                {
+                    continue;
+                }
+
+                socket_item->set_state(states[item_index]);
+            }
+        });
+
+    watcher->setFuture(QtConcurrent::run(&m_device_pool, [device]() {
+        std::vector<bool> states;
+        const auto &sockets = device->sockets();
+        states.reserve(sockets.size());
+        for (const auto &socket : sockets)
+        {
+            states.push_back(socket.is_powered_on());
+        }
+        return states;
+    }));
+}
+
+auto MainWindow::run_device_task(std::function<bool()> work, std::function<void(bool)> on_done)
+    -> void
+{
+    auto *watcher = new QFutureWatcher<bool>(this);
+    QObject::connect(
+        watcher, &QFutureWatcher<bool>::finished, this, [watcher, on_done = std::move(on_done)]() {
+            const bool result = watcher->result();
+            watcher->deleteLater();
+            on_done(result);
+        });
+
+    watcher->setFuture(QtConcurrent::run(&m_device_pool, std::move(work)));
 }
 
 auto MainWindow::redraw_socket_list() -> void
@@ -505,6 +654,116 @@ auto MainWindow::forget_selected_device() -> void
     sokketter::forget_device(m_device);
 }
 
+auto MainWindow::populate_authentication_page(power_strip_list_item *item) -> void
+{
+    if (m_device == nullptr)
+    {
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "No currently saved device pointer is present!");
+        return;
+    }
+
+    m_ui->authentication_status_label->hide();
+    m_ui->authentication_password_line_edit->clear();
+
+    switch (m_device->configuration().authentication.type)
+    {
+    default:
+    case sokketter::power_strip_authentication_type::UNKNOWN:
+    case sokketter::power_strip_authentication_type::NONE: {
+        break;
+    }
+    case sokketter::power_strip_authentication_type::PASSWORD_ONLY: {
+        const int &index2 = m_ui->stackedWidget->indexOf(m_ui->authentication_password_page);
+        m_ui->stackedWidget_2->setCurrentIndex(index2);
+        break;
+    }
+    }
+
+    auto authenticate = [this, item]() {
+        m_ui->authentication_status_label->show();
+        m_ui->authentication_status_label->setText("Authenticating...");
+
+        auto _configuration = m_device->configuration();
+
+        switch (_configuration.authentication.type)
+        {
+        default:
+        case sokketter::power_strip_authentication_type::UNKNOWN:
+        case sokketter::power_strip_authentication_type::NONE: {
+            break;
+        }
+        case sokketter::power_strip_authentication_type::PASSWORD_ONLY: {
+            _configuration.authentication.password =
+                m_ui->authentication_password_line_edit->text().toStdString();
+        }
+        }
+
+        auto device = m_device;
+
+        /**
+         * @brief authentication is blocking device I/O, so it runs on the worker pool to keep
+         * the UI responsive.
+         */
+        run_device_task(
+            [device, _configuration, item]() -> bool {
+                device->configure(_configuration);
+
+                if (!device->try_authenticate())
+                {
+                    return false;
+                }
+
+                /**
+                 * Save the configuration and password in case of success.
+                 */
+                device->save();
+
+                /**
+                 * Inject new configuration into existing power strip list item.
+                 */
+                item->configure(_configuration);
+
+                return true;
+            },
+            [this, device](bool success) {
+                if (m_device != device)
+                {
+                    return;
+                }
+
+                if (success)
+                {
+                    SPDLOG_LOGGER_INFO(APP_LOGGER, "Authentication successful.");
+
+                    m_ui->authentication_status_label->setText("Authentication succeed!");
+
+                    const int &index = m_ui->stackedWidget->indexOf(m_ui->socket_list_page);
+                    m_ui->stackedWidget->setCurrentIndex(index);
+
+                    repopulate_socket_list();
+                }
+                else
+                {
+                    SPDLOG_LOGGER_ERROR(APP_LOGGER, "Authentication failed.");
+
+                    m_ui->authentication_status_label->setText(
+                        "Authentication failed! Please try again.");
+
+                    m_ui->authentication_status_label->show();
+                }
+            });
+    };
+
+    QObject::disconnect(
+        m_ui->authentication_login_label, &ClickableLabel::clicked, nullptr, nullptr);
+    QObject::connect(m_ui->authentication_login_label, &ClickableLabel::clicked, authenticate);
+
+    QObject::disconnect(
+        m_ui->authentication_password_line_edit, &QLineEdit::returnPressed, nullptr, nullptr);
+    QObject::connect(
+        m_ui->authentication_password_line_edit, &QLineEdit::returnPressed, authenticate);
+}
+
 auto MainWindow::initialize_settings_page() -> void
 {
     auto &settings = app_settings_storage::instance().get();
@@ -629,6 +888,23 @@ auto MainWindow::initialize_settings_page() -> void
     QObject::connect(m_ui->settings_theme_auto_radio_button, &QRadioButton::clicked, theme_lambda);
     QObject::connect(m_ui->settings_theme_light_radio_button, &QRadioButton::clicked, theme_lambda);
     QObject::connect(m_ui->settings_theme_dark_radio_button, &QRadioButton::clicked, theme_lambda);
+
+    m_ui->settings_usb_devices_checkbox->setChecked(settings.is_usb_devices_allowed);
+    QObject::connect(m_ui->settings_usb_devices_checkbox, &QCheckBox::clicked, [&]() {
+        settings.is_usb_devices_allowed = m_ui->settings_usb_devices_checkbox->isChecked();
+        app_settings_storage::instance().save();
+
+        repopulate_device_list();
+    });
+
+    m_ui->settings_ethernet_devices_checkbox->setChecked(settings.is_ethernet_devices_allowed);
+    QObject::connect(m_ui->settings_ethernet_devices_checkbox, &QCheckBox::clicked, [&]() {
+        settings.is_ethernet_devices_allowed =
+            m_ui->settings_ethernet_devices_checkbox->isChecked();
+        app_settings_storage::instance().save();
+
+        repopulate_device_list();
+    });
 }
 
 auto MainWindow::initialize_about_page() -> void
@@ -726,26 +1002,81 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
         return;
     }
 
-    const auto &configuration =
-        dynamic_cast<power_strip_list_item *>(m_ui->power_strip_list_widget->itemWidget(item))
-            ->configuration();
-
     if (m_device != nullptr)
     {
         m_device.reset();
         m_device = nullptr;
     }
 
+    auto *list_item = dynamic_cast<power_strip_list_item *>(widget);
+    const auto &configuration = list_item->configuration();
+
     m_device = sokketter::device(configuration.id);
     if (m_device == nullptr)
     {
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "No currently saved device pointer is present!");
         return;
     }
 
-    const int &index = m_ui->stackedWidget->indexOf(m_ui->socket_list_page);
-    m_ui->stackedWidget->setCurrentIndex(index);
+    if (m_device->is_connected() &&
+        configuration.authentication.type != sokketter::power_strip_authentication_type::NONE &&
+        !configuration.authentication.is_valid())
+    {
+        /**
+         * Device requires authentication but no authentication parameters were provided or are
+         * incorrect.
+         */
+        SPDLOG_LOGGER_DEBUG(APP_LOGGER,
+            "Device requires authentication but no authentication parameters were "
+            "provided or are incorrect. Redirecting to authentication page.");
 
-    repopulate_socket_list();
+        populate_authentication_page(list_item);
+
+        const int &index = m_ui->stackedWidget->indexOf(m_ui->device_authentication_page);
+        m_ui->stackedWidget->setCurrentIndex(index);
+    }
+    else
+    {
+        run_device_task(
+            [this]() -> bool {
+                if (m_device->is_connected())
+                {
+                    return m_device->try_authenticate();
+                }
+
+                /**
+                 * If device is offline, allow to proceed to the socket list page, as user can still
+                 * configure the device and its sockets without being connected. The device will be
+                 * connected when user tries to toggle a socket or perform any other action that
+                 * requires a connection.
+                 */
+                return true;
+            },
+            [this, list_item](bool state) {
+                if (state)
+                {
+                    const int &index = m_ui->stackedWidget->indexOf(m_ui->socket_list_page);
+                    m_ui->stackedWidget->setCurrentIndex(index);
+
+                    repopulate_socket_list();
+                }
+                else
+                {
+                    /**
+                     * Redirect to authentication page in case if previously stored credentials
+                     * stopped working.
+                     */
+                    SPDLOG_LOGGER_DEBUG(APP_LOGGER,
+                        "Device authentication failed. Redirecting to authentication page.");
+
+                    populate_authentication_page(list_item);
+
+                    const int &index =
+                        m_ui->stackedWidget->indexOf(m_ui->device_authentication_page);
+                    m_ui->stackedWidget->setCurrentIndex(index);
+                }
+            });
+    }
 }
 
 auto MainWindow::onSocketClicked(QListWidgetItem *item) -> void
@@ -759,77 +1090,127 @@ auto MainWindow::onSocketClicked(QListWidgetItem *item) -> void
         return;
     }
 
-    const auto &power_strip_configuration = socket_item->power_strip_configuration();
-
-    const auto &device = sokketter::device(power_strip_configuration.id);
-    if (device == nullptr)
+    if (m_device == nullptr)
     {
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "No currently saved device pointer is present!");
         return;
     }
 
-    const size_t &index = m_ui->socket_list_widget->row(item);
+    const size_t index = m_ui->socket_list_widget->row(item);
 
-    const auto &socket_opt = device->socket(index);
-    if (!socket_opt.has_value())
-    {
-        SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed getting a socket from device!");
-        return;
-    }
+    auto device = m_device;
+    QPointer<SocketListItem> guard(socket_item);
+    socket_item->setEnabled(false);
 
-    const auto &socket = socket_opt->get();
-    if (!socket.toggle())
-    {
-        SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed toggling a socket!");
-        return;
-    }
+    run_device_task(
+        [device, index]() -> bool {
+            const auto socket_opt = device->socket(index);
+            if (!socket_opt.has_value())
+            {
+                SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed getting a socket from device!");
+                return false;
+            }
 
-    socket_item->set_state(socket.is_powered_on());
+            const auto &socket = socket_opt->get();
+            if (!socket.toggle())
+            {
+                SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed toggling a socket!");
+            }
+
+            return socket.is_powered_on();
+        },
+        [this, guard, device](bool state) {
+            if (guard == nullptr)
+            {
+                return;
+            }
+
+            if (m_device == device)
+            {
+                guard->set_state(state);
+            }
+
+            guard->setEnabled(true);
+        });
 }
 
-void MainWindow::onSocketResetClicked(SocketListItem *item)
+auto MainWindow::onSocketResetClicked(SocketListItem *item) -> void
 {
     emit toggleResetButton(item, false);
 
-    const auto &power_strip_configuration = item->power_strip_configuration();
-    const auto &socket_configuration = item->socket_configuration();
-
-    const auto &device = sokketter::device(power_strip_configuration.id);
-    if (device == nullptr)
+    if (m_device == nullptr)
     {
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "No currently saved device pointer is present!");
         return;
     }
 
-    const auto &socket_index = item->socket_index();
-    const auto &socket_opt = device->socket(socket_index);
-    if (!socket_opt.has_value())
-    {
-        SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed getting a socket from device!");
-        return;
-    }
+    const size_t socket_index = item->socket_index();
+    const auto reset_msec = item->socket_configuration().configurable_reset_msec;
 
-    const auto &socket = socket_opt->get();
-    if (!socket.toggle())
-    {
-        SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed toggling a socket!");
-        return;
-    }
+    auto device = m_device;
+    QPointer<SocketListItem> guard(item);
 
-    socket.power(false);
+    run_device_task(
+        [device, socket_index]() -> bool {
+            const auto socket_opt = device->socket(socket_index);
+            if (!socket_opt.has_value())
+            {
+                SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed getting a socket from device!");
+                return false;
+            }
 
-    item->set_state(socket.is_powered_on());
+            const auto &socket = socket_opt->get();
+            socket.power(false);
+            return socket.is_powered_on();
+        },
+        [this, guard, device, socket_index, reset_msec](bool state) {
+            if (guard != nullptr && m_device == device)
+            {
+                guard->set_state(state);
+            }
 
-    QTimer::singleShot(socket_configuration.configurable_reset_msec, [this, item, socket]() {
-        socket.power(true);
+            QTimer::singleShot(reset_msec, this, [this, guard, device, socket_index]() {
+                run_device_task(
+                    [device, socket_index]() -> bool {
+                        const auto socket_opt = device->socket(socket_index);
+                        if (!socket_opt.has_value())
+                        {
+                            return false;
+                        }
 
-        item->set_state(socket.is_powered_on());
+                        const auto &socket = socket_opt->get();
+                        socket.power(true);
+                        return socket.is_powered_on();
+                    },
+                    [this, guard, device](bool restored_state) {
+                        if (guard != nullptr && m_device == device)
+                        {
+                            guard->set_state(restored_state);
+                        }
 
-        emit toggleResetButton(item, true);
-    });
+                        if (guard != nullptr)
+                        {
+                            emit toggleResetButton(guard, true);
+                        }
+                    });
+            });
+        });
 }
 
-void MainWindow::onResetButtonToggled(SocketListItem *item, bool is_on)
+auto MainWindow::onResetButtonToggled(SocketListItem *item, bool is_on) -> void
 {
     item->toggle_reset_button_state(is_on);
+}
+
+auto MainWindow::new_devices_received(
+    std::vector<std::shared_ptr<sokketter::power_strip>> power_strips) -> void
+{
+    emit newPowerStripReceived(power_strips);
+}
+
+auto MainWindow::new_status_received(sokketter::enumeration_status status) -> void
+{
+    emit newStatusReceived(status);
 }
 
 auto MainWindow::event(QEvent *event) -> bool
@@ -856,7 +1237,7 @@ auto MainWindow::resizeEvent(QResizeEvent *event) -> void
     redraw_configure_list();
 }
 
-void MainWindow::broadcast_event(QEvent *event)
+auto MainWindow::broadcast_event(QEvent *event) -> void
 {
     QCoreApplication::sendEvent(this, event);
 

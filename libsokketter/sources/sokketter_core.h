@@ -34,10 +34,19 @@ public:
     auto devices(const sokketter::device_filter &filter = {})
         -> const std::vector<std::shared_ptr<sokketter::power_strip>> &;
 
+    auto devices(const sokketter::device_filter &filter, sokketter::device_callback device_cb,
+        sokketter::status_callback status_cb) -> void;
+
+    auto device(const size_t &index) -> std::shared_ptr<sokketter::power_strip>;
+
+    auto device(const std::string &serial_number) -> std::shared_ptr<sokketter::power_strip>;
+
 private:
     sokketter::settings_structure m_settings;
     std::shared_ptr<spdlog::logger> m_logger = nullptr;
     database_storage m_database;
+    sokketter::device_callback m_device_cb = nullptr;
+    sokketter::status_callback m_status_cb = nullptr;
 
     sokketter_core() = default;
     ~sokketter_core() = default;
@@ -46,6 +55,10 @@ private:
     auto deinitialize_logger() -> void;
 
     auto logging_callback(const kommpot::callback_response_structure &response) -> void;
+
+    auto new_devices_received(
+        std::vector<std::shared_ptr<kommpot::device_communication>> communications) -> void;
+    auto new_status_received(kommpot::enumeration_status status) -> void;
 };
 
 #endif // CORE_H

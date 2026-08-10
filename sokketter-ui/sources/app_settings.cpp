@@ -15,8 +15,9 @@ void from_json(const nlohmann::json &j, window_settings &ws)
 
 void to_json(nlohmann::json &j, const app_settings &s)
 {
-    j = nlohmann::json{
-        {"window", s.window}, {"socket_toggle", s.socket_toggle}, {"theme", s.theme}};
+    j = nlohmann::json{{"window", s.window}, {"socket_toggle", s.socket_toggle}, {"theme", s.theme},
+        {"is_usb_devices_allowed", s.is_usb_devices_allowed},
+        {"is_ethernet_devices_allowed", s.is_ethernet_devices_allowed}};
 }
 
 void from_json(const nlohmann::json &j, app_settings &s)
@@ -24,4 +25,6 @@ void from_json(const nlohmann::json &j, app_settings &s)
     s.window = j.value("window", window_settings());
     s.socket_toggle = j.value("socket_toggle", socket_toggle_type::ST_SINGLE_CLICK);
     s.theme = j.value("theme", theme_type::T_AUTO);
+    s.is_usb_devices_allowed = j.value("is_usb_devices_allowed", true);
+    s.is_ethernet_devices_allowed = j.value("is_ethernet_devices_allowed", false);
 }

@@ -51,6 +51,9 @@ struct app_settings
     window_settings window;
     socket_toggle_type socket_toggle = socket_toggle_type::ST_SINGLE_CLICK;
     theme_type theme = theme_type::T_AUTO;
+
+    bool is_usb_devices_allowed = true;
+    bool is_ethernet_devices_allowed = false;
 };
 
 void to_json(nlohmann::json &j, const app_settings &s);

@@ -5,9 +5,13 @@
 
 #include <SocketListItem.h>
 #include <libsokketter.h>
+#include <power_strip_list_item.h>
 
 #include <QListWidget>
 #include <QMainWindow>
+#include <QThreadPool>
+
+#include <functional>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -24,12 +28,18 @@ public:
     ~MainWindow();
 
 signals:
+    auto newPowerStripReceived(std::vector<std::shared_ptr<sokketter::power_strip>> power_strips)
+        -> void;
+    auto newStatusReceived(sokketter::enumeration_status status) -> void;
     auto toggleResetButton(SocketListItem *object, bool is_on) -> void;
 
 protected:
     auto closeEvent(QCloseEvent *event) -> void override;
 
 private slots:
+    auto onNewPowerStripReceived(std::vector<std::shared_ptr<sokketter::power_strip>> power_strips)
+        -> void;
+    auto onNewStatusReceived(sokketter::enumeration_status status) -> void;
     auto onPowerStripClicked(QListWidgetItem *item) -> void;
     auto onSocketClicked(QListWidgetItem *item) -> void;
     auto onSocketResetClicked(SocketListItem *item) -> void;
@@ -38,6 +48,26 @@ private slots:
 private:
     Ui::MainWindow *m_ui;
     std::shared_ptr<sokketter::power_strip> m_device = nullptr;
+
+    /**
+     * @brief serializes blocking device I/O onto a single worker thread so the UI stays responsive.
+     */
+    QThreadPool m_device_pool;
+
+    auto new_devices_received(std::vector<std::shared_ptr<sokketter::power_strip>> power_strips)
+        -> void;
+    auto new_status_received(sokketter::enumeration_status status) -> void;
+
+    /**
+     * @brief runs a blocking device operation on the worker thread and delivers the resulting
+     * socket state back on the UI thread.
+     */
+    auto run_device_task(std::function<bool()> work, std::function<void(bool)> on_done) -> void;
+
+    /**
+     * @brief reads all socket states of the current device in the background and updates the list.
+     */
+    auto refresh_socket_states_async() -> void;
 
     auto repopulate_device_list() -> void;
     auto redraw_device_list() -> void;
@@ -50,6 +80,7 @@ private:
     auto save_new_configuration() -> void;
     auto forget_selected_device() -> void;
 
+    auto populate_authentication_page(power_strip_list_item *item) -> void;
     auto initialize_settings_page() -> void;
     auto initialize_about_page() -> void;
 

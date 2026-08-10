@@ -73,9 +73,14 @@ auto sokketter_core::initialize() -> bool
 auto sokketter_core::deinitialize() -> bool
 {
     m_database.save();
-    m_database.release_resources();
 
+    /**
+     * @brief wait for any ongoing device enumeration to finish before releasing the devices,
+     *        otherwise the enumeration thread accesses the database while it is being cleared.
+     */
     kommpot::deinitialize();
+
+    m_database.release_resources();
 
     deinitialize_logger();
 
@@ -111,7 +116,7 @@ auto sokketter_core::devices(const sokketter::device_filter &filter)
 {
     auto &database = sokketter_core::instance().database().get();
 
-    const auto supported_devices = power_strip_factory::supported_devices();
+    const auto supported_devices = power_strip_factory::supported_devices(filter);
 
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Supported devices: {}.", supported_devices.size());
 
@@ -124,10 +129,7 @@ auto sokketter_core::devices(const sokketter::device_filter &filter)
         auto device = power_strip_factory::create(communication);
         if (!device)
         {
-            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
-                "Failed creating the device - name {}, serial number {}, at port {}!",
-                communication->information().name, communication->information().serial_number,
-                communication->information().port);
+            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "Failed creating the device!");
             continue;
         }
 
@@ -189,6 +191,55 @@ auto sokketter_core::devices(const sokketter::device_filter &filter)
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Created devices: {}.", database.size());
 
     return database;
+}
+
+auto sokketter_core::devices(const sokketter::device_filter &filter,
+    sokketter::device_callback device_cb, sokketter::status_callback status_cb) -> void
+{
+    m_device_cb = device_cb;
+    m_status_cb = status_cb;
+
+    const auto supported_devices = power_strip_factory::supported_devices(filter);
+
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Supported devices: {}.", supported_devices.size());
+
+    kommpot::devices(supported_devices,
+        std::bind(&sokketter_core::new_devices_received, this, std::placeholders::_1),
+        std::bind(&sokketter_core::new_status_received, this, std::placeholders::_1));
+}
+
+auto sokketter_core::device(const size_t &index) -> std::shared_ptr<sokketter::power_strip>
+{
+    auto &database = sokketter_core::instance().database().get();
+
+    if (index >= database.size())
+    {
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+            "Failed creating the device - requested index {} is greater that the number of the "
+            "devices ({})!",
+            index, database.size());
+        return nullptr;
+    }
+
+    return database[index];
+}
+
+auto sokketter_core::device(const std::string &serial_number)
+    -> std::shared_ptr<sokketter::power_strip>
+{
+    auto &database = sokketter_core::instance().database().get();
+
+    for (const auto &device : database)
+    {
+        if (device && device->configuration().id == serial_number)
+        {
+            return device;
+        }
+    }
+
+    SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER, "No device found with serial number {}.", serial_number);
+
+    return nullptr;
 }
 
 auto sokketter_core::initialize_logger() -> void
@@ -293,4 +344,85 @@ auto sokketter_core::logging_callback(const kommpot::callback_response_structure
 
     SOKKETTER_LOGGER->log(spdlog::source_loc{response.file, response.line, response.function},
         spdlog::level::level_enum(response.level), response.message);
+}
+
+auto sokketter_core::new_devices_received(
+    std::vector<std::shared_ptr<kommpot::device_communication>> communications) -> void
+{
+    auto &database = sokketter_core::instance().database().get();
+
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Connected devices: {}.", communications.size());
+
+    for (auto &communication : communications)
+    {
+        auto device = power_strip_factory::create(communication);
+        if (!device)
+        {
+            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "Failed creating the device!");
+            continue;
+        }
+
+        auto baseDevice = dynamic_cast<sokketter::power_strip *>(device.get());
+        if (baseDevice == nullptr)
+        {
+            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+                "{}: failed casting the device to power_strip_base!", device->to_string());
+            continue;
+        }
+
+        /**
+         * @brief look for saved configuration of this device.
+         */
+        auto it = std::find_if(database.begin(), database.end(),
+            [&](const std::shared_ptr<sokketter::power_strip> &item) {
+                return item && item->configuration().id == device->configuration().id;
+            });
+
+        if (it != database.end())
+        {
+            auto baseIt = dynamic_cast<power_strip_base *>(it->get());
+            if (baseIt == nullptr)
+            {
+                SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+                    "{}: failed casting the device to power_strip_base!", device->to_string());
+                continue;
+            }
+
+            baseIt->initialize(communication);
+
+            SPDLOG_LOGGER_DEBUG(
+                SOKKETTER_LOGGER, "{}: device was successfully created!", device->to_string());
+        }
+        else
+        {
+            /**
+             * @brief append basic device configuration if it is a first time.
+             */
+            SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
+                "{}: new device was successfully created and added to database!",
+                device->to_string());
+
+            database.push_back(device);
+
+            sokketter_core::instance().database().save();
+        }
+    }
+
+    /**
+     * Sort the database by device name.
+     */
+    std::sort(database.begin(), database.end(),
+        [](const std::shared_ptr<sokketter::power_strip> &a,
+            const std::shared_ptr<sokketter::power_strip> &b) {
+            return a->configuration().name < b->configuration().name;
+        });
+
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Created devices: {}.", database.size());
+
+    m_device_cb(database);
+}
+
+auto sokketter_core::new_status_received(kommpot::enumeration_status status) -> void
+{
+    m_status_cb(static_cast<sokketter::enumeration_status>(status));
 }

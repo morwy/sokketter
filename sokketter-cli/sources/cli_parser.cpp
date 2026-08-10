@@ -2,6 +2,23 @@
 
 #include "libsokketter.h"
 
+#include <algorithm>
+#include <cctype>
+#include <type_traits>
+#include <vector>
+
+namespace {
+    auto normalize_cli_argument(std::string argument) -> std::string
+    {
+        if (argument.size() > 1 && (argument[0] == '-' || argument[0] == '/'))
+        {
+            std::replace(argument.begin(), argument.end(), '_', '-');
+        }
+
+        return argument;
+    }
+} // namespace
+
 int cli_parser::parse_and_process(int argc, char *argv[])
 {
     /** ************************************************************************
@@ -32,11 +49,13 @@ int cli_parser::parse_and_process(int argc, char *argv[])
      * @brief adding a list subcommand.
      */
     auto subcommand_list = application.add_subcommand("list");
+    subcommand_list->ignore_underscore();
 
     /**
      * @brief adding a power subcommand.
      */
     auto subcommand_power = application.add_subcommand("power");
+    subcommand_power->ignore_underscore();
 
     auto subcommand_power_status = subcommand_power->add_subcommand("status");
     auto subcommand_power_on = subcommand_power->add_subcommand("on");
@@ -51,6 +70,7 @@ int cli_parser::parse_and_process(int argc, char *argv[])
      */
     std::vector<size_t> socket_indices;
     auto sockets_argument = subcommand_power->add_option("--sockets,-s", socket_indices);
+    sockets_argument->ignore_underscore();
 
     auto device_group =
         subcommand_power->add_option_group("--device-at-index or --device-with-serial");
@@ -61,6 +81,8 @@ int cli_parser::parse_and_process(int argc, char *argv[])
     std::string device_serial = "";
     auto option_device_serial = device_group->add_option("--device-with-serial,-n", device_serial);
 
+    option_device_index->ignore_underscore();
+    option_device_serial->ignore_underscore();
     option_device_index->excludes(option_device_serial);
     option_device_serial->excludes(option_device_index);
 
@@ -76,14 +98,35 @@ int cli_parser::parse_and_process(int argc, char *argv[])
         command->fallthrough();
     }
 
+    /**
+     * @brief adding an option to include disconnected devices in the list and power subcommands.
+     */
+    std::string included_device_types = "";
+    auto option_included_devices_types =
+        subcommand_list->add_option("--include-device-types,-t", included_device_types);
+
     /** ************************************************************************
      *
      * @brief parameter parsing section.
      *
      ** ***********************************************************************/
+    std::vector<std::string> normalized_arguments;
+    normalized_arguments.reserve(argc);
+    for (int index = 0; index < argc; ++index)
+    {
+        normalized_arguments.emplace_back(normalize_cli_argument(argv[index]));
+    }
+
+    std::vector<char *> normalized_argv;
+    normalized_argv.reserve(argc);
+    for (auto &argument : normalized_arguments)
+    {
+        normalized_argv.push_back(argument.data());
+    }
+
     try
     {
-        application.parse(argc, argv);
+        application.parse(argc, normalized_argv.data());
     }
     catch (const CLI::ParseError &e)
     {
@@ -97,7 +140,34 @@ int cli_parser::parse_and_process(int argc, char *argv[])
      ** ***********************************************************************/
     if (subcommand_list->parsed())
     {
-        const auto& devices = sokketter::devices();
+        std::cout << "Listing available devices..." << std::endl;
+
+        sokketter::device_filter filter;
+
+        filter.included_types = sokketter::power_strip_type::USB_DEVICES;
+
+        if (option_included_devices_types->count() > 0)
+        {
+            auto normalized_device_types = included_device_types;
+            std::transform(normalized_device_types.begin(), normalized_device_types.end(),
+                normalized_device_types.begin(),
+                [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
+
+            using underlying_type = std::underlying_type_t<sokketter::power_strip_type>;
+
+            const bool include_ethernet_devices =
+                normalized_device_types.find("ethernet") != std::string::npos ||
+                normalized_device_types.find("lan") != std::string::npos;
+
+            if (include_ethernet_devices)
+            {
+                filter.included_types = static_cast<sokketter::power_strip_type>(
+                    static_cast<underlying_type>(filter.included_types) |
+                    static_cast<underlying_type>(sokketter::power_strip_type::ETHERNET_DEVICES));
+            }
+        }
+
+        const auto &devices = sokketter::devices(filter);
         if (devices.empty())
         {
             std::cerr << "No devices found." << std::endl;

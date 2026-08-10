@@ -106,7 +106,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, windows-2022, macos-13, macos-14]
+        os: [ubuntu-22.04, windows-2022, macos-15-intel, macos-15]
 
     steps:
     - name: Checkout repository
@@ -136,14 +136,14 @@ jobs:
       if: ${{ startsWith(matrix.os, 'ubuntu') }}
       run: |
         sudo apt update
-        sudo apt install libfuse2 libudev-dev ninja-build wget libxcb1 libxcb-cursor0 libxcb-xinerama0 libxcb-xfixes0 libxcb-image0
+        sudo apt install libfuse2 libudev-dev libssl-dev ninja-build wget libxcb1 libxcb-cursor0 libxcb-xinerama0 libxcb-xfixes0 libxcb-image0
         wget -c https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage
         chmod +x linuxdeployqt-continuous-x86_64.AppImage
 
     - name: Install Qt6 dependencies
-      uses: jurplel/install-qt-action@v3
+      uses: jurplel/install-qt-action@v4
       with:
-        version: '6.5.*'
+        version: '6.8.*'
 
     - name: Run Python build script
       run: python -m Build

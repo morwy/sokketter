@@ -4,6 +4,10 @@
 cmake_minimum_required(VERSION 3.19)
 cmake_policy(VERSION 3.10)
 
+if(APPLE)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "15.0" CACHE STRING "Minimum macOS version")
+endif()
+
 project(sokketter LANGUAGES CXX)
 
 #

@@ -1,4 +1,5 @@
 .DS_Store
+.obsidian
 report.info
 CMakeLists.txt.user
 build-coverage
@@ -18,6 +19,7 @@ build/
 *.lo
 *.o
 *.obj
+*.pyc
 
 # Precompiled Headers
 *.gch

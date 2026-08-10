@@ -9,14 +9,18 @@
 class energenie_eg_base : public power_strip_base
 {
 public:
+    energenie_eg_base();
+
     auto initialize(std::shared_ptr<kommpot::device_communication> communication) -> bool override;
+
+    [[nodiscard]] auto try_authenticate() -> bool override;
 
 protected:
     std::string m_serial_number = "";
     size_t m_socket_number = 0;
 
-    auto power_socket(size_t index, bool is_toggled) -> bool;
-    auto socket_status(size_t index) -> bool;
+    virtual auto power_socket(size_t index, bool is_toggled) -> bool;
+    virtual auto socket_status(size_t index) -> bool;
 };
 
 #endif // ENERGENIE_EG_BASE_H

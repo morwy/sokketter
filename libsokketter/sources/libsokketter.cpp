@@ -48,13 +48,15 @@ auto sokketter::logs_path() -> std::filesystem::path
     return storage_path() / "logs";
 }
 
+static constexpr size_t LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET = -1;
+
 auto get_requested_test_device_number() -> size_t
 {
     const std::string &name = "LIBSOKKETTER_TEST_DEVICE_NUMBER";
     const char *value = std::getenv(name.c_str());
     if (value == nullptr)
     {
-        return 0;
+        return LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET;
     }
 
     try
@@ -63,11 +65,11 @@ auto get_requested_test_device_number() -> size_t
     }
     catch (const std::invalid_argument &)
     {
-        return 0;
+        return LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET;
     }
     catch (const std::out_of_range &)
     {
-        return 0;
+        return LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET;
     }
 }
 
@@ -208,8 +210,45 @@ auto sokketter::power_strip_type_to_string(const power_strip_type &type) -> std:
     case power_strip_type::ENERGENIE_EG_PMS2: {
         return "Energenie EG-PMS2";
     }
+    case power_strip_type::ENERGENIE_EG_PMXX_LAN: {
+        return "Energenie EG-PMxx-LAN";
+    }
     default: {
         return "Unknown";
+    }
+    }
+}
+
+auto sokketter::power_strip_authentication_type_to_string(
+    const power_strip_authentication_type &type) -> std::string
+{
+    switch (type)
+    {
+    case power_strip_authentication_type::NONE: {
+        return "None";
+    }
+    case power_strip_authentication_type::PASSWORD_ONLY: {
+        return "Password only";
+    }
+    default: {
+        return "Unknown";
+    }
+    }
+}
+
+auto sokketter::power_strip_authentication::is_valid() const -> bool
+{
+    switch (type)
+    {
+    default:
+    case power_strip_authentication_type::UNKNOWN: {
+        return false;
+    }
+    case power_strip_authentication_type::NONE: {
+        return true;
+    }
+    case power_strip_authentication_type::PASSWORD_ONLY: {
+        return !password.empty();
     }
     }
 }
@@ -224,9 +263,14 @@ auto sokketter::power_strip::configure(const power_strip_configuration &configur
     m_configuration = configuration;
 }
 
-auto sokketter::power_strip::save() -> void
+auto sokketter::power_strip::save() const -> void
 {
     sokketter_core::instance().database().save();
+}
+
+auto sokketter::power_strip::try_authenticate() -> bool
+{
+    return false;
 }
 
 auto sokketter::power_strip::is_connected() const -> bool
@@ -252,16 +296,27 @@ auto sokketter::power_strip::socket(const size_t &index)
 
 auto sokketter::power_strip::to_string() const noexcept -> std::string
 {
-    return this->configuration().name + " (" +
-           power_strip_type_to_string(this->configuration().type) + ", " +
-           this->configuration().id + ", located at " + this->configuration().address + ")";
+    std::string text = this->configuration().name + " (" +
+                       power_strip_type_to_string(this->configuration().type) + ", " +
+                       this->configuration().id;
+
+    if (this->configuration().address.empty())
+    {
+        text += ", disconnected)";
+    }
+    else
+    {
+        text += ", available at " + this->configuration().address + ")";
+    }
+
+    return text;
 }
 
 auto sokketter::devices(const device_filter &filter)
     -> const std::vector<std::shared_ptr<sokketter::power_strip>> &
 {
     auto requested_test_device_number = get_requested_test_device_number();
-    if (requested_test_device_number > 0)
+    if (requested_test_device_number != LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET)
     {
         static std::vector<std::shared_ptr<sokketter::power_strip>> devices;
 
@@ -281,31 +336,51 @@ auto sokketter::devices(const device_filter &filter)
     return sokketter_core::instance().devices(filter);
 }
 
+auto sokketter::devices(
+    const device_filter &filter, device_callback device_cb, status_callback status_cb) -> void
+{
+    auto requested_test_device_number = get_requested_test_device_number();
+    if (get_requested_test_device_number() != LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET)
+    {
+        static std::vector<std::shared_ptr<sokketter::power_strip>> devices;
+
+        devices.clear();
+
+        SPDLOG_LOGGER_DEBUG(
+            SOKKETTER_LOGGER, "Requested debug devices: {}.", requested_test_device_number);
+
+        for (size_t device_index = 0; device_index < requested_test_device_number; ++device_index)
+        {
+            devices.push_back(std::make_shared<test_device>(device_index));
+        }
+
+        status_cb(enumeration_status::ENUMERATING_USB_DEVICES);
+        status_cb(enumeration_status::ENUMERATING_ETHERNET_DEVICES);
+
+        device_cb(devices);
+
+        status_cb(enumeration_status::COMPLETED);
+
+        return;
+    }
+
+    sokketter_core::instance().devices(filter, device_cb, status_cb);
+}
+
 auto sokketter::device(const size_t &index) -> std::shared_ptr<sokketter::power_strip>
 {
-    if (get_requested_test_device_number())
+    if (get_requested_test_device_number() != LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET)
     {
         SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Creating debug device at index {}.", index);
         return std::make_shared<test_device>(index);
     }
 
-    auto &devices = sokketter_core::instance().devices();
-
-    if (index >= devices.size())
-    {
-        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
-            "Failed creating the device - requested index {} is greater that the number of the "
-            "devices ({})!",
-            index, devices.size());
-        return {};
-    }
-
-    return devices[index];
+    return sokketter_core::instance().device(index);
 }
 
 auto sokketter::device(const std::string &serial_number) -> std::shared_ptr<sokketter::power_strip>
 {
-    if (get_requested_test_device_number())
+    if (get_requested_test_device_number() != LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET)
     {
         const std::string test_device_prefix = "TEST_SERIAL_NUMBER_";
         if (serial_number.rfind(test_device_prefix, 0) == 0)
@@ -336,19 +411,29 @@ auto sokketter::device(const std::string &serial_number) -> std::shared_ptr<sokk
         return nullptr;
     }
 
-    auto &devices = sokketter_core::instance().devices();
+    return sokketter_core::instance().device(serial_number);
+}
 
-    for (const auto &device : devices)
+auto sokketter::enumeration_status_to_string(const enumeration_status &status) noexcept
+    -> std::string
+{
+    switch (status)
     {
-        if (device && device->configuration().id == serial_number)
-        {
-            return device;
-        }
+    case enumeration_status::UNKNOWN: {
+        return "Unknown";
     }
-
-    SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER, "No device found with serial number {}.", serial_number);
-
-    return nullptr;
+    case enumeration_status::ENUMERATING_USB_DEVICES: {
+        return "Enumerating USB devices";
+    }
+    case enumeration_status::ENUMERATING_ETHERNET_DEVICES: {
+        return "Enumerating Ethernet devices";
+    }
+    case enumeration_status::COMPLETED: {
+        return "Completed";
+    }
+    default:
+        return "";
+    }
 }
 
 auto sokketter::forget_device(std::shared_ptr<power_strip> &device) -> void

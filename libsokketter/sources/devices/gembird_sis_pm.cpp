@@ -8,9 +8,7 @@ gembird_sis_pm::gembird_sis_pm()
     SPDLOG_LOGGER_DEBUG(
         SOKKETTER_LOGGER, "{}: constructed object {}.", __FUNCTION__, static_cast<void *>(this));
 
-    sokketter::power_strip_configuration configuration;
-    configuration.type = sokketter::power_strip_type::GEMBIRD_SIS_PM;
-    this->configure(configuration);
+    m_configuration.type = sokketter::power_strip_type::GEMBIRD_SIS_PM;
 
     /**
      * Configure sockets.
@@ -29,6 +27,11 @@ gembird_sis_pm::gembird_sis_pm()
 
 gembird_sis_pm::~gembird_sis_pm()
 {
+    if (SOKKETTER_LOGGER == nullptr)
+    {
+        return;
+    }
+
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: destructed object {}.", this->to_string(),
         static_cast<void *>(this));
 }
@@ -41,21 +44,26 @@ auto gembird_sis_pm::initialize(std::shared_ptr<kommpot::device_communication> c
         return false;
     }
 
-    auto configuration = this->configuration();
+    const auto &identification_variant = m_communication->identification();
+    const auto *identification =
+        std::get_if<kommpot::usb_device_identification>(&identification_variant);
+    if (identification == nullptr)
+    {
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "Provided identification is not USB.");
+        return false;
+    }
 
-    configuration.id = m_serial_number;
-    configuration.address = std::string("USB:") + m_communication->information().port;
-
-    this->configure(configuration);
+    m_configuration.id = m_serial_number;
+    m_configuration.address = std::string("USB:") + identification->port;
 
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: initialization.", this->to_string());
 
     return true;
 }
 
-auto gembird_sis_pm::identification() -> const kommpot::device_identification
+auto gembird_sis_pm::identification() -> const kommpot::usb_device_identification
 {
-    kommpot::device_identification identitication;
+    kommpot::usb_device_identification identitication;
 
     identitication.vendor_id = 0x04b4;
     identitication.product_id = 0xfd11;

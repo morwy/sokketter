@@ -12,7 +12,7 @@ if(PLATFORM_OS_MACOS)
 endif()
 
 find_package(Threads REQUIRED)
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Concurrent)
 
 include_directories(${CMAKE_CURRENT_LIST_DIR}/sources)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/sources/Qt)
@@ -113,7 +113,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY ${SOKKETTER_LIBRARY_OUTPUT_PATH}
 )
 
-if(PLATFORM_OS_WINDOWS)
+if(PLATFORM_OS_WINDOWS AND DEFINED ENV{GITHUB_ACTIONS})
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND cmd.exe /C "move \"${SOKKETTER_LIBRARY_OUTPUT_PATH}\\*.exe\" \"${SOKKETTER_BINARY_OUTPUT_PATH}\""
         COMMENT "Copying all executables to binary output directory"
@@ -123,7 +123,7 @@ endif()
 #
 # Link with sokketter dependencies.
 #
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Widgets Threads::Threads ${SOKKETTER_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Widgets Qt6::Concurrent Threads::Threads ${SOKKETTER_LIBRARIES})
 foreach (SOKKETTER_DEPENDENCY IN LISTS SOKKETTER_DEPENDENCIES)
     add_dependencies(${PROJECT_NAME} ${SOKKETTER_DEPENDENCY})
 endforeach()

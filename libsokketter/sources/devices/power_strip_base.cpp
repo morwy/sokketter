@@ -17,7 +17,20 @@ bool power_strip_base::initialize(std::shared_ptr<kommpot::device_communication>
 
 bool power_strip_base::copyFrom(const power_strip &other)
 {
-    configure(other.configuration());
+    /**
+     * @attention backwards compatibility: if the authentication type is unknown, it means that
+     * the power strip was saved before the authentication type was introduced, so we need to
+     * set it to the default value.
+     */
+    auto other_configuration = other.configuration();
+
+    if (other_configuration.authentication.type ==
+        sokketter::power_strip_authentication_type::UNKNOWN)
+    {
+        other_configuration.authentication.type = m_configuration.authentication.type;
+    }
+
+    configure(other_configuration);
 
     const auto &other_sockets = other.sockets();
 

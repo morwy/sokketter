@@ -198,8 +198,8 @@ namespace sokketter {
         socket_configuration m_configuration;
 
         size_t m_index = 0;
-        std::function<bool(size_t, bool)> m_power_cb;
-        std::function<bool(size_t)> m_status_cb;
+        std::function<bool(size_t, bool)> m_power_cb = nullptr;
+        std::function<bool(size_t)> m_status_cb = nullptr;
     };
 
     /**
@@ -208,12 +208,22 @@ namespace sokketter {
     enum class power_strip_type
     {
         UNKNOWN = 0,
+
         TEST_DEVICE = 1,
+
         GEMBIRD_MSIS_PM = 2,
-        GEMBIRD_SIS_PM = 3,
-        GEMBIRD_MSIS_PM_2 = 4,
-        ENERGENIE_EG_PMS = 5,
-        ENERGENIE_EG_PMS2 = 6,
+        GEMBIRD_SIS_PM = 4,
+        GEMBIRD_MSIS_PM_2 = 8,
+        ENERGENIE_EG_PMS = 16,
+        ENERGENIE_EG_PMS2 = 32,
+
+        ENERGENIE_EG_PMXX_LAN = 64,
+
+        USB_DEVICES = GEMBIRD_MSIS_PM | GEMBIRD_SIS_PM | GEMBIRD_MSIS_PM_2 | ENERGENIE_EG_PMS |
+                      ENERGENIE_EG_PMS2,
+        ETHERNET_DEVICES = ENERGENIE_EG_PMXX_LAN,
+
+        ALL_DEVICES = USB_DEVICES | ETHERNET_DEVICES
     };
 
     /**
@@ -224,14 +234,83 @@ namespace sokketter {
     auto EXPORTED power_strip_type_to_string(const power_strip_type &type) -> std::string;
 
     /**
+     * @brief the enum specifying supported authentication types for the power strip.
+     * @attention not all power strips have authentication.
+     */
+    enum class power_strip_authentication_type
+    {
+        UNKNOWN = 0,
+        NONE = 1,
+        PASSWORD_ONLY = 2
+    };
+
+    /**
+     * @brief converts power_strip_authentication_type to a readable string value.
+     * @param type of power strip authentication.
+     * @return string.
+     */
+    auto EXPORTED power_strip_authentication_type_to_string(
+        const power_strip_authentication_type &type) -> std::string;
+
+    /**
+     * @brief structure containing authentication parameters for the power strip.
+     */
+    struct EXPORTED power_strip_authentication
+    {
+        /**
+         * @brief type of the authentication.
+         * @attention Read-only, populated internally by the library, not to be set by the user.
+         */
+        power_strip_authentication_type type = power_strip_authentication_type::UNKNOWN;
+
+        /**
+         * @brief password for the authentication.
+         */
+        std::string password = "";
+
+        /**
+         * @brief checks if the authentication parameters are valid.
+         * @return true if valid, false otherwise.
+         */
+        [[nodiscard]] auto is_valid() const -> bool;
+    };
+
+    /**
      * @brief structure containing configuration parameters of the specific power strip.
      */
     struct EXPORTED power_strip_configuration
     {
+        /**
+         * @brief type of the power strip.
+         * @attention Read-only, populated internally by the library, not to be set by the user.
+         */
         power_strip_type type = power_strip_type::UNKNOWN;
+
+        /**
+         * @brief unique identifier of the power strip.
+         * @attention Read-only, populated internally by the library, not to be set by the user.
+         */
         std::string id = "";
+
+        /**
+         * @brief name of the power strip.
+         */
         std::string name = "Unnamed power strip";
+
+        /**
+         * @brief description of the power strip.
+         */
         std::string description = "";
+
+        /**
+         * @brief authentication parameters of the power strip.
+         */
+        power_strip_authentication authentication = {};
+
+        /**
+         * @brief Address of the power strip in format "USB:x" or "IP:IP_ADDRESS".
+         * @attention Read-only, populated internally by the library, not to be set by the user.
+         */
         std::string address = "";
     };
 
@@ -265,7 +344,14 @@ namespace sokketter {
         /**
          * @brief saves current configuration of the power strip to the storage.
          */
-        auto save() -> void;
+        auto save() const -> void;
+
+        /**
+         * @brief tries to authenticate the power strip based on the provided authentication
+         * parameters.
+         * @return true in case of success, false in case of any failure.
+         */
+        [[nodiscard]] virtual auto try_authenticate() -> bool;
 
         /**
          * @brief gets connection state of the power strip.
@@ -296,15 +382,13 @@ namespace sokketter {
 
         /**
          * @brief creates string based on power strip parameters
-         * @return string in format "POWER_STRIP_NAME (TYPE, ID, located at ADDRESS)".
+         * @return string in format "POWER_STRIP_NAME (TYPE, ID, available at ADDRESS)".
          */
         [[nodiscard]] auto to_string() const noexcept -> std::string;
 
     protected:
-        std::vector<sokketter::socket> m_sockets;
-
-    private:
         power_strip_configuration m_configuration;
+        std::vector<sokketter::socket> m_sockets;
     };
 
     /**
@@ -312,17 +396,56 @@ namespace sokketter {
      */
     struct EXPORTED device_filter
     {
-        bool allow_disconnected_devices = true;
-        std::vector<power_strip_type> allowed_types = {};
+        power_strip_type included_types = power_strip_type::ALL_DEVICES;
     };
 
     /**
      * @brief returns the list of power strip devices built upon provided filtering settings.
      * @param filter settings stating which devices to list.
      * @return vector of power_strip objects.
+     * @attention blocking call.
      */
     auto EXPORTED devices(const device_filter &filter = {})
         -> const std::vector<std::shared_ptr<sokketter::power_strip>> &;
+
+    /**
+     * @brief the enum specifying the status of device enumeration.
+     */
+    enum class enumeration_status
+    {
+        UNKNOWN = 0,
+        ENUMERATING_USB_DEVICES = 1,
+        ENUMERATING_ETHERNET_DEVICES = 2,
+        COMPLETED = 3
+    };
+
+    /**
+     * @brief converts enumeration_status to a readable string value.
+     * @param status of enumeration.
+     * @return string.
+     */
+    auto EXPORTED enumeration_status_to_string(const enumeration_status &status) noexcept
+        -> std::string;
+
+    /**
+     * @brief type alias for the device callback function.
+     */
+    using device_callback =
+        std::function<void(std::vector<std::shared_ptr<sokketter::power_strip>> &)>;
+
+    /**
+     * @brief type alias for the status callback function.
+     */
+    using status_callback = std::function<void(sokketter::enumeration_status)>;
+
+    /**
+     * @brief returns the list of power strip devices built upon provided filtering settings.
+     * @param filter settings stating which devices to list.
+     * @return vector of power_strip objects.
+     * @attention non-blocking call.
+     */
+    auto EXPORTED devices(
+        const device_filter &filter, device_callback device_cb, status_callback status_cb) -> void;
 
     /**
      * @brief returns the power strip device by its index.
