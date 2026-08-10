@@ -294,9 +294,20 @@ auto sokketter::power_strip::socket(const size_t &index)
 
 auto sokketter::power_strip::to_string() const noexcept -> std::string
 {
-    return this->configuration().name + " (" +
-           power_strip_type_to_string(this->configuration().type) + ", " +
-           this->configuration().id + ", located at " + this->configuration().address + ")";
+    std::string text = this->configuration().name + " (" +
+                       power_strip_type_to_string(this->configuration().type) + ", " +
+                       this->configuration().id;
+
+    if (this->configuration().address.empty())
+    {
+        text += ", disconnected)";
+    }
+    else
+    {
+        text += ", available at " + this->configuration().address + ")";
+    }
+
+    return text;
 }
 
 auto sokketter::devices(const device_filter &filter)
