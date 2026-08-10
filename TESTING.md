@@ -317,7 +317,7 @@ Extend the existing suite (using `LIBSOKKETTER_TEST_DEVICE_NUMBER`) to close gap
 | AUTO-CLI-07 | **Env-var contract regression** | see note below | Pin the fake-device output the CLI tests rely on. |
 
 > **Verify:** the CLI tests set `LIBSOKKETTER_TESTING_ENABLED=1` and expect
-> `Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)`, but the library's fake path
+> `Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, available at TEST_ADDRESS)`, but the library's fake path
 > reads `LIBSOKKETTER_TEST_DEVICE_NUMBER` and produces indexed names (`Test Device 0`,
 > `TEST_SERIAL_NUMBER_0`). Reconcile the two env vars/output before relying on `AUTO-CLI-07`; treat any
 > mismatch as a defect to fix, not to encode.

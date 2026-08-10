@@ -382,7 +382,7 @@ namespace sokketter {
 
         /**
          * @brief creates string based on power strip parameters
-         * @return string in format "POWER_STRIP_NAME (TYPE, ID, located at ADDRESS)".
+         * @return string in format "POWER_STRIP_NAME (TYPE, ID, available at ADDRESS)".
          */
         [[nodiscard]] auto to_string() const noexcept -> std::string;
 

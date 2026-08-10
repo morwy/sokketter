@@ -35,7 +35,7 @@ auto power_strip_list_item::configure(const sokketter::power_strip_configuration
         QString::fromStdString(sokketter::power_strip_type_to_string(configuration.type));
     if (!configuration.address.empty())
     {
-        description += ", located at " + QString::fromStdString(configuration.address);
+        description += ", available at " + QString::fromStdString(configuration.address);
     }
 
     m_ui->description_label->setText(description);
