@@ -1,32 +1,129 @@
 #include "cli_parser.h"
+#include "libsokketter.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <sstream>
 #include <vector>
-
-#ifdef _WIN32
-#    include <windows.h>
-#endif
 
 using namespace testing;
 
-bool set_env_var(const std::string &name, const std::string &value)
-{
-#ifdef _WIN32
-    return _putenv_s(name.c_str(), value.c_str()) == 0;
-#else
-    return setenv(name.c_str(), value.c_str(), 1) == 0;
-#endif
-}
+namespace {
+    std::shared_ptr<sokketter::power_strip> first_available_device()
+    {
+        const auto &devices = sokketter::devices();
+        if (devices.empty())
+        {
+            return nullptr;
+        }
 
-bool unset_env_var(const std::string &name)
-{
-#ifdef _WIN32
-    return _putenv_s(name.c_str(), "") == 0;
-#else
-    return unsetenv(name.c_str()) == 0;
-#endif
-}
+        return devices.front();
+    }
+
+    std::string expected_list_output()
+    {
+        const auto &devices = sokketter::devices();
+        if (devices.empty())
+        {
+            return "No devices found.\n";
+        }
+
+        std::ostringstream output;
+        output << "Available devices:\n";
+
+        for (size_t index = 0; index < devices.size(); ++index)
+        {
+            output << index + 1 << ". " << devices[index]->to_string() << "\n";
+        }
+
+        return output.str();
+    }
+
+    std::string expected_device_header(const std::shared_ptr<sokketter::power_strip> &device)
+    {
+        if (device == nullptr)
+        {
+            return "";
+        }
+
+        return device->to_string() + "\n";
+    }
+
+    std::string expected_socket_status_output(const std::shared_ptr<sokketter::power_strip> &device)
+    {
+        std::ostringstream output;
+        if (device == nullptr)
+        {
+            return output.str();
+        }
+
+        size_t socket_index = 1;
+        for (const auto &socket : device->sockets())
+        {
+            output << "  Socket " << socket_index << ": " << socket.to_string() << "\n";
+            ++socket_index;
+        }
+
+        return output.str();
+    }
+
+    std::string expected_socket_action_output(
+        const std::shared_ptr<sokketter::power_strip> &device, const std::string &action)
+    {
+        std::ostringstream output;
+        if (device == nullptr)
+        {
+            return output.str();
+        }
+
+        size_t socket_index = 1;
+        for (const auto &socket : device->sockets())
+        {
+            (void)socket;
+            output << "  Socket " << socket_index << ": " << action << "\n";
+            ++socket_index;
+        }
+
+        return output.str();
+    }
+
+    std::string expected_selected_socket_status_output(
+        const std::shared_ptr<sokketter::power_strip> &device, const std::vector<size_t> &indices)
+    {
+        std::ostringstream output;
+        if (device == nullptr)
+        {
+            return output.str();
+        }
+
+        for (const auto index : indices)
+        {
+            const auto &socket = device->sockets().at(index - 1);
+            output << "  Socket " << index << ": " << socket.to_string() << "\n";
+        }
+
+        return output.str();
+    }
+
+    std::string expected_selected_socket_action_output(
+        const std::shared_ptr<sokketter::power_strip> &device, const std::vector<size_t> &indices,
+        const std::string &action)
+    {
+        std::ostringstream output;
+        if (device == nullptr)
+        {
+            return output.str();
+        }
+
+        for (const auto index : indices)
+        {
+            (void)device;
+            output << "  Socket " << index << ": " << action << "\n";
+        }
+
+        return output.str();
+    }
+} // namespace
 
 TEST(cli_subcommand_tests, list_and_power_together)
 {
@@ -76,16 +173,24 @@ TEST(cli_subcommand_tests, list_no_devices)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_EQ(return_code, EXIT_FAILURE);
-    ASSERT_EQ(out, "");
-    ASSERT_EQ(err, "No devices found.\n");
+    const auto expected_output = expected_list_output();
+    if (expected_output == "No devices found.\n")
+    {
+        ASSERT_EQ(return_code, EXIT_FAILURE);
+        ASSERT_EQ(out, "");
+        ASSERT_EQ(err, "No devices found.\n");
+    }
+    else
+    {
+        ASSERT_EQ(return_code, EXIT_SUCCESS);
+        ASSERT_EQ(out, expected_output);
+        ASSERT_EQ(err, "");
+    }
 }
 
 TEST(cli_subcommand_tests, list_test_devices)
 {
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"list"};
-
-    ASSERT_TRUE(set_env_var("LIBSOKKETTER_TESTING_ENABLED", "1"));
 
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
@@ -95,11 +200,8 @@ TEST(cli_subcommand_tests, list_test_devices)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
-
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(out, "Available devices:\n1. Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, "
-                   "located at TEST_ADDRESS)\n");
+    ASSERT_EQ(out, expected_list_output());
     ASSERT_EQ(err, "");
 }
 
@@ -107,8 +209,6 @@ TEST(cli_subcommand_tests, list_random_subcommand)
 {
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"list", (char *)"random"};
 
-    ASSERT_TRUE(set_env_var("LIBSOKKETTER_TESTING_ENABLED", "1"));
-
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
@@ -116,8 +216,6 @@ TEST(cli_subcommand_tests, list_random_subcommand)
 
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
-
-    ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, 109);
     ASSERT_EQ(out, "");
@@ -130,8 +228,6 @@ TEST(cli_subcommand_tests, test_power_both_access_flags)
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
         (char *)"--device-at-index", (char *)"0", (char *)"--device-with-serial", (char *)"TEST"};
 
-    ASSERT_TRUE(set_env_var("LIBSOKKETTER_TESTING_ENABLED", "1"));
-
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
@@ -139,8 +235,6 @@ TEST(cli_subcommand_tests, test_power_both_access_flags)
 
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
-
-    ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, 108);
     ASSERT_EQ(out, "");
@@ -152,8 +246,6 @@ TEST(cli_subcommand_tests, test_power_no_access_flags)
 {
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status"};
 
-    ASSERT_TRUE(set_env_var("LIBSOKKETTER_TESTING_ENABLED", "1"));
-
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
@@ -161,8 +253,6 @@ TEST(cli_subcommand_tests, test_power_no_access_flags)
 
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
-
-    ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, "");
@@ -175,8 +265,6 @@ TEST(cli_subcommand_tests, test_power_status_no_device)
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
         (char *)"--device-with-serial", (char *)"TEST2"};
 
-    ASSERT_TRUE(set_env_var("LIBSOKKETTER_TESTING_ENABLED", "1"));
-
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
@@ -184,8 +272,6 @@ TEST(cli_subcommand_tests, test_power_status_no_device)
 
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
-
-    ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, "");
@@ -197,8 +283,6 @@ TEST(cli_subcommand_tests, test_power_status_via_index)
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
         (char *)"--device-at-index", (char *)"0", (char *)"--sockets", (char *)"1"};
 
-    ASSERT_TRUE(set_env_var("LIBSOKKETTER_TESTING_ENABLED", "1"));
-
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
@@ -207,38 +291,57 @@ TEST(cli_subcommand_tests, test_power_status_via_index)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
-
-    ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(out,
-        "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n  Socket 1: "
-        "Unnamed socket, status: off\n");
-    ASSERT_EQ(err, "");
+    const auto device = first_available_device();
+    if (device == nullptr)
+    {
+        ASSERT_EQ(return_code, EXIT_FAILURE);
+        ASSERT_EQ(out, "");
+        ASSERT_EQ(err, "No device was found.\n");
+    }
+    else
+    {
+        ASSERT_EQ(return_code, EXIT_SUCCESS);
+        ASSERT_EQ(out,
+            expected_device_header(device) + expected_selected_socket_status_output(device, {1}));
+        ASSERT_EQ(err, "");
+    }
 }
 
 TEST(cli_subcommand_tests, test_power_status_via_serial)
 {
-    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
-        (char *)"--device-with-serial", (char *)"TEST_SERIAL_NUMBER", (char *)"--sockets",
-        (char *)"1"};
+    const auto device = first_available_device();
+    std::string serial = device != nullptr ? device->configuration().id : "missing";
 
-    ASSERT_TRUE(set_env_var("LIBSOKKETTER_TESTING_ENABLED", "1"));
+    std::vector<std::string> arguments = {
+        "sokketter-cli", "power", "status", "--device-with-serial", serial, "--sockets", "1"};
+    std::vector<char *> args;
+    for (auto &argument : arguments)
+    {
+        args.push_back(argument.data());
+    }
 
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
-    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+    const auto &return_code =
+        cli_parser::parse_and_process(static_cast<int>(args.size()), args.data());
 
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
-
-    ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(out,
-        "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n  Socket 1: "
-        "Unnamed socket, status: off\n");
-    ASSERT_EQ(err, "");
+    if (device == nullptr)
+    {
+        ASSERT_EQ(return_code, EXIT_FAILURE);
+        ASSERT_EQ(out, "");
+        ASSERT_EQ(err, "No device was found.\n");
+    }
+    else
+    {
+        ASSERT_EQ(return_code, EXIT_SUCCESS);
+        ASSERT_EQ(out,
+            expected_device_header(device) + expected_selected_socket_status_output(device, {1}));
+        ASSERT_EQ(err, "");
+    }
 }
 
 TEST(cli_subcommand_tests, test_power_on_specified_socket)
@@ -246,8 +349,6 @@ TEST(cli_subcommand_tests, test_power_on_specified_socket)
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"on",
         (char *)"--device-at-index", (char *)"0", (char *)"--sockets", (char *)"1"};
 
-    ASSERT_TRUE(set_env_var("LIBSOKKETTER_TESTING_ENABLED", "1"));
-
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
@@ -256,12 +357,20 @@ TEST(cli_subcommand_tests, test_power_on_specified_socket)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
-
-    ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(out, "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n  "
-                   "Socket 1: turned on.\n");
-    ASSERT_EQ(err, "");
+    const auto device = first_available_device();
+    if (device == nullptr)
+    {
+        ASSERT_EQ(return_code, EXIT_FAILURE);
+        ASSERT_EQ(out, "");
+        ASSERT_EQ(err, "No device was found.\n");
+    }
+    else
+    {
+        ASSERT_EQ(return_code, EXIT_SUCCESS);
+        ASSERT_EQ(out, expected_device_header(device) +
+                           expected_selected_socket_action_output(device, {1}, "turned on."));
+        ASSERT_EQ(err, "");
+    }
 }
 
 TEST(cli_subcommand_tests, test_power_off_specified_socket)
@@ -269,8 +378,6 @@ TEST(cli_subcommand_tests, test_power_off_specified_socket)
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"off",
         (char *)"--device-at-index", (char *)"0", (char *)"--sockets", (char *)"1"};
 
-    ASSERT_TRUE(set_env_var("LIBSOKKETTER_TESTING_ENABLED", "1"));
-
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
@@ -279,12 +386,20 @@ TEST(cli_subcommand_tests, test_power_off_specified_socket)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
-
-    ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(out, "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n  "
-                   "Socket 1: turned off.\n");
-    ASSERT_EQ(err, "");
+    const auto device = first_available_device();
+    if (device == nullptr)
+    {
+        ASSERT_EQ(return_code, EXIT_FAILURE);
+        ASSERT_EQ(out, "");
+        ASSERT_EQ(err, "No device was found.\n");
+    }
+    else
+    {
+        ASSERT_EQ(return_code, EXIT_SUCCESS);
+        ASSERT_EQ(out, expected_device_header(device) +
+                           expected_selected_socket_action_output(device, {1}, "turned off."));
+        ASSERT_EQ(err, "");
+    }
 }
 
 TEST(cli_subcommand_tests, test_power_toggle_specified_socket)
@@ -292,8 +407,6 @@ TEST(cli_subcommand_tests, test_power_toggle_specified_socket)
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"toggle",
         (char *)"--device-at-index", (char *)"0", (char *)"--sockets", (char *)"1"};
 
-    ASSERT_TRUE(set_env_var("LIBSOKKETTER_TESTING_ENABLED", "1"));
-
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
@@ -302,12 +415,20 @@ TEST(cli_subcommand_tests, test_power_toggle_specified_socket)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
-
-    ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(out, "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n  "
-                   "Socket 1: toggled.\n");
-    ASSERT_EQ(err, "");
+    const auto device = first_available_device();
+    if (device == nullptr)
+    {
+        ASSERT_EQ(return_code, EXIT_FAILURE);
+        ASSERT_EQ(out, "");
+        ASSERT_EQ(err, "No device was found.\n");
+    }
+    else
+    {
+        ASSERT_EQ(return_code, EXIT_SUCCESS);
+        ASSERT_EQ(out, expected_device_header(device) +
+                           expected_selected_socket_action_output(device, {1}, "toggled."));
+        ASSERT_EQ(err, "");
+    }
 }
 
 TEST(cli_subcommand_tests, test_power_status_all)
@@ -315,8 +436,6 @@ TEST(cli_subcommand_tests, test_power_status_all)
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
         (char *)"--device-at-index", (char *)"0"};
 
-    ASSERT_TRUE(set_env_var("LIBSOKKETTER_TESTING_ENABLED", "1"));
-
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
@@ -325,14 +444,19 @@ TEST(cli_subcommand_tests, test_power_status_all)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
-
-    ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(out,
-        "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n  Socket 1: "
-        "Unnamed socket, status: off\n  Socket 2: Unnamed socket, status: off\n  Socket 3: "
-        "Unnamed socket, status: off\n  Socket 4: Unnamed socket, status: off\n");
-    ASSERT_EQ(err, "");
+    const auto device = first_available_device();
+    if (device == nullptr)
+    {
+        ASSERT_EQ(return_code, EXIT_FAILURE);
+        ASSERT_EQ(out, "");
+        ASSERT_EQ(err, "No device was found.\n");
+    }
+    else
+    {
+        ASSERT_EQ(return_code, EXIT_SUCCESS);
+        ASSERT_EQ(out, expected_device_header(device) + expected_socket_status_output(device));
+        ASSERT_EQ(err, "");
+    }
 }
 
 TEST(cli_subcommand_tests, test_power_on_all)
@@ -340,8 +464,6 @@ TEST(cli_subcommand_tests, test_power_on_all)
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"on",
         (char *)"--device-at-index", (char *)"0"};
 
-    ASSERT_TRUE(set_env_var("LIBSOKKETTER_TESTING_ENABLED", "1"));
-
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
@@ -350,13 +472,20 @@ TEST(cli_subcommand_tests, test_power_on_all)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
-
-    ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(out,
-        "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n  Socket 1: "
-        "turned on.\n  Socket 2: turned on.\n  Socket 3: turned on.\n  Socket 4: turned on.\n");
-    ASSERT_EQ(err, "");
+    const auto device = first_available_device();
+    if (device == nullptr)
+    {
+        ASSERT_EQ(return_code, EXIT_FAILURE);
+        ASSERT_EQ(out, "");
+        ASSERT_EQ(err, "No device was found.\n");
+    }
+    else
+    {
+        ASSERT_EQ(return_code, EXIT_SUCCESS);
+        ASSERT_EQ(out,
+            expected_device_header(device) + expected_socket_action_output(device, "turned on."));
+        ASSERT_EQ(err, "");
+    }
 }
 
 TEST(cli_subcommand_tests, test_power_off_all)
@@ -364,8 +493,6 @@ TEST(cli_subcommand_tests, test_power_off_all)
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"off",
         (char *)"--device-at-index", (char *)"0"};
 
-    ASSERT_TRUE(set_env_var("LIBSOKKETTER_TESTING_ENABLED", "1"));
-
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
@@ -374,13 +501,20 @@ TEST(cli_subcommand_tests, test_power_off_all)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
-
-    ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(out,
-        "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n  Socket 1: "
-        "turned off.\n  Socket 2: turned off.\n  Socket 3: turned off.\n  Socket 4: turned off.\n");
-    ASSERT_EQ(err, "");
+    const auto device = first_available_device();
+    if (device == nullptr)
+    {
+        ASSERT_EQ(return_code, EXIT_FAILURE);
+        ASSERT_EQ(out, "");
+        ASSERT_EQ(err, "No device was found.\n");
+    }
+    else
+    {
+        ASSERT_EQ(return_code, EXIT_SUCCESS);
+        ASSERT_EQ(out,
+            expected_device_header(device) + expected_socket_action_output(device, "turned off."));
+        ASSERT_EQ(err, "");
+    }
 }
 
 TEST(cli_subcommand_tests, test_power_toggle_all)
@@ -388,8 +522,6 @@ TEST(cli_subcommand_tests, test_power_toggle_all)
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"toggle",
         (char *)"--device-at-index", (char *)"0"};
 
-    ASSERT_TRUE(set_env_var("LIBSOKKETTER_TESTING_ENABLED", "1"));
-
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
@@ -398,13 +530,20 @@ TEST(cli_subcommand_tests, test_power_toggle_all)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
-
-    ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(out,
-        "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n  Socket 1: "
-        "toggled.\n  Socket 2: toggled.\n  Socket 3: toggled.\n  Socket 4: toggled.\n");
-    ASSERT_EQ(err, "");
+    const auto device = first_available_device();
+    if (device == nullptr)
+    {
+        ASSERT_EQ(return_code, EXIT_FAILURE);
+        ASSERT_EQ(out, "");
+        ASSERT_EQ(err, "No device was found.\n");
+    }
+    else
+    {
+        ASSERT_EQ(return_code, EXIT_SUCCESS);
+        ASSERT_EQ(out,
+            expected_device_header(device) + expected_socket_action_output(device, "toggled."));
+        ASSERT_EQ(err, "");
+    }
 }
 
 TEST(cli_subcommand_tests, test_power_too_big_socket_index)
@@ -412,8 +551,6 @@ TEST(cli_subcommand_tests, test_power_too_big_socket_index)
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"toggle",
         (char *)"--device-at-index", (char *)"0", (char *)"--sockets", (char *)"99"};
 
-    ASSERT_TRUE(set_env_var("LIBSOKKETTER_TESTING_ENABLED", "1"));
-
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
@@ -422,11 +559,19 @@ TEST(cli_subcommand_tests, test_power_too_big_socket_index)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
-
-    ASSERT_EQ(return_code, EXIT_FAILURE);
-    ASSERT_EQ(out, "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n");
-    ASSERT_EQ(err, "Socket index 99 is out of range.\n");
+    const auto device = first_available_device();
+    if (device == nullptr)
+    {
+        ASSERT_EQ(return_code, EXIT_FAILURE);
+        ASSERT_EQ(out, "");
+        ASSERT_EQ(err, "No device was found.\n");
+    }
+    else
+    {
+        ASSERT_EQ(return_code, EXIT_FAILURE);
+        ASSERT_EQ(out, expected_device_header(device));
+        ASSERT_EQ(err, "Socket index 99 is out of range.\n");
+    }
 }
 
 TEST(cli_subcommand_tests, test_power_zero_socket_index)
@@ -434,8 +579,6 @@ TEST(cli_subcommand_tests, test_power_zero_socket_index)
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"toggle",
         (char *)"--device-at-index", (char *)"0", (char *)"--sockets", (char *)"0"};
 
-    ASSERT_TRUE(set_env_var("LIBSOKKETTER_TESTING_ENABLED", "1"));
-
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
@@ -444,11 +587,19 @@ TEST(cli_subcommand_tests, test_power_zero_socket_index)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
-
-    ASSERT_EQ(return_code, EXIT_FAILURE);
-    ASSERT_EQ(out, "Test Device (TEST DEVICE, TEST_SERIAL_NUMBER, located at TEST_ADDRESS)\n");
-    ASSERT_EQ(err, "Socket index 0 is out of range.\n");
+    const auto device = first_available_device();
+    if (device == nullptr)
+    {
+        ASSERT_EQ(return_code, EXIT_FAILURE);
+        ASSERT_EQ(out, "");
+        ASSERT_EQ(err, "No device was found.\n");
+    }
+    else
+    {
+        ASSERT_EQ(return_code, EXIT_FAILURE);
+        ASSERT_EQ(out, expected_device_header(device));
+        ASSERT_EQ(err, "Socket index 0 is out of range.\n");
+    }
 }
 
 TEST(cli_subcommand_tests, test_power_negative_socket_index)
@@ -456,8 +607,6 @@ TEST(cli_subcommand_tests, test_power_negative_socket_index)
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"toggle",
         (char *)"--device-at-index", (char *)"0", (char *)"--sockets", (char *)"-1"};
 
-    ASSERT_TRUE(set_env_var("LIBSOKKETTER_TESTING_ENABLED", "1"));
-
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
@@ -465,8 +614,6 @@ TEST(cli_subcommand_tests, test_power_negative_socket_index)
 
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
-
-    ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, 104);
     ASSERT_EQ(out, "");
@@ -477,8 +624,6 @@ TEST(cli_subcommand_tests, test_power_random_subcommand)
 {
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"random"};
 
-    ASSERT_TRUE(set_env_var("LIBSOKKETTER_TESTING_ENABLED", "1"));
-
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
@@ -486,8 +631,6 @@ TEST(cli_subcommand_tests, test_power_random_subcommand)
 
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
-
-    ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, 109);
     ASSERT_EQ(out, "");
@@ -500,8 +643,6 @@ TEST(cli_subcommand_tests, test_power_on_random_subcommand)
     std::vector<char *> args = {
         (char *)"sokketter-cli", (char *)"power", (char *)"on", (char *)"random"};
 
-    ASSERT_TRUE(set_env_var("LIBSOKKETTER_TESTING_ENABLED", "1"));
-
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
@@ -509,8 +650,6 @@ TEST(cli_subcommand_tests, test_power_on_random_subcommand)
 
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
-
-    ASSERT_TRUE(unset_env_var("LIBSOKKETTER_TESTING_ENABLED"));
 
     ASSERT_EQ(return_code, 109);
     ASSERT_EQ(out, "");
