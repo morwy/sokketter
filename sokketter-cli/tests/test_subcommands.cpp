@@ -9,9 +9,30 @@
 using namespace testing;
 
 namespace {
+    auto set_test_device_number(const char *value) -> void
+    {
+#ifdef _WIN32
+        _putenv_s("LIBSOKKETTER_TEST_DEVICE_NUMBER", value);
+#else
+        setenv("LIBSOKKETTER_TEST_DEVICE_NUMBER", value, 1);
+#endif
+    }
+
+    auto unset_test_device_number() -> void
+    {
+#ifdef _WIN32
+        _putenv_s("LIBSOKKETTER_TEST_DEVICE_NUMBER", "");
+#else
+        unsetenv("LIBSOKKETTER_TEST_DEVICE_NUMBER");
+#endif
+    }
+
     std::shared_ptr<sokketter::power_strip> first_available_device()
     {
-        const auto &devices = sokketter::devices();
+        sokketter::device_filter filter;
+        filter.included_types = sokketter::power_strip_type::USB_DEVICES;
+
+        const auto &devices = sokketter::devices(filter);
         if (devices.empty())
         {
             return nullptr;
@@ -22,7 +43,10 @@ namespace {
 
     std::string expected_list_output()
     {
-        const auto &devices = sokketter::devices();
+        sokketter::device_filter filter;
+        filter.included_types = sokketter::power_strip_type::USB_DEVICES;
+
+        const auto &devices = sokketter::devices(filter);
         if (devices.empty())
         {
             return "No devices found.\n";
@@ -169,27 +193,20 @@ TEST(cli_subcommand_tests, list_no_devices)
     // MAN-CLI-04
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"list"};
 
+    set_test_device_number("0");
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
+    unset_test_device_number();
+
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    const auto expected_output = expected_list_output();
-    if (expected_output == "No devices found.\n")
-    {
-        ASSERT_EQ(return_code, EXIT_FAILURE);
-        ASSERT_EQ(out, "");
-        ASSERT_EQ(err, "No devices found.\n");
-    }
-    else
-    {
-        ASSERT_EQ(return_code, EXIT_SUCCESS);
-        ASSERT_EQ(out, expected_output);
-        ASSERT_EQ(err, "");
-    }
+    ASSERT_EQ(return_code, EXIT_FAILURE);
+    ASSERT_EQ(out, "");
+    ASSERT_EQ(err, "No devices found.\n");
 }
 
 TEST(cli_subcommand_tests, list_test_devices)
