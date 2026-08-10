@@ -29,6 +29,7 @@ namespace {
         }
 
         std::ostringstream output;
+        output << "Listing available devices...\n";
         output << "Available devices:\n";
 
         for (size_t index = 0; index < devices.size(); ++index)
