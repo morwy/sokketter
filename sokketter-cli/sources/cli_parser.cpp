@@ -2,6 +2,10 @@
 
 #include "libsokketter.h"
 
+#include <algorithm>
+#include <cctype>
+#include <type_traits>
+
 int cli_parser::parse_and_process(int argc, char *argv[])
 {
     /** ************************************************************************
@@ -76,6 +80,13 @@ int cli_parser::parse_and_process(int argc, char *argv[])
         command->fallthrough();
     }
 
+    /**
+     * @brief adding an option to include disconnected devices in the list and power subcommands.
+     */
+    std::string included_device_types = "";
+    auto option_included_devices_types =
+        subcommand_list->add_option("--include-device-types,-t", included_device_types);
+
     /** ************************************************************************
      *
      * @brief parameter parsing section.
@@ -97,7 +108,33 @@ int cli_parser::parse_and_process(int argc, char *argv[])
      ** ***********************************************************************/
     if (subcommand_list->parsed())
     {
-        const auto& devices = sokketter::devices();
+        sokketter::device_filter filter;
+
+        if (option_included_devices_types->count() > 0)
+        {
+            auto normalized_device_types = included_device_types;
+            std::transform(normalized_device_types.begin(), normalized_device_types.end(),
+                normalized_device_types.begin(),
+                [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
+
+            using underlying_type = std::underlying_type_t<sokketter::power_strip_type>;
+
+            if (normalized_device_types.find("usb") != std::string::npos)
+            {
+                filter.included_types = static_cast<sokketter::power_strip_type>(
+                    static_cast<underlying_type>(filter.included_types) |
+                    static_cast<underlying_type>(sokketter::power_strip_type::USB_DEVICES));
+            }
+
+            if (normalized_device_types.find("ethernet") != std::string::npos)
+            {
+                filter.included_types = static_cast<sokketter::power_strip_type>(
+                    static_cast<underlying_type>(filter.included_types) |
+                    static_cast<underlying_type>(sokketter::power_strip_type::ETHERNET_DEVICES));
+            }
+        }
+
+        const auto &devices = sokketter::devices(filter);
         if (devices.empty())
         {
             std::cerr << "No devices found." << std::endl;

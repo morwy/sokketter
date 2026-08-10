@@ -45,6 +45,9 @@ public:
         help << std::endl;
 
         help << "  Options:" << std::endl;
+        help << "    -t,--include-device-types TEXT\tStates which device types to include in the "
+                "list. Available types are: USB, ETHERNET."
+             << std::endl;
         help << "    -i,--device-at-index UINT\t\tStates which power strip to use by its index. "
                 "Excludes --device-with-serial option."
              << std::endl;
@@ -52,7 +55,8 @@ public:
                 "number. Excludes --device-at-index option."
              << std::endl;
         help << "    -s,--sockets UINT ...\t\tStates one or multiple socket(s) indices. Empty "
-                "option means that subcommand will apply\n\t\t\t\t\tto all available sockets. Indices start "
+                "option means that subcommand will apply\n\t\t\t\t\tto all available sockets. "
+                "Indices start "
                 "from 1 to be in accordance with physical markings\n\t\t\t\t\ton the device."
              << std::endl;
         help << std::endl;

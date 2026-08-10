@@ -227,6 +227,33 @@ TEST(cli_subcommand_tests, list_random_subcommand)
         "The following argument was not expected: random\nRun with --help for more information.\n");
 }
 
+TEST(cli_subcommand_tests, list_include_device_types_is_case_insensitive)
+{
+    std::vector<char *> args_lower = {(char *)"sokketter-cli", (char *)"list",
+        (char *)"--include-device-types", (char *)"usb"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto return_code_lower = cli_parser::parse_and_process(args_lower.size(), args_lower.data());
+    const auto out_lower = testing::internal::GetCapturedStdout();
+    const auto err_lower = testing::internal::GetCapturedStderr();
+
+    std::vector<char *> args_upper = {(char *)"sokketter-cli", (char *)"list",
+        (char *)"--include-device-types", (char *)"USB"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto return_code_upper = cli_parser::parse_and_process(args_upper.size(), args_upper.data());
+    const auto out_upper = testing::internal::GetCapturedStdout();
+    const auto err_upper = testing::internal::GetCapturedStderr();
+
+    ASSERT_EQ(return_code_lower, return_code_upper);
+    EXPECT_EQ(out_lower, out_upper);
+    EXPECT_EQ(err_lower, err_upper);
+}
+
 TEST(cli_subcommand_tests, test_power_both_access_flags)
 {
     // MAN-CLI-09
