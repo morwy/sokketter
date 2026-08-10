@@ -406,19 +406,12 @@ TEST(cli_subcommand_tests, test_power_on_specified_socket)
     const auto &err = testing::internal::GetCapturedStderr();
 
     const auto device = first_available_device();
-    if (device == nullptr)
-    {
-        ASSERT_EQ(return_code, EXIT_FAILURE);
-        ASSERT_EQ(out, "");
-        ASSERT_EQ(err, "No device was found.\n");
-    }
-    else
-    {
-        ASSERT_EQ(return_code, EXIT_SUCCESS);
-        ASSERT_EQ(out, expected_device_header(device) +
-                           expected_selected_socket_action_output(device, {1}, "turned on."));
-        ASSERT_EQ(err, "");
-    }
+
+    ASSERT_NE(device, nullptr);
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(out, expected_device_header(device) +
+                       expected_selected_socket_action_output(device, {1}, "turned on."));
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, test_power_off_specified_socket)
