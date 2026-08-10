@@ -49,11 +49,13 @@ int cli_parser::parse_and_process(int argc, char *argv[])
      * @brief adding a list subcommand.
      */
     auto subcommand_list = application.add_subcommand("list");
+    subcommand_list->ignore_underscore();
 
     /**
      * @brief adding a power subcommand.
      */
     auto subcommand_power = application.add_subcommand("power");
+    subcommand_power->ignore_underscore();
 
     auto subcommand_power_status = subcommand_power->add_subcommand("status");
     auto subcommand_power_on = subcommand_power->add_subcommand("on");
@@ -68,6 +70,7 @@ int cli_parser::parse_and_process(int argc, char *argv[])
      */
     std::vector<size_t> socket_indices;
     auto sockets_argument = subcommand_power->add_option("--sockets,-s", socket_indices);
+    sockets_argument->ignore_underscore();
 
     auto device_group =
         subcommand_power->add_option_group("--device-at-index or --device-with-serial");
@@ -78,6 +81,8 @@ int cli_parser::parse_and_process(int argc, char *argv[])
     std::string device_serial = "";
     auto option_device_serial = device_group->add_option("--device-with-serial,-n", device_serial);
 
+    option_device_index->ignore_underscore();
+    option_device_serial->ignore_underscore();
     option_device_index->excludes(option_device_serial);
     option_device_serial->excludes(option_device_index);
 
