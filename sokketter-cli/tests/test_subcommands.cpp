@@ -283,8 +283,6 @@ TEST(cli_subcommand_tests, list_include_device_types_is_case_insensitive)
 TEST(cli_subcommand_tests, list_include_ethernet_device_types_is_case_insensitive)
 {
     // MAN-CLI-19
-    set_test_device_number("3");
-
     std::vector<char *> args_lower = {(char *)"sokketter-cli", (char *)"list",
         (char *)"--include-device-types", (char *)"ethernet"};
 
@@ -307,8 +305,6 @@ TEST(cli_subcommand_tests, list_include_ethernet_device_types_is_case_insensitiv
     const auto out_upper = testing::internal::GetCapturedStdout();
     const auto err_upper = testing::internal::GetCapturedStderr();
 
-    unset_test_device_number();
-
     ASSERT_EQ(return_code_lower, EXIT_SUCCESS);
     ASSERT_EQ(return_code_upper, EXIT_SUCCESS);
     EXPECT_EQ(return_code_lower, return_code_upper);
@@ -319,8 +315,6 @@ TEST(cli_subcommand_tests, list_include_ethernet_device_types_is_case_insensitiv
 TEST(cli_subcommand_tests, list_include_lan_device_types_is_case_insensitive)
 {
     // MAN-CLI-20
-    set_test_device_number("3");
-
     std::vector<char *> args_lower = {
         (char *)"sokketter-cli", (char *)"list", (char *)"--include-device-types", (char *)"lan"};
 
@@ -342,8 +336,6 @@ TEST(cli_subcommand_tests, list_include_lan_device_types_is_case_insensitive)
         cli_parser::parse_and_process(args_upper.size(), args_upper.data());
     const auto out_upper = testing::internal::GetCapturedStdout();
     const auto err_upper = testing::internal::GetCapturedStderr();
-
-    unset_test_device_number();
 
     ASSERT_EQ(return_code_lower, EXIT_SUCCESS);
     ASSERT_EQ(return_code_upper, EXIT_SUCCESS);
