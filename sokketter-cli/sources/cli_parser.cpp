@@ -110,6 +110,8 @@ int cli_parser::parse_and_process(int argc, char *argv[])
     {
         sokketter::device_filter filter;
 
+        filter.included_types = sokketter::power_strip_type::UNKNOWN;
+
         if (option_included_devices_types->count() > 0)
         {
             auto normalized_device_types = included_device_types;
