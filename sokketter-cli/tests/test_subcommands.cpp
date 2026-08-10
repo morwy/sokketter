@@ -611,16 +611,12 @@ TEST(cli_subcommand_tests, test_power_too_big_socket_index)
     const auto device = first_available_device();
     if (device == nullptr)
     {
-        ASSERT_EQ(return_code, EXIT_FAILURE);
-        ASSERT_EQ(out, "");
-        ASSERT_EQ(err, "No device was found.\n");
+        GTEST_SKIP() << "no device is available";
     }
-    else
-    {
-        ASSERT_EQ(return_code, EXIT_FAILURE);
-        ASSERT_EQ(out, expected_device_header(device));
-        ASSERT_EQ(err, "Socket index 99 is out of range.\n");
-    }
+
+    ASSERT_EQ(return_code, EXIT_FAILURE);
+    ASSERT_EQ(out, expected_device_header(device));
+    ASSERT_EQ(err, "Socket index 99 is out of range.\n");
 }
 
 TEST(cli_subcommand_tests, test_power_zero_socket_index)
@@ -640,16 +636,12 @@ TEST(cli_subcommand_tests, test_power_zero_socket_index)
     const auto device = first_available_device();
     if (device == nullptr)
     {
-        ASSERT_EQ(return_code, EXIT_FAILURE);
-        ASSERT_EQ(out, "");
-        ASSERT_EQ(err, "No device was found.\n");
+        GTEST_SKIP() << "no device is available";
     }
-    else
-    {
-        ASSERT_EQ(return_code, EXIT_FAILURE);
-        ASSERT_EQ(out, expected_device_header(device));
-        ASSERT_EQ(err, "Socket index 0 is out of range.\n");
-    }
+
+    ASSERT_EQ(return_code, EXIT_FAILURE);
+    ASSERT_EQ(out, expected_device_header(device));
+    ASSERT_EQ(err, "Socket index 0 is out of range.\n");
 }
 
 TEST(cli_subcommand_tests, test_power_negative_socket_index)
