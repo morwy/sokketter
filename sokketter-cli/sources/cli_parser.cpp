@@ -110,7 +110,7 @@ int cli_parser::parse_and_process(int argc, char *argv[])
     {
         sokketter::device_filter filter;
 
-        filter.included_types = sokketter::power_strip_type::UNKNOWN;
+        filter.included_types = sokketter::power_strip_type::USB_DEVICES;
 
         if (option_included_devices_types->count() > 0)
         {
@@ -120,13 +120,6 @@ int cli_parser::parse_and_process(int argc, char *argv[])
                 [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
 
             using underlying_type = std::underlying_type_t<sokketter::power_strip_type>;
-
-            if (normalized_device_types.find("usb") != std::string::npos)
-            {
-                filter.included_types = static_cast<sokketter::power_strip_type>(
-                    static_cast<underlying_type>(filter.included_types) |
-                    static_cast<underlying_type>(sokketter::power_strip_type::USB_DEVICES));
-            }
 
             if (normalized_device_types.find("ethernet") != std::string::npos)
             {
