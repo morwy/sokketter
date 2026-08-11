@@ -6,6 +6,8 @@
 #include <devices/power_strip_base.h>
 #include <libsokketter.h>
 
+#include <mutex>
+
 class energenie_eg_base : public power_strip_base
 {
 public:
@@ -16,6 +18,8 @@ public:
     [[nodiscard]] auto try_authenticate() -> bool override;
 
 protected:
+    static std::mutex m_usb_communication_mutex;
+
     std::string m_serial_number = "";
     size_t m_socket_number = 0;
 

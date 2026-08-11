@@ -5,6 +5,8 @@
 #include <spdlog/spdlog.h>
 #include <sstream>
 
+std::mutex energenie_eg_base::m_usb_communication_mutex;
+
 /**
  * @attention interaction with device is based on the protocol described in pysispm project.
  * @link https://github.com/xypron/pysispm/blob/master/sispm/__init__.py
@@ -20,6 +22,8 @@ energenie_eg_base::energenie_eg_base()
 auto energenie_eg_base::initialize(std::shared_ptr<kommpot::device_communication> communication)
     -> bool
 {
+    std::lock_guard<std::mutex> lock(m_usb_communication_mutex);
+
     if (!power_strip_base::initialize(communication))
     {
         return false;
@@ -43,14 +47,17 @@ auto energenie_eg_base::initialize(std::shared_ptr<kommpot::device_communication
 
     std::array<uint8_t, 5> serial_number_raw = {0};
 
-    if (!m_communication->read(configuration, serial_number_raw.data(), serial_number_raw.size()))
+    const bool is_read_succeed =
+        m_communication->read(configuration, serial_number_raw.data(), serial_number_raw.size());
+
+    m_communication->close();
+
+    if (!is_read_succeed)
     {
         SPDLOG_LOGGER_ERROR(
             SOKKETTER_LOGGER, "{}: failed reading the device serial number!", this->to_string());
         return false;
     }
-
-    m_communication->close();
 
     std::ostringstream serial_number;
     for (auto it = serial_number_raw.begin(); it != serial_number_raw.end(); ++it)
@@ -77,6 +84,8 @@ auto energenie_eg_base::try_authenticate() -> bool
 
 auto energenie_eg_base::power_socket(size_t index, bool is_toggled) -> bool
 {
+    std::lock_guard<std::mutex> lock(m_usb_communication_mutex);
+
     if (m_communication == nullptr)
     {
         SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
@@ -103,6 +112,7 @@ auto energenie_eg_base::power_socket(size_t index, bool is_toggled) -> bool
     {
         SPDLOG_LOGGER_ERROR(
             SOKKETTER_LOGGER, "{}: failed opening the device communication!", this->to_string());
+        return false;
     }
 
     const bool is_operation_succeed =
@@ -121,6 +131,8 @@ auto energenie_eg_base::power_socket(size_t index, bool is_toggled) -> bool
 
 auto energenie_eg_base::socket_status(size_t index) -> bool
 {
+    std::lock_guard<std::mutex> lock(m_usb_communication_mutex);
+
     if (m_communication == nullptr)
     {
         SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
@@ -144,6 +156,7 @@ auto energenie_eg_base::socket_status(size_t index) -> bool
     {
         SPDLOG_LOGGER_ERROR(
             SOKKETTER_LOGGER, "{}: failed opening the device communication!", this->to_string());
+        return false;
     }
 
     const bool is_operation_succeed =
