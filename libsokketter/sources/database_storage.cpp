@@ -158,6 +158,8 @@ auto database_storage::load() -> void
     SPDLOG_LOGGER_DEBUG(
         SOKKETTER_LOGGER, "Restoring the device database from '{}' file.", path().string());
 
+    m_devices.clear();
+
     if (!std::filesystem::exists(path()))
     {
         SPDLOG_LOGGER_INFO(
@@ -174,9 +176,20 @@ auto database_storage::load() -> void
     }
 
     nlohmann::json j;
-    file >> j;
+    try
+    {
+        file >> j;
 
-    m_devices = j.get<std::vector<std::shared_ptr<sokketter::power_strip>>>();
+        auto devices = j.get<std::vector<std::shared_ptr<sokketter::power_strip>>>();
+        m_devices = std::move(devices);
+    }
+    catch (const nlohmann::json::exception &exception)
+    {
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+            "Failed restoring the device database from '{}' file: {}. Starting with an empty "
+            "database.",
+            path().string(), exception.what());
+    }
 }
 
 auto database_storage::remove(std::shared_ptr<sokketter::power_strip> &power_strip) -> void

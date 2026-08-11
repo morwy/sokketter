@@ -38,6 +38,8 @@ auto app_settings_storage::load() -> void
     SPDLOG_LOGGER_DEBUG(
         APP_LOGGER, "Restoring the application settings from '{}' file.", path().string());
 
+    m_settings = {};
+
     QFileInfo fileInfo(path());
     if (!fileInfo.exists())
     {
@@ -54,9 +56,20 @@ auto app_settings_storage::load() -> void
     }
 
     nlohmann::json j;
-    file >> j;
+    try
+    {
+        file >> j;
 
-    m_settings = j.get<app_settings>();
+        auto settings = j.get<app_settings>();
+        m_settings = std::move(settings);
+    }
+    catch (const nlohmann::json::exception &exception)
+    {
+        SPDLOG_LOGGER_ERROR(APP_LOGGER,
+            "Failed restoring the application settings from '{}' file: {}. Starting with "
+            "default settings.",
+            path().string(), exception.what());
+    }
 }
 
 auto app_settings_storage::path() const -> std::filesystem::path
