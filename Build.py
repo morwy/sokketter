@@ -472,12 +472,14 @@ class Build:
             shutil.copytree(
                 src=app_filepath, dst=macos_installer_folder, dirs_exist_ok=True
             )
-            moved_app_filepath = os.path.join(
-                macos_installer_folder, "sokketter-ui.app"
-            )
 
             os.symlink(
                 "/Applications", os.path.join(macos_installer_folder, "Applications")
+            )
+
+            dmg_filename = os.path.join(
+                macos_installer_folder,
+                f"sokketter-ui-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}.dmg",
             )
 
             hdiutil_command = [
@@ -490,12 +492,14 @@ class Build:
                 "-ov",
                 "-format",
                 "UDZO",
-                os.path.join(
-                    macos_installer_folder,
-                    f"sokketter-ui-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}.dmg",
-                ),
+                dmg_filename,
             ]
             self.__execute_command(hdiutil_command)
+
+            shutil.move(
+                src=dmg_filename,
+                dst=sokketter_ui_folder,
+            )
 
         elif platform.system() == "Linux":
             sokketter_app_image_folder = os.path.join(
