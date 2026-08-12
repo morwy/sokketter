@@ -415,12 +415,11 @@ class Build:
             )
 
         elif platform.system() == "Darwin":
-            app_filepath = os.path.join(sokketter_ui_zip_folder, "sokketter-ui.app")
+            filename = "sokketter-ui.app"
+            app_filepath = os.path.join(sokketter_ui_zip_folder, filename)
 
             shutil.copytree(
-                src=os.path.join(
-                    self.temp_binary_output_dir, "bin", "sokketter-ui.app"
-                ),
+                src=os.path.join(self.temp_binary_output_dir, "bin", filename),
                 dst=app_filepath,
                 symlinks=True,
             )
@@ -470,7 +469,9 @@ class Build:
             os.makedirs(macos_installer_folder, exist_ok=True)
 
             shutil.copytree(
-                src=app_filepath, dst=macos_installer_folder, dirs_exist_ok=True
+                src=app_filepath,
+                dst=os.path.join(macos_installer_folder, filename),
+                dirs_exist_ok=True,
             )
 
             os.symlink(
@@ -478,7 +479,7 @@ class Build:
             )
 
             dmg_filename = os.path.join(
-                macos_installer_folder,
+                sokketter_ui_folder,
                 f"sokketter-ui-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}.dmg",
             )
 
@@ -495,11 +496,6 @@ class Build:
                 dmg_filename,
             ]
             self.__execute_command(hdiutil_command)
-
-            shutil.move(
-                src=dmg_filename,
-                dst=sokketter_ui_folder,
-            )
 
         elif platform.system() == "Linux":
             sokketter_app_image_folder = os.path.join(
