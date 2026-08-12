@@ -469,7 +469,7 @@ class Build:
             )
             os.makedirs(macos_installer_folder, exist_ok=True)
 
-            shutil.copy(src=app_filepath, dst=macos_installer_folder)
+            shutil.copytree(src=app_filepath, dst=macos_installer_folder)
             moved_app_filepath = os.path.join(
                 macos_installer_folder, "sokketter-ui.app"
             )
