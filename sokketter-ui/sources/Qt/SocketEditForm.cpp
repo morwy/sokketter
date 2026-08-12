@@ -16,6 +16,11 @@ SocketEditForm::SocketEditForm(
     m_ui->socket_description_line_edit->setText(QString::fromStdString(configuration.description));
 
     m_ui->socket_configurable_reset_line_edit->setValidator(new QIntValidator(0, 999999999, this));
+    if (configuration.configurable_reset_msec > 0)
+    {
+        m_ui->socket_configurable_reset_line_edit->setText(
+            QString::number(configuration.configurable_reset_msec));
+    }
 }
 
 SocketEditForm::~SocketEditForm()
