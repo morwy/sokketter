@@ -415,17 +415,19 @@ class Build:
             )
 
         elif platform.system() == "Darwin":
+            app_filepath = os.path.join(sokketter_ui_zip_folder, "sokketter-ui.app")
+
             shutil.copytree(
                 src=os.path.join(
                     self.temp_binary_output_dir, "bin", "sokketter-ui.app"
                 ),
-                dst=os.path.join(sokketter_ui_zip_folder, "sokketter-ui.app"),
+                dst=app_filepath,
                 symlinks=True,
             )
 
             packing_command = [
                 "macdeployqt",
-                os.path.join(sokketter_ui_zip_folder, "sokketter-ui.app"),
+                app_filepath,
                 "-verbose=2",
             ]
             self.__execute_command(packing_command)
@@ -437,7 +439,7 @@ class Build:
                 "--sign",
                 "-",
                 "--timestamp=none",
-                os.path.join(sokketter_ui_zip_folder, "sokketter-ui.app"),
+                app_filepath,
             ]
             self.__execute_command(packing_command)
 
@@ -452,7 +454,7 @@ class Build:
                 "-k",
                 "--keepParent",
                 "--sequesterRsrc",
-                os.path.join(sokketter_ui_zip_folder, "sokketter-ui.app"),
+                app_filepath,
                 zip_name,
             ]
             self.__execute_command(packing_command)
@@ -461,6 +463,37 @@ class Build:
                 src=zip_name,
                 dst=sokketter_ui_folder,
             )
+
+            macos_installer_folder = os.path.join(
+                self.results_output_dir, "sokketter-ui-dmg"
+            )
+            os.makedirs(macos_installer_folder, exist_ok=True)
+
+            shutil.copy(src=app_filepath, dst=macos_installer_folder)
+            moved_app_filepath = os.path.join(
+                macos_installer_folder, "sokketter-ui.app"
+            )
+
+            os.symlink(
+                "/Applications", os.path.join(macos_installer_folder, "Applications")
+            )
+
+            hdiutil_command = [
+                "hdiutil",
+                "create",
+                "-volname",
+                "sokketter-ui",
+                "-srcfolder",
+                moved_app_filepath,
+                "-ov",
+                "-format",
+                "UDZO",
+                os.path.join(
+                    macos_installer_folder,
+                    f"sokketter-ui-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}.dmg",
+                ),
+            ]
+            self.__execute_command(hdiutil_command)
 
         elif platform.system() == "Linux":
             sokketter_app_image_folder = os.path.join(
