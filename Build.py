@@ -486,7 +486,7 @@ class Build:
                 "-volname",
                 "sokketter-ui",
                 "-srcfolder",
-                moved_app_filepath,
+                macos_installer_folder,
                 "-ov",
                 "-format",
                 "UDZO",
