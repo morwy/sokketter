@@ -489,12 +489,16 @@ class Build:
         self.logger.info("Starting the packaging of library files.")
 
         sokketter_lib_folder = os.path.join(self.results_output_dir, "libsokketter")
-        os.makedirs(sokketter_lib_folder, exist_ok=True)
+        if os.path.exists(sokketter_lib_folder):
+            shutil.rmtree(sokketter_lib_folder)
+
+        os.makedirs(sokketter_lib_folder)
 
         shutil.copytree(
             os.path.join(self.temp_binary_output_dir, "libs"),
             os.path.join(sokketter_lib_folder, "libs"),
         )
+
         shutil.copytree(
             os.path.join(self.temp_binary_output_dir, "include"),
             os.path.join(sokketter_lib_folder, "include"),
