@@ -301,13 +301,23 @@ class Build:
         tell application "Finder"
             tell disk "sokketter-ui"
                 open
+
                 set current view of container window to icon view
 
-                set icon size of icon view options of container window to 128
-                set arrangement of icon view options of container window to not arranged
+                tell icon view options of container window
+                    set icon size to 128
+                    set arrangement to not arranged
+                    set text size to 12
+                    set shows item info to false
+                    set shows icon preview to true
+                end tell
 
-                set position of item "sokketter-ui.app" to {{180, 180}}
-                set position of item "Applications" to {{500, 180}}
+                -- Centered horizontally, roughly around the middle of the window
+                set position of item "sokketter-ui.app" to {180, 200}
+                set position of item "Applications" to {460, 200}
+
+                -- 640 x 400 window
+                set bounds of container window to {100, 100, 740, 500}
 
                 close
                 open
