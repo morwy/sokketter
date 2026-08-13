@@ -328,7 +328,7 @@ class Build:
         output = pathlib.Path(output_path).resolve()
 
         with tempfile.TemporaryDirectory() as tmp:
-            staging = pathlib.Path(tmp) / "sokketter"
+            staging = pathlib.Path(tmp) / "sokketter-ui"
             staging.mkdir()
 
             # Copy application
@@ -345,7 +345,7 @@ class Build:
                     "hdiutil",
                     "create",
                     "-volname",
-                    "sokketter",
+                    "sokketter-ui",
                     "-srcfolder",
                     str(staging),
                     "-ov",
@@ -374,7 +374,7 @@ class Build:
             # Find mounted volume
             mount_point = None
             for line in result.stdout.splitlines():
-                if "/Volumes/sokketter" in line:
+                if "/Volumes/sokketter-ui" in line:
                     mount_point = pathlib.Path(line.split("\t")[-1])
                     break
 
