@@ -9,10 +9,12 @@ import argparse
 import glob
 import logging
 import os
+import pathlib
 import platform
 import shutil
 import subprocess
 import sys
+import tempfile
 from enum import Enum
 
 from Environment import Environment
@@ -227,27 +229,138 @@ class Build:
         """
         self.logger.info("Starting the CMake configuration.")
 
-        if self.__running_in_github_actions():
-            cmake_command = [
-                self.cmake,
-                "-B",
-                self.temp_build_output_dir,
-                f"-DCMAKE_CXX_COMPILER={self.compiler}",
-                "-DIS_COMPILING_STATIC=true",
-                "-DIS_COMPILING_SHARED=false",
-                "-DCMAKE_PREFIX_PATH=$Qt6_DIR",
-            ]
+        cmake_command = [
+            self.cmake,
+            "-B",
+            self.temp_build_output_dir,
+            f"-DCMAKE_CXX_COMPILER={self.compiler}",
+            "-DIS_COMPILING_STATIC=true",
+            "-DIS_COMPILING_SHARED=false",
+            "-DCMAKE_PREFIX_PATH=$Qt6_DIR",
+        ]
 
-            if BuildStage.TEST.value in self.stages and platform.system() != "Windows":
-                cmake_command.append("-DSOKKETTER_ENABLE_TESTING=true")
+        if BuildStage.TEST.value in self.stages and platform.system() != "Windows":
+            cmake_command.append("-DSOKKETTER_ENABLE_TESTING=true")
 
-            self.__execute_command(cmake_command)
-        else:
-            raise EnvironmentError(
-                "This script is intended to run in GitHub Actions environment only."
-            )
+        self.__execute_command(cmake_command)
 
         self.logger.info("CMake configuration completed successfully.")
+
+    def __configure_finder(self, mount_point: pathlib.Path):
+        script = f"""
+        tell application "Finder"
+            tell disk "Sokketter"
+                open
+                set current view of container window to icon view
+
+                set icon size of icon view options of container window to 128
+                set arrangement of icon view options of container window to not arranged
+
+                set position of item "Sokketter.app" to {{180, 180}}
+                set position of item "Applications" to {{500, 180}}
+
+                close
+                open
+                update without registering applications
+                delay 2
+                close
+            end tell
+        end tell
+        """
+
+        subprocess.run(
+            ["osascript", "-e", script],
+            check=True,
+        )
+
+    def __create_dmg(self, app_path: str, output_path: str):
+        app = pathlib.Path(app_path).resolve()
+        output = pathlib.Path(output_path).resolve()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            staging = pathlib.Path(tmp) / "sokketter"
+            staging.mkdir()
+
+            # Copy application
+            shutil.copytree(app, staging / app.name)
+
+            # Applications symlink
+            (staging / "Applications").symlink_to("/Applications")
+
+            # Create read/write DMG first
+            rw_dmg = pathlib.Path(tmp) / "sokketter-rw.dmg"
+
+            subprocess.run(
+                [
+                    "hdiutil",
+                    "create",
+                    "-volname",
+                    "sokketter",
+                    "-srcfolder",
+                    str(staging),
+                    "-ov",
+                    "-format",
+                    "UDRW",
+                    str(rw_dmg),
+                ],
+                check=True,
+            )
+
+            # Mount it
+            result = subprocess.run(
+                [
+                    "hdiutil",
+                    "attach",
+                    "-readwrite",
+                    "-noverify",
+                    "-noautoopen",
+                    str(rw_dmg),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            # Find mounted volume
+            mount_point = None
+            for line in result.stdout.splitlines():
+                if "/Volumes/sokketter" in line:
+                    mount_point = pathlib.Path(line.split("\t")[-1])
+                    break
+
+            if not mount_point:
+                raise RuntimeError("Could not find mounted DMG")
+
+            try:
+                self.__configure_finder(mount_point)
+
+                # Unmount
+                subprocess.run(["hdiutil", "detach", str(mount_point)], check=True)
+
+                # Compress to final DMG
+                subprocess.run(
+                    [
+                        "hdiutil",
+                        "convert",
+                        str(rw_dmg),
+                        "-format",
+                        "UDZO",
+                        "-imagekey",
+                        "zlib-level=9",
+                        "-ov",
+                        "-o",
+                        str(output),
+                    ],
+                    check=True,
+                )
+
+            finally:
+                # Best effort cleanup if something failed
+                subprocess.run(
+                    ["hdiutil", "detach", str(mount_point)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
 
     def __build(self) -> None:
         """
@@ -463,39 +576,12 @@ class Build:
                 dst=sokketter_ui_folder,
             )
 
-            macos_installer_folder = os.path.join(
-                self.results_output_dir, "sokketter-ui-dmg"
-            )
-            os.makedirs(macos_installer_folder, exist_ok=True)
-
-            shutil.copytree(
-                src=app_filepath,
-                dst=os.path.join(macos_installer_folder, filename),
-                dirs_exist_ok=True,
-            )
-
-            os.symlink(
-                "/Applications", os.path.join(macos_installer_folder, "Applications")
-            )
-
             dmg_filename = os.path.join(
                 sokketter_ui_folder,
                 f"sokketter-ui-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}.dmg",
             )
 
-            hdiutil_command = [
-                "hdiutil",
-                "create",
-                "-volname",
-                "sokketter-ui",
-                "-srcfolder",
-                macos_installer_folder,
-                "-ov",
-                "-format",
-                "UDZO",
-                dmg_filename,
-            ]
-            self.__execute_command(hdiutil_command)
+            self.__create_dmg(app_path=app_filepath, output_path=dmg_filename)
 
         elif platform.system() == "Linux":
             sokketter_app_image_folder = os.path.join(
