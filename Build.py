@@ -191,6 +191,52 @@ class Build:
         self.logger.error("vcvarsall.bat not found!")
         raise EnvironmentError("vcvarsall.bat not found!")
 
+    def __resolve_qt_tool(self, tool_name: str) -> str:
+        """
+        Resolve Qt deployment tools (e.g. macdeployqt, windeployqt) to an executable path.
+        """
+        tool_in_path = shutil.which(tool_name)
+        if tool_in_path:
+            return tool_in_path
+
+        executable_name = tool_name
+        if platform.system() == "Windows" and not tool_name.endswith(".exe"):
+            executable_name = f"{tool_name}.exe"
+
+        candidates: list[pathlib.Path] = []
+
+        qt6_dir = os.environ.get("Qt6_DIR") or os.environ.get("QT6_DIR")
+        if qt6_dir:
+            qt6_path = pathlib.Path(qt6_dir).expanduser().resolve()
+            # Qt6_DIR usually points to <qt-root>/lib/cmake/Qt6, so go to <qt-root>/bin.
+            qt_root_candidate = qt6_path.parent.parent.parent
+            candidates.append(qt_root_candidate / "bin" / executable_name)
+
+        home_dir = os.environ.get("HOME", "")
+        if platform.system() == "Darwin":
+            for path in glob.glob(
+                os.path.join(home_dir, "Qt", "*", "macos", "bin", executable_name)
+            ):
+                candidates.append(pathlib.Path(path))
+        elif platform.system() == "Linux":
+            for path in glob.glob(
+                os.path.join(home_dir, "Qt", "*", "gcc_64", "bin", executable_name)
+            ):
+                candidates.append(pathlib.Path(path))
+        elif platform.system() == "Windows":
+            for path in glob.glob(
+                os.path.join("C:\\Qt", "*", "*", "bin", executable_name)
+            ):
+                candidates.append(pathlib.Path(path))
+
+        for candidate in candidates:
+            if candidate.exists():
+                return str(candidate)
+
+        raise FileNotFoundError(
+            f"Could not find '{tool_name}'. Add Qt's bin directory to PATH or set Qt6_DIR/QT6_DIR."
+        )
+
     def __execute_command(self, cmake_command, cwd: str | None = None):
         try:
             self.logger.info(
@@ -218,6 +264,10 @@ class Build:
                     raise subprocess.CalledProcessError(
                         process.returncode, cmake_command
                     )
+
+        except FileNotFoundError as e:
+            self.logger.error("Command executable not found: %s", e)
+            raise
 
         except subprocess.CalledProcessError as e:
             self.logger.error("Command failed with error:\n%s", e.stderr)
@@ -510,7 +560,7 @@ class Build:
                 sokketter_ui_zip_folder,
             )
             packing_command = [
-                "windeployqt",
+                self.__resolve_qt_tool("windeployqt"),
                 os.path.join(sokketter_ui_zip_folder, "sokketter-ui.exe"),
                 sokketter_ui_zip_folder,
             ]
@@ -538,7 +588,7 @@ class Build:
             )
 
             packing_command = [
-                "macdeployqt",
+                self.__resolve_qt_tool("macdeployqt"),
                 app_filepath,
                 "-verbose=2",
             ]
