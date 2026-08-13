@@ -513,12 +513,18 @@ class Build:
         self.logger.info("Starting the packaging of CLI files.")
 
         sokketter_cli_folder = os.path.join(self.results_output_dir, "sokketter-cli")
-        os.makedirs(sokketter_cli_folder, exist_ok=True)
+        if os.path.exists(sokketter_cli_folder):
+            shutil.rmtree(sokketter_cli_folder)
+
+        os.makedirs(sokketter_cli_folder)
 
         sokketter_cli_zip_folder = os.path.join(
             self.temp_binary_output_dir, "sokketter-cli-zipped"
         )
-        os.makedirs(sokketter_cli_zip_folder, exist_ok=True)
+        if os.path.exists(sokketter_cli_zip_folder):
+            shutil.rmtree(sokketter_cli_zip_folder)
+
+        os.makedirs(sokketter_cli_zip_folder)
 
         if platform.system() == "Windows":
             shutil.copy(
@@ -551,12 +557,18 @@ class Build:
         self.logger.info("Starting the packaging of UI files.")
 
         sokketter_ui_folder = os.path.join(self.results_output_dir, "sokketter-ui")
-        os.makedirs(sokketter_ui_folder, exist_ok=True)
+        if os.path.exists(sokketter_ui_folder):
+            shutil.rmtree(sokketter_ui_folder)
+
+        os.makedirs(sokketter_ui_folder)
 
         sokketter_ui_zip_folder = os.path.join(
             self.temp_binary_output_dir, "sokketter-ui-zipped"
         )
-        os.makedirs(sokketter_ui_zip_folder, exist_ok=True)
+        if os.path.exists(sokketter_ui_zip_folder):
+            shutil.rmtree(sokketter_ui_zip_folder)
+
+        os.makedirs(sokketter_ui_zip_folder)
 
         if platform.system() == "Windows":
             shutil.copy(
