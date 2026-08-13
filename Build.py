@@ -318,6 +318,7 @@ class Build:
 
                 -- 640 x 400 window
                 set bounds of container window to {100, 100, 740, 500}
+                set bounds of container window to {100, 100, 740, 600}
 
                 close
                 open
