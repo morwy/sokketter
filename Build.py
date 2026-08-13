@@ -297,12 +297,13 @@ class Build:
         self.logger.info("CMake configuration completed successfully.")
 
     def __configure_finder(self, mount_point: pathlib.Path):
-        script = """
+        script = f"""
         tell application "Finder"
-            tell disk "sokketter-ui"
+            tell disk "{mount_point.name}"
                 open
 
                 set current view of container window to icon view
+                set resizable of container window to false
 
                 tell icon view options of container window
                     set icon size to 128
@@ -313,12 +314,11 @@ class Build:
                 end tell
 
                 -- Centered horizontally, roughly around the middle of the window
-                set position of item "sokketter-ui.app" to {180, 200}
-                set position of item "Applications" to {460, 200}
+                set position of item "sokketter-ui.app" to {{180, 200}}
+                set position of item "Applications" to {{460, 200}}
 
                 -- 640 x 400 window
-                set bounds of container window to {100, 100, 740, 500}
-                set bounds of container window to {100, 100, 740, 600}
+                set bounds of container window to {{100, 100, 740, 600}}
 
                 close
                 open
