@@ -34,6 +34,15 @@
 #include <QUrl>
 #include <QtConcurrent>
 
+namespace
+{
+struct update_check_result
+{
+    bool has_update = false;
+    QString latest_version = {};
+};
+} // namespace
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , m_ui(new Ui::MainWindow)
@@ -156,6 +165,51 @@ MainWindow::MainWindow(QWidget *parent)
 
     initialize_settings_page();
     initialize_about_page();
+
+    m_ui->about_new_version_label->hide();
+    QObject::connect(m_ui->about_new_version_label, &QLabel::linkActivated, this,
+        [](const QString &link) { QDesktopServices::openUrl(QUrl(link)); });
+
+    QTimer::singleShot(0, this, [this]() {
+        auto *update_watcher = new QFutureWatcher<update_check_result>(this);
+        QObject::connect(update_watcher, &QFutureWatcher<update_check_result>::finished, this,
+            [this, update_watcher]() {
+                const auto result = update_watcher->result();
+                update_watcher->deleteLater();
+
+                if (result.has_update)
+                {
+                    const QString latest_release_url =
+                        QStringLiteral("https://github.com/morwy/sokketter/releases/latest");
+                    m_ui->about_new_version_label->setText(
+                        QStringLiteral("<a href=\"%1\">(new version is available)</a>")
+                            .arg(latest_release_url));
+                    m_ui->about_new_version_label->setOpenExternalLinks(true);
+                    m_ui->about_new_version_label->setTextInteractionFlags(
+                        Qt::TextBrowserInteraction);
+                    m_ui->about_new_version_label->setCursor(Qt::PointingHandCursor);
+                    m_ui->about_new_version_label->show();
+                }
+                else
+                {
+                    m_ui->about_new_version_label->hide();
+                }
+            });
+
+        QObject::connect(update_watcher, &QFutureWatcher<update_check_result>::finished, this,
+            [this, update_watcher]() {
+                if (update_watcher->result().latest_version.isEmpty())
+                {
+                    return;
+                }
+            });
+
+        update_watcher->setFuture(QtConcurrent::run([]() -> update_check_result {
+            std::string latest_version;
+            const bool has_update = sokketter::check_for_updates(latest_version);
+            return {has_update, QString::fromStdString(latest_version)};
+        }));
+    });
 
     QTimer::singleShot(25, [this]() { repopulate_device_list(); });
 }
