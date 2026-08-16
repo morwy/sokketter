@@ -137,7 +137,7 @@ namespace sokketter {
      * @param latest_version receives the latest version string from the GitHub release feed.
      * @return true when a newer release is available, false otherwise.
      */
-    auto EXPORTED is_new_version_available(std::string &latest_version) -> bool;
+    auto EXPORTED is_new_release_available(std::string &latest_version) -> bool;
 
     /**
      * @brief structure containing configuration parameters of the specific socket.

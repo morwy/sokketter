@@ -119,7 +119,7 @@ auto sokketter::version() noexcept -> sokketter::version_information
         SOKKETTER_VERSION_NANO, SOKKETTER_VERSION_SHA};
 }
 
-auto sokketter::is_new_version_available(std::string &latest_version) -> bool
+auto sokketter::is_new_release_available(std::string &latest_version) -> bool
 {
     return sokketter_core::instance().is_new_version_available(latest_version);
 }
