@@ -247,101 +247,76 @@ auto sokketter_core::device(const std::string &serial_number)
     return nullptr;
 }
 
-namespace {
-    struct curl_string_buffer
+auto sokketter_core::write_response_data(char *ptr, size_t size, size_t nmemb, void *userdata)
+    -> size_t
+{
+    auto *buffer = static_cast<curl_string_buffer *>(userdata);
+    if (buffer == nullptr)
     {
-        std::string data;
-    };
-
-    auto write_response_data(char *ptr, size_t size, size_t nmemb, void *userdata) -> size_t
-    {
-        auto *buffer = static_cast<curl_string_buffer *>(userdata);
-        if (buffer == nullptr)
-        {
-            return 0;
-        }
-
-        const auto total_size = size * nmemb;
-        buffer->data.append(ptr, total_size);
-        return total_size;
+        return 0;
     }
 
-    auto normalize_version_string(std::string version) -> std::string
+    const auto total_size = size * nmemb;
+    buffer->data.append(ptr, total_size);
+    return total_size;
+}
+
+auto sokketter_core::normalize_version_string(std::string version) -> std::string
+{
+    while (!version.empty() && (version.front() == 'v' || version.front() == 'V'))
     {
-        while (!version.empty() && (version.front() == 'v' || version.front() == 'V'))
-        {
-            version.erase(version.begin());
-        }
-
-        std::string normalized;
-        normalized.reserve(version.size());
-        for (const char ch : version)
-        {
-            if (std::isdigit(static_cast<unsigned char>(ch)) || ch == '.')
-            {
-                normalized.push_back(ch);
-            }
-        }
-
-        return normalized.empty() ? "0.0.0.0" : normalized;
+        version.erase(version.begin());
     }
 
-    auto parse_version_parts(const std::string &version) -> std::vector<uint32_t>
+    std::string normalized;
+    normalized.reserve(version.size());
+    for (const char ch : version)
     {
-        std::vector<uint32_t> parts;
-        std::stringstream stream(normalize_version_string(version));
-        std::string part;
-
-        while (std::getline(stream, part, '.'))
+        if (std::isdigit(static_cast<unsigned char>(ch)) || ch == '.')
         {
-            if (part.empty())
-            {
-                continue;
-            }
+            normalized.push_back(ch);
+        }
+    }
 
-            try
-            {
-                parts.push_back(static_cast<uint32_t>(std::stoul(part)));
-            }
-            catch (const std::exception &)
-            {
-                parts.push_back(0u);
-            }
+    return normalized.empty() ? "0.0.0.0" : normalized;
+}
+
+auto sokketter_core::parse_version_parts(const std::string &version) -> std::vector<uint32_t>
+{
+    std::vector<uint32_t> parts;
+    std::stringstream stream(normalize_version_string(version));
+    std::string part;
+
+    while (std::getline(stream, part, '.'))
+    {
+        if (part.empty())
+        {
+            continue;
         }
 
-        while (parts.size() < 4)
+        try
+        {
+            parts.push_back(static_cast<uint32_t>(std::stoul(part)));
+        }
+        catch (const std::exception &)
         {
             parts.push_back(0u);
         }
-
-        return parts;
     }
-} // namespace
+
+    while (parts.size() < 4)
+    {
+        parts.push_back(0u);
+    }
+
+    return parts;
+}
 
 auto sokketter_core::is_newer_version(
     const std::string &current_version, const std::string &candidate_version) -> bool
 {
-    const auto normalize = [](std::string version) {
-        while (!version.empty() && (version.front() == 'v' || version.front() == 'V'))
-        {
-            version.erase(version.begin());
-        }
-
-        std::string normalized;
-        normalized.reserve(version.size());
-        for (const char ch : version)
-        {
-            if (std::isdigit(static_cast<unsigned char>(ch)) || ch == '.')
-            {
-                normalized.push_back(ch);
-            }
-        }
-
-        return normalized.empty() ? std::string("0.0.0.0") : normalized;
-    };
-
-    const auto current_parts = parse_version_parts(normalize(current_version));
-    const auto candidate_parts = parse_version_parts(normalize(candidate_version));
+    const auto current_parts = parse_version_parts(current_version);
+    const auto candidate_parts = parse_version_parts(candidate_version);
 
     for (size_t i = 0; i < std::max(current_parts.size(), candidate_parts.size()); ++i)
     {

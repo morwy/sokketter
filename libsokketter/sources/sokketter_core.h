@@ -56,6 +56,15 @@ private:
     auto initialize_logger() -> void;
     auto deinitialize_logger() -> void;
 
+    struct curl_string_buffer
+    {
+        std::string data;
+    };
+
+    static auto write_response_data(char *ptr, size_t size, size_t nmemb, void *userdata) -> size_t;
+    static auto normalize_version_string(std::string version) -> std::string;
+    static auto parse_version_parts(const std::string &version) -> std::vector<uint32_t>;
+
     auto is_newer_version(const std::string &current_version, const std::string &candidate_version)
         -> bool;
 
