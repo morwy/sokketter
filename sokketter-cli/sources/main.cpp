@@ -12,8 +12,8 @@ auto main(int argc, char *argv[]) -> int
     std::string latest_version;
     if (sokketter::is_new_release_available(latest_version))
     {
-        std::cout << "A new sokketter version (" << latest_version
-                  << ") is available: " << sokketter::release_link() << std::endl;
+        std::cout << "A new sokketter version " << latest_version << " is available at "
+                  << sokketter::release_link() << "." << std::endl;
     }
 
     const int return_code = cli_parser::parse_and_process(argc, argv);
