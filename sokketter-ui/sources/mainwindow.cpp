@@ -39,7 +39,6 @@ namespace
 struct update_check_result
 {
     bool has_update = false;
-    QString latest_version = {};
 };
 } // namespace
 
@@ -196,18 +195,9 @@ MainWindow::MainWindow(QWidget *parent)
                 }
             });
 
-        QObject::connect(update_watcher, &QFutureWatcher<update_check_result>::finished, this,
-            [this, update_watcher]() {
-                if (update_watcher->result().latest_version.isEmpty())
-                {
-                    return;
-                }
-            });
-
         update_watcher->setFuture(QtConcurrent::run([]() -> update_check_result {
             std::string latest_version;
-            const bool has_update = sokketter::is_new_release_available(latest_version);
-            return {has_update, QString::fromStdString(latest_version)};
+            return {sokketter::is_new_release_available(latest_version)};
         }));
     });
 
