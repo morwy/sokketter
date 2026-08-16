@@ -9,10 +9,12 @@ import argparse
 import glob
 import logging
 import os
+import pathlib
 import platform
 import shutil
 import subprocess
 import sys
+import tempfile
 from enum import Enum
 
 from Environment import Environment
@@ -189,6 +191,129 @@ class Build:
         self.logger.error("vcvarsall.bat not found!")
         raise EnvironmentError("vcvarsall.bat not found!")
 
+    def __resolve_qt6_dir(self) -> str:
+        """
+        Resolve Qt6_DIR to a path containing Qt6Config.cmake across supported platforms.
+        """
+
+        def has_qt6_config(path: pathlib.Path) -> bool:
+            return (path / "Qt6Config.cmake").exists() or (
+                path / "qt6-config.cmake"
+            ).exists()
+
+        def qt6_dirs_from_prefix(prefix: pathlib.Path) -> list[pathlib.Path]:
+            return [prefix, prefix / "lib" / "cmake" / "Qt6"]
+
+        qt6_dir = os.environ.get("Qt6_DIR") or os.environ.get("QT6_DIR")
+        if qt6_dir:
+            qt6_path = pathlib.Path(qt6_dir).expanduser().resolve()
+            if has_qt6_config(qt6_path):
+                return str(qt6_path)
+            raise EnvironmentError(
+                f"Qt6_DIR is set to '{qt6_path}' but Qt6Config.cmake was not found there."
+            )
+
+        candidates: list[pathlib.Path] = []
+        qt_root_dir = os.environ.get("QT_ROOT_DIR")
+        if qt_root_dir:
+            candidates.extend(
+                qt6_dirs_from_prefix(pathlib.Path(qt_root_dir).expanduser().resolve())
+            )
+
+        cmake_prefix_path = os.environ.get("CMAKE_PREFIX_PATH", "")
+        for prefix in cmake_prefix_path.split(os.pathsep):
+            if prefix:
+                candidates.extend(
+                    qt6_dirs_from_prefix(pathlib.Path(prefix).expanduser().resolve())
+                )
+
+        home_dir = os.environ.get("HOME", "")
+        user_profile = os.environ.get("USERPROFILE", "")
+
+        if platform.system() == "Darwin":
+            patterns = [
+                os.path.join(home_dir, "Qt", "*", "macos", "lib", "cmake", "Qt6"),
+            ]
+        elif platform.system() == "Linux":
+            patterns = [
+                os.path.join(home_dir, "Qt", "*", "gcc_64", "lib", "cmake", "Qt6"),
+                os.path.join(
+                    home_dir, "Qt", "*", "linux_gcc_64", "lib", "cmake", "Qt6"
+                ),
+                os.path.join("/opt", "Qt", "*", "gcc_64", "lib", "cmake", "Qt6"),
+                os.path.join("/usr", "lib", "*", "cmake", "Qt6"),
+                os.path.join("/usr", "lib", "cmake", "Qt6"),
+                os.path.join("/usr", "local", "lib", "cmake", "Qt6"),
+            ]
+        elif platform.system() == "Windows":
+            patterns = [
+                os.path.join("C:\\Qt", "*", "msvc*", "lib", "cmake", "Qt6"),
+                os.path.join("C:\\Qt", "*", "mingw*", "lib", "cmake", "Qt6"),
+                os.path.join(user_profile, "Qt", "*", "msvc*", "lib", "cmake", "Qt6"),
+                os.path.join(user_profile, "Qt", "*", "mingw*", "lib", "cmake", "Qt6"),
+            ]
+        else:
+            patterns = []
+
+        for pattern in patterns:
+            for match in sorted(glob.glob(pattern), reverse=True):
+                candidates.append(pathlib.Path(match).resolve())
+
+        for candidate in candidates:
+            if has_qt6_config(candidate):
+                return str(candidate)
+
+        raise EnvironmentError(
+            "Qt6_DIR is not set and Qt6 could not be auto-discovered for this platform. "
+            "Set Qt6_DIR (or QT6_DIR) to a directory containing Qt6Config.cmake."
+        )
+
+    def __resolve_qt_tool(self, tool_name: str) -> str:
+        """
+        Resolve Qt deployment tools (e.g. macdeployqt, windeployqt) to an executable path.
+        """
+        tool_in_path = shutil.which(tool_name)
+        if tool_in_path:
+            return tool_in_path
+
+        executable_name = tool_name
+        if platform.system() == "Windows" and not tool_name.endswith(".exe"):
+            executable_name = f"{tool_name}.exe"
+
+        candidates: list[pathlib.Path] = []
+
+        qt6_dir = os.environ.get("Qt6_DIR") or os.environ.get("QT6_DIR")
+        if qt6_dir:
+            qt6_path = pathlib.Path(qt6_dir).expanduser().resolve()
+            # Qt6_DIR usually points to <qt-root>/lib/cmake/Qt6, so go to <qt-root>/bin.
+            qt_root_candidate = qt6_path.parent.parent.parent
+            candidates.append(qt_root_candidate / "bin" / executable_name)
+
+        home_dir = os.environ.get("HOME", "")
+        if platform.system() == "Darwin":
+            for path in glob.glob(
+                os.path.join(home_dir, "Qt", "*", "macos", "bin", executable_name)
+            ):
+                candidates.append(pathlib.Path(path))
+        elif platform.system() == "Linux":
+            for path in glob.glob(
+                os.path.join(home_dir, "Qt", "*", "gcc_64", "bin", executable_name)
+            ):
+                candidates.append(pathlib.Path(path))
+        elif platform.system() == "Windows":
+            for path in glob.glob(
+                os.path.join("C:\\Qt", "*", "*", "bin", executable_name)
+            ):
+                candidates.append(pathlib.Path(path))
+
+        for candidate in candidates:
+            if candidate.exists():
+                return str(candidate)
+
+        raise FileNotFoundError(
+            f"Could not find '{tool_name}'. Add Qt's bin directory to PATH or set Qt6_DIR/QT6_DIR."
+        )
+
     def __execute_command(self, cmake_command, cwd: str | None = None):
         try:
             self.logger.info(
@@ -217,6 +342,10 @@ class Build:
                         process.returncode, cmake_command
                     )
 
+        except FileNotFoundError as e:
+            self.logger.error("Command executable not found: %s", e)
+            raise
+
         except subprocess.CalledProcessError as e:
             self.logger.error("Command failed with error:\n%s", e.stderr)
             raise
@@ -227,27 +356,166 @@ class Build:
         """
         self.logger.info("Starting the CMake configuration.")
 
-        if self.__running_in_github_actions():
-            cmake_command = [
-                self.cmake,
-                "-B",
-                self.temp_build_output_dir,
-                f"-DCMAKE_CXX_COMPILER={self.compiler}",
-                "-DIS_COMPILING_STATIC=true",
-                "-DIS_COMPILING_SHARED=false",
-                "-DCMAKE_PREFIX_PATH=$Qt6_DIR",
-            ]
+        qt6_dir = self.__resolve_qt6_dir()
 
-            if BuildStage.TEST.value in self.stages and platform.system() != "Windows":
-                cmake_command.append("-DSOKKETTER_ENABLE_TESTING=true")
+        cmake_command = [
+            self.cmake,
+            "-B",
+            self.temp_build_output_dir,
+            f"-DCMAKE_CXX_COMPILER={self.compiler}",
+            "-DIS_COMPILING_STATIC=true",
+            "-DIS_COMPILING_SHARED=false",
+            f"-DQt6_DIR={qt6_dir}",
+        ]
 
-            self.__execute_command(cmake_command)
-        else:
-            raise EnvironmentError(
-                "This script is intended to run in GitHub Actions environment only."
-            )
+        cmake_prefix_path = os.environ.get("CMAKE_PREFIX_PATH")
+        if cmake_prefix_path:
+            cmake_command.append(f"-DCMAKE_PREFIX_PATH={cmake_prefix_path}")
+
+        if BuildStage.TEST.value in self.stages and platform.system() != "Windows":
+            cmake_command.append("-DSOKKETTER_ENABLE_TESTING=true")
+
+        self.__execute_command(cmake_command)
 
         self.logger.info("CMake configuration completed successfully.")
+
+    def __configure_finder(self, mount_point: pathlib.Path):
+        script = f"""
+        tell application "Finder"
+            tell disk "{mount_point.name}"
+                open
+
+                set current view of container window to icon view
+                set toolbar visible of container window to false
+                set statusbar visible of container window to false
+
+                tell icon view options of container window
+                    set icon size to 64
+                    set arrangement to not arranged
+                    set text size to 12
+                    set shows item info to false
+                    set shows icon preview to true
+                end tell
+
+                set background picture of icon view options of container window to file ".background:background.tiff"
+
+                -- 660 x 400 window
+                set bounds of container window to {{100, 100, 760, 532}}
+
+                -- Centered horizontally, roughly around the middle of the window
+                set position of item "sokketter-ui.app" to {{185, 195}}
+                set position of item "Applications" to {{475, 195}}
+
+                close
+                open
+                update without registering applications
+                delay 2
+                close
+            end tell
+        end tell
+        """
+
+        subprocess.run(
+            ["osascript", "-e", script],
+            check=True,
+        )
+
+    def __create_dmg(self, app_path: str, output_path: str):
+        app = pathlib.Path(app_path).resolve()
+        output = pathlib.Path(output_path).resolve()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            staging = pathlib.Path(tmp) / "sokketter-ui"
+            staging.mkdir()
+
+            # Copy application
+            shutil.copytree(app, staging / app.name)
+
+            # Applications symlink
+            (staging / "Applications").symlink_to("/Applications")
+
+            # Hidden folder holding the Finder background image
+            background_dir = staging / ".background"
+            background_dir.mkdir()
+            shutil.copy(
+                os.path.join(self.workspace, "sokketter-ui", "background.tiff"),
+                background_dir / "background.tiff",
+            )
+
+            # Create read/write DMG first
+            rw_dmg = pathlib.Path(tmp) / "sokketter-rw.dmg"
+
+            subprocess.run(
+                [
+                    "hdiutil",
+                    "create",
+                    "-volname",
+                    "sokketter-ui",
+                    "-srcfolder",
+                    str(staging),
+                    "-ov",
+                    "-format",
+                    "UDRW",
+                    str(rw_dmg),
+                ],
+                check=True,
+            )
+
+            # Mount it
+            result = subprocess.run(
+                [
+                    "hdiutil",
+                    "attach",
+                    "-readwrite",
+                    "-noverify",
+                    "-noautoopen",
+                    str(rw_dmg),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            # Find mounted volume
+            mount_point = None
+            for line in result.stdout.splitlines():
+                if "/Volumes/sokketter-ui" in line:
+                    mount_point = pathlib.Path(line.split("\t")[-1])
+                    break
+
+            if not mount_point:
+                raise RuntimeError("Could not find mounted DMG")
+
+            try:
+                self.__configure_finder(mount_point)
+
+                # Unmount
+                subprocess.run(["hdiutil", "detach", str(mount_point)], check=True)
+
+                # Compress to final DMG
+                subprocess.run(
+                    [
+                        "hdiutil",
+                        "convert",
+                        str(rw_dmg),
+                        "-format",
+                        "UDZO",
+                        "-imagekey",
+                        "zlib-level=9",
+                        "-ov",
+                        "-o",
+                        str(output),
+                    ],
+                    check=True,
+                )
+
+            finally:
+                # Best effort cleanup if something failed
+                subprocess.run(
+                    ["hdiutil", "detach", str(mount_point)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
 
     def __build(self) -> None:
         """
@@ -326,12 +594,16 @@ class Build:
         self.logger.info("Starting the packaging of library files.")
 
         sokketter_lib_folder = os.path.join(self.results_output_dir, "libsokketter")
-        os.makedirs(sokketter_lib_folder, exist_ok=True)
+        if os.path.exists(sokketter_lib_folder):
+            shutil.rmtree(sokketter_lib_folder)
+
+        os.makedirs(sokketter_lib_folder)
 
         shutil.copytree(
             os.path.join(self.temp_binary_output_dir, "libs"),
             os.path.join(sokketter_lib_folder, "libs"),
         )
+
         shutil.copytree(
             os.path.join(self.temp_binary_output_dir, "include"),
             os.path.join(sokketter_lib_folder, "include"),
@@ -346,12 +618,18 @@ class Build:
         self.logger.info("Starting the packaging of CLI files.")
 
         sokketter_cli_folder = os.path.join(self.results_output_dir, "sokketter-cli")
-        os.makedirs(sokketter_cli_folder, exist_ok=True)
+        if os.path.exists(sokketter_cli_folder):
+            shutil.rmtree(sokketter_cli_folder)
+
+        os.makedirs(sokketter_cli_folder)
 
         sokketter_cli_zip_folder = os.path.join(
             self.temp_binary_output_dir, "sokketter-cli-zipped"
         )
-        os.makedirs(sokketter_cli_zip_folder, exist_ok=True)
+        if os.path.exists(sokketter_cli_zip_folder):
+            shutil.rmtree(sokketter_cli_zip_folder)
+
+        os.makedirs(sokketter_cli_zip_folder)
 
         if platform.system() == "Windows":
             shutil.copy(
@@ -384,12 +662,18 @@ class Build:
         self.logger.info("Starting the packaging of UI files.")
 
         sokketter_ui_folder = os.path.join(self.results_output_dir, "sokketter-ui")
-        os.makedirs(sokketter_ui_folder, exist_ok=True)
+        if os.path.exists(sokketter_ui_folder):
+            shutil.rmtree(sokketter_ui_folder)
+
+        os.makedirs(sokketter_ui_folder)
 
         sokketter_ui_zip_folder = os.path.join(
             self.temp_binary_output_dir, "sokketter-ui-zipped"
         )
-        os.makedirs(sokketter_ui_zip_folder, exist_ok=True)
+        if os.path.exists(sokketter_ui_zip_folder):
+            shutil.rmtree(sokketter_ui_zip_folder)
+
+        os.makedirs(sokketter_ui_zip_folder)
 
         if platform.system() == "Windows":
             shutil.copy(
@@ -397,7 +681,7 @@ class Build:
                 sokketter_ui_zip_folder,
             )
             packing_command = [
-                "windeployqt",
+                self.__resolve_qt_tool("windeployqt"),
                 os.path.join(sokketter_ui_zip_folder, "sokketter-ui.exe"),
                 sokketter_ui_zip_folder,
             ]
@@ -415,17 +699,18 @@ class Build:
             )
 
         elif platform.system() == "Darwin":
+            filename = "sokketter-ui.app"
+            app_filepath = os.path.join(sokketter_ui_zip_folder, filename)
+
             shutil.copytree(
-                src=os.path.join(
-                    self.temp_binary_output_dir, "bin", "sokketter-ui.app"
-                ),
-                dst=os.path.join(sokketter_ui_zip_folder, "sokketter-ui.app"),
+                src=os.path.join(self.temp_binary_output_dir, "bin", filename),
+                dst=app_filepath,
                 symlinks=True,
             )
 
             packing_command = [
-                "macdeployqt",
-                os.path.join(sokketter_ui_zip_folder, "sokketter-ui.app"),
+                self.__resolve_qt_tool("macdeployqt"),
+                app_filepath,
                 "-verbose=2",
             ]
             self.__execute_command(packing_command)
@@ -437,7 +722,7 @@ class Build:
                 "--sign",
                 "-",
                 "--timestamp=none",
-                os.path.join(sokketter_ui_zip_folder, "sokketter-ui.app"),
+                app_filepath,
             ]
             self.__execute_command(packing_command)
 
@@ -452,7 +737,7 @@ class Build:
                 "-k",
                 "--keepParent",
                 "--sequesterRsrc",
-                os.path.join(sokketter_ui_zip_folder, "sokketter-ui.app"),
+                app_filepath,
                 zip_name,
             ]
             self.__execute_command(packing_command)
@@ -461,6 +746,13 @@ class Build:
                 src=zip_name,
                 dst=sokketter_ui_folder,
             )
+
+            dmg_filename = os.path.join(
+                sokketter_ui_folder,
+                f"sokketter-ui-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}.dmg",
+            )
+
+            self.__create_dmg(app_path=app_filepath, output_path=dmg_filename)
 
         elif platform.system() == "Linux":
             sokketter_app_image_folder = os.path.join(
