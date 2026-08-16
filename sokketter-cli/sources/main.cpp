@@ -12,7 +12,7 @@ auto main(int argc, char *argv[]) -> int
     std::string latest_version;
     if (sokketter::is_new_release_available(latest_version))
     {
-        std::cout << "A new sokketter version " << latest_version << " is available at "
+        std::cerr << "A new sokketter version " << latest_version << " is available at "
                   << sokketter::release_link() << "." << std::endl;
     }
 
