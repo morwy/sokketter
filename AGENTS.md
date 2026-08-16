@@ -13,7 +13,7 @@ Cross-platform C++17 project. Three first-party components plus vendored depende
 
 ## Build & test
 
-Build locally by using Build.py (Windows, Linux, macOS). Build.py allows selecting which actions to perform (configure, build, test, package) by specifying `--stages` (default: all).
+Build locally by calling Build.py Python script. Build.py allows selecting which actions to perform (configure, build, test, package) by specifying `--stages` (default: all).
 
 ```powershell
 python Build.py --stages CONFIGURE BUILD VERIFY
