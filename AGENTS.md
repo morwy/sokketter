@@ -46,5 +46,4 @@ Device configuration is persisted as JSON (nlohmann) to `devices.json` under the
 
 ## Gotchas
 
-- [Build.py](Build.py) is **GitHub-Actions-only** and raises `EnvironmentError` when run locally — use the raw `cmake` commands above instead.
 - Sources are collected with recursive globs; adding a new `.cpp`/`.h` under an existing component requires re-running CMake configure.
