@@ -1313,6 +1313,7 @@ auto MainWindow::set_theme_according_to_mode() -> void
         APP_LOGGER, "Setting application theme to {}.", isDarkMode() ? "dark" : "light");
 
     qApp->setStyleSheet(isDarkMode() ? dark_theme : light_theme);
+    qApp->setPalette(link_palette());
 #ifdef Q_OS_WIN
     toggle_dark_titlebar(winId(), isDarkMode());
 #endif
