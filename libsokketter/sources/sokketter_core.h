@@ -41,7 +41,15 @@ public:
 
     auto device(const std::string &serial_number) -> std::shared_ptr<sokketter::power_strip>;
 
+    auto release_link() -> std::string;
+    auto is_new_release_available(std::string &latest_version) -> bool;
+
 private:
+    inline static constexpr auto RELEASE_LINK =
+        "https://github.com/morwy/sokketter/releases/latest";
+    inline static constexpr auto RELEASE_API_LINK =
+        "https://api.github.com/repos/morwy/sokketter/releases/latest";
+
     sokketter::settings_structure m_settings;
     std::shared_ptr<spdlog::logger> m_logger = nullptr;
     database_storage m_database;
@@ -53,6 +61,18 @@ private:
 
     auto initialize_logger() -> void;
     auto deinitialize_logger() -> void;
+
+    struct curl_string_buffer
+    {
+        std::string data;
+    };
+
+    static auto write_response_data(char *ptr, size_t size, size_t nmemb, void *userdata) -> size_t;
+    static auto normalize_version_string(std::string version) -> std::string;
+    static auto parse_version_parts(const std::string &version) -> std::vector<uint32_t>;
+
+    auto is_newer_version(const std::string &current_version, const std::string &candidate_version)
+        -> bool;
 
     auto logging_callback(const kommpot::callback_response_structure &response) -> void;
 

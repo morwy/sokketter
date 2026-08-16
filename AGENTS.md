@@ -13,11 +13,10 @@ Cross-platform C++17 project. Three first-party components plus vendored depende
 
 ## Build & test
 
-Build locally with CMake + Ninja. `IS_COMPILING_STATIC` / `IS_COMPILING_SHARED` select the library type and must be set explicitly.
+Build locally by calling Build.py Python script. Build.py allows selecting which actions to perform (configure, build, test, package) by specifying `--stages` (default: all).
 
 ```powershell
-cmake -B build -DIS_COMPILING_STATIC=true -DIS_COMPILING_SHARED=false
-cmake --build build --config Debug
+python Build.py --stages CONFIGURE BUILD VERIFY
 ```
 
 - Tests are opt-in via `-DSOKKETTER_ENABLE_TESTING=true` (GoogleTest, discovered with `gtest_discover_tests`). Run them with `ctest --test-dir build --output-on-failure`.
@@ -47,5 +46,4 @@ Device configuration is persisted as JSON (nlohmann) to `devices.json` under the
 
 ## Gotchas
 
-- [Build.py](Build.py) is **GitHub-Actions-only** and raises `EnvironmentError` when run locally — use the raw `cmake` commands above instead.
 - Sources are collected with recursive globs; adding a new `.cpp`/`.h` under an existing component requires re-running CMake configure.

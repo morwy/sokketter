@@ -44,3 +44,4 @@ TEST(cli_general_tests, no_args)
     ASSERT_EQ(out, "");
     ASSERT_EQ(err, "A subcommand is required\nRun with --help for more information.\n");
 }
+

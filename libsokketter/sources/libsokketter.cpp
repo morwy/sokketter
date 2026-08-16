@@ -119,6 +119,16 @@ auto sokketter::version() noexcept -> sokketter::version_information
         SOKKETTER_VERSION_NANO, SOKKETTER_VERSION_SHA};
 }
 
+auto sokketter::release_link() -> std::string
+{
+    return sokketter_core::instance().release_link();
+}
+
+auto sokketter::is_new_release_available(std::string &latest_version) -> bool
+{
+    return sokketter_core::instance().is_new_release_available(latest_version);
+}
+
 sokketter::socket::socket(const socket_configuration &configuration)
 {
     m_configuration = configuration;

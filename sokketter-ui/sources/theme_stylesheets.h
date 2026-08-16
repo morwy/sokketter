@@ -6,6 +6,8 @@
 #include <app_settings_storage.h>
 
 #include <QApplication>
+#include <QColor>
+#include <QPalette>
 #include <QString>
 #include <QStyleHints>
 
@@ -264,6 +266,15 @@ const QString light_theme = base_theme + R"(
         font-size: 16px;
         color: #82827C;
     }
+
+    a {
+        color: #0B6BCB;
+        text-decoration: underline;
+    }
+
+    a:visited {
+        color: #0B6BCB;
+    }
 )";
 
 const QString dark_theme = base_theme + R"(
@@ -490,6 +501,15 @@ const QString dark_theme = base_theme + R"(
         font-size: 16px;
         color: #7d7c75;
     }
+
+    a {
+        color: #5AC8FA;
+        text-decoration: underline;
+    }
+
+    a:visited {
+        color: #5AC8FA;
+    }
 )";
 
 static auto isDarkMode() -> bool
@@ -520,6 +540,21 @@ static auto isDarkMode() -> bool
         return false;
     }
     }
+}
+
+/**
+ * @brief link color, noticeably distinct from ClickableLabel/ButtonLabel colors, for widgets
+ * (e.g. QLabel) whose rich-text anchors follow QPalette::Link rather than the QSS "a" rule.
+ */
+static auto link_palette() -> QPalette
+{
+    QPalette palette = qApp->palette();
+    const QColor link_color = isDarkMode() ? QColor("#5AC8FA") : QColor("#0B6BCB");
+
+    palette.setColor(QPalette::Link, link_color);
+    palette.setColor(QPalette::LinkVisited, link_color);
+
+    return palette;
 }
 
 #endif // THEME_STYLESHEETS_H

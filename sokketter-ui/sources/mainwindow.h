@@ -54,6 +54,12 @@ private:
      */
     QThreadPool m_device_pool;
 
+    /**
+     * @brief owns the asynchronous update check task so shutdown waits for it before deinitializing
+     * the library.
+     */
+    QThreadPool m_update_check_pool;
+
     auto new_devices_received(std::vector<std::shared_ptr<sokketter::power_strip>> power_strips)
         -> void;
     auto new_status_received(sokketter::enumeration_status status) -> void;

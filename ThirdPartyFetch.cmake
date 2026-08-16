@@ -14,6 +14,10 @@ set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)
 set(CURL_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
+if(WIN32)
+    # Use the Windows certificate store for HTTPS requests made by the library.
+    set(CURL_USE_SCHANNEL ON CACHE BOOL "" FORCE)
+endif()
 # Build static curl with -fPIC so it can be linked into the shared libsokketter.
 set(CMAKE_POSITION_INDEPENDENT_CODE ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(curl)

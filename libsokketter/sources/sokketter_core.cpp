@@ -5,9 +5,14 @@
 #include <devices/test_device.h>
 #include <libsokketter.h>
 
+#include <algorithm>
+#include <cctype>
+#include <curl/curl.h>
+#include <json/json.hpp>
 #include <spdlog/sinks/callback_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
+#include <sstream>
 #include <third-party/kommpot/libkommpot/include/libkommpot.h>
 
 #ifdef _WIN32
@@ -240,6 +245,165 @@ auto sokketter_core::device(const std::string &serial_number)
     SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER, "No device found with serial number {}.", serial_number);
 
     return nullptr;
+}
+
+auto sokketter_core::write_response_data(char *ptr, size_t size, size_t nmemb, void *userdata)
+    -> size_t
+{
+    auto *buffer = static_cast<curl_string_buffer *>(userdata);
+    if (buffer == nullptr)
+    {
+        return 0;
+    }
+
+    const auto total_size = size * nmemb;
+    buffer->data.append(ptr, total_size);
+    return total_size;
+}
+
+auto sokketter_core::normalize_version_string(std::string version) -> std::string
+{
+    while (!version.empty() && (version.front() == 'v' || version.front() == 'V'))
+    {
+        version.erase(version.begin());
+    }
+
+    std::string normalized;
+    normalized.reserve(version.size());
+    for (const char ch : version)
+    {
+        if (std::isdigit(static_cast<unsigned char>(ch)) || ch == '.')
+        {
+            normalized.push_back(ch);
+        }
+    }
+
+    return normalized.empty() ? "0.0.0.0" : normalized;
+}
+
+auto sokketter_core::parse_version_parts(const std::string &version) -> std::vector<uint32_t>
+{
+    std::vector<uint32_t> parts;
+    std::stringstream stream(normalize_version_string(version));
+    std::string part;
+
+    while (std::getline(stream, part, '.'))
+    {
+        if (part.empty())
+        {
+            continue;
+        }
+
+        try
+        {
+            parts.push_back(static_cast<uint32_t>(std::stoul(part)));
+        }
+        catch (const std::exception &)
+        {
+            parts.push_back(0u);
+        }
+    }
+
+    while (parts.size() < 4)
+    {
+        parts.push_back(0u);
+    }
+
+    return parts;
+}
+
+auto sokketter_core::is_newer_version(
+    const std::string &current_version, const std::string &candidate_version) -> bool
+{
+    const auto current_parts = parse_version_parts(current_version);
+    const auto candidate_parts = parse_version_parts(candidate_version);
+
+    for (size_t i = 0; i < std::max(current_parts.size(), candidate_parts.size()); ++i)
+    {
+        const auto current_part = i < current_parts.size() ? current_parts[i] : 0u;
+        const auto candidate_part = i < candidate_parts.size() ? candidate_parts[i] : 0u;
+
+        if (candidate_part > current_part)
+        {
+            return true;
+        }
+
+        if (candidate_part < current_part)
+        {
+            return false;
+        }
+    }
+
+    return false;
+}
+
+auto sokketter_core::release_link() -> std::string
+{
+    return RELEASE_LINK;
+}
+
+auto sokketter_core::is_new_release_available(std::string &latest_version) -> bool
+{
+    latest_version.clear();
+    const auto current_version = sokketter::version().to_string();
+    const std::string url = RELEASE_API_LINK;
+
+    CURL *curl = curl_easy_init();
+    if (curl == nullptr)
+    {
+        SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER, "Failed to initialize curl for update check.");
+        return false;
+    }
+
+    curl_string_buffer response = {};
+    struct curl_slist *headers = curl_slist_append(nullptr, "Accept: application/vnd.github+json");
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "sokketter");
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
+    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_response_data);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+    const auto result = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+    curl_slist_free_all(headers);
+
+    if (result != CURLE_OK)
+    {
+        SPDLOG_LOGGER_WARN(
+            SOKKETTER_LOGGER, "Failed checking GitHub releases: {}.", curl_easy_strerror(result));
+        return false;
+    }
+
+    if (response.data.empty())
+    {
+        return false;
+    }
+
+    try
+    {
+        const auto json_response = nlohmann::json::parse(response.data);
+        if (!json_response.contains("tag_name") || !json_response["tag_name"].is_string())
+        {
+            return false;
+        }
+
+        latest_version = json_response["tag_name"].get<std::string>();
+    }
+    catch (const nlohmann::json::exception &exception)
+    {
+        SPDLOG_LOGGER_WARN(
+            SOKKETTER_LOGGER, "Failed parsing GitHub release response: {}.", exception.what());
+        return false;
+    }
+
+    if (latest_version.empty())
+    {
+        return false;
+    }
+
+    return is_newer_version(current_version, latest_version);
 }
 
 auto sokketter_core::initialize_logger() -> void

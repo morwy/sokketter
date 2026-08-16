@@ -44,6 +44,7 @@ auto license_dialog::event(QEvent *event) -> bool
 auto license_dialog::setThemeAccordingToMode() -> void
 {
     this->setStyleSheet(isDarkMode() ? dark_theme : light_theme);
+    this->setPalette(link_palette());
 #ifdef Q_OS_WIN
     toggle_dark_titlebar(winId(), isDarkMode());
 #endif
