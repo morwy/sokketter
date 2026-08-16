@@ -41,6 +41,8 @@ public:
 
     auto device(const std::string &serial_number) -> std::shared_ptr<sokketter::power_strip>;
 
+    auto check_for_updates(std::string &latest_version) -> bool;
+
 private:
     sokketter::settings_structure m_settings;
     std::shared_ptr<spdlog::logger> m_logger = nullptr;

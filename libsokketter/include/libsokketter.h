@@ -133,6 +133,22 @@ namespace sokketter {
     auto EXPORTED version() noexcept -> version_information;
 
     /**
+     * @brief compares two semantic-version strings and checks whether the candidate is newer.
+     * @param current_version version currently in use.
+     * @param candidate_version version to be compared against.
+     * @return true when candidate_version is newer than current_version.
+     */
+    auto EXPORTED is_newer_version(
+        const std::string &current_version, const std::string &candidate_version) -> bool;
+
+    /**
+     * @brief checks whether a newer release is available.
+     * @param latest_version receives the latest version string from the GitHub release feed.
+     * @return true when a newer release is available, false otherwise.
+     */
+    auto EXPORTED check_for_updates(std::string &latest_version) -> bool;
+
+    /**
      * @brief structure containing configuration parameters of the specific socket.
      */
     struct EXPORTED socket_configuration
