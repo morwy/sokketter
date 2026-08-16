@@ -201,6 +201,9 @@ class Build:
                 path / "qt6-config.cmake"
             ).exists()
 
+        def qt6_dirs_from_prefix(prefix: pathlib.Path) -> list[pathlib.Path]:
+            return [prefix, prefix / "lib" / "cmake" / "Qt6"]
+
         qt6_dir = os.environ.get("Qt6_DIR") or os.environ.get("QT6_DIR")
         if qt6_dir:
             qt6_path = pathlib.Path(qt6_dir).expanduser().resolve()
@@ -211,6 +214,19 @@ class Build:
             )
 
         candidates: list[pathlib.Path] = []
+        qt_root_dir = os.environ.get("QT_ROOT_DIR")
+        if qt_root_dir:
+            candidates.extend(
+                qt6_dirs_from_prefix(pathlib.Path(qt_root_dir).expanduser().resolve())
+            )
+
+        cmake_prefix_path = os.environ.get("CMAKE_PREFIX_PATH", "")
+        for prefix in cmake_prefix_path.split(os.pathsep):
+            if prefix:
+                candidates.extend(
+                    qt6_dirs_from_prefix(pathlib.Path(prefix).expanduser().resolve())
+                )
+
         home_dir = os.environ.get("HOME", "")
         user_profile = os.environ.get("USERPROFILE", "")
 
