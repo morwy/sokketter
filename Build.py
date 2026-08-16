@@ -191,6 +191,67 @@ class Build:
         self.logger.error("vcvarsall.bat not found!")
         raise EnvironmentError("vcvarsall.bat not found!")
 
+    def __resolve_qt6_dir(self) -> str:
+        """
+        Resolve Qt6_DIR to a path containing Qt6Config.cmake across supported platforms.
+        """
+
+        def has_qt6_config(path: pathlib.Path) -> bool:
+            return (path / "Qt6Config.cmake").exists() or (
+                path / "qt6-config.cmake"
+            ).exists()
+
+        qt6_dir = os.environ.get("Qt6_DIR") or os.environ.get("QT6_DIR")
+        if qt6_dir:
+            qt6_path = pathlib.Path(qt6_dir).expanduser().resolve()
+            if has_qt6_config(qt6_path):
+                return str(qt6_path)
+            raise EnvironmentError(
+                f"Qt6_DIR is set to '{qt6_path}' but Qt6Config.cmake was not found there."
+            )
+
+        candidates: list[pathlib.Path] = []
+        home_dir = os.environ.get("HOME", "")
+        user_profile = os.environ.get("USERPROFILE", "")
+
+        if platform.system() == "Darwin":
+            patterns = [
+                os.path.join(home_dir, "Qt", "*", "macos", "lib", "cmake", "Qt6"),
+            ]
+        elif platform.system() == "Linux":
+            patterns = [
+                os.path.join(home_dir, "Qt", "*", "gcc_64", "lib", "cmake", "Qt6"),
+                os.path.join(
+                    home_dir, "Qt", "*", "linux_gcc_64", "lib", "cmake", "Qt6"
+                ),
+                os.path.join("/opt", "Qt", "*", "gcc_64", "lib", "cmake", "Qt6"),
+                os.path.join("/usr", "lib", "*", "cmake", "Qt6"),
+                os.path.join("/usr", "lib", "cmake", "Qt6"),
+                os.path.join("/usr", "local", "lib", "cmake", "Qt6"),
+            ]
+        elif platform.system() == "Windows":
+            patterns = [
+                os.path.join("C:\\Qt", "*", "msvc*", "lib", "cmake", "Qt6"),
+                os.path.join("C:\\Qt", "*", "mingw*", "lib", "cmake", "Qt6"),
+                os.path.join(user_profile, "Qt", "*", "msvc*", "lib", "cmake", "Qt6"),
+                os.path.join(user_profile, "Qt", "*", "mingw*", "lib", "cmake", "Qt6"),
+            ]
+        else:
+            patterns = []
+
+        for pattern in patterns:
+            for match in sorted(glob.glob(pattern), reverse=True):
+                candidates.append(pathlib.Path(match).resolve())
+
+        for candidate in candidates:
+            if has_qt6_config(candidate):
+                return str(candidate)
+
+        raise EnvironmentError(
+            "Qt6_DIR is not set and Qt6 could not be auto-discovered for this platform. "
+            "Set Qt6_DIR (or QT6_DIR) to a directory containing Qt6Config.cmake."
+        )
+
     def __resolve_qt_tool(self, tool_name: str) -> str:
         """
         Resolve Qt deployment tools (e.g. macdeployqt, windeployqt) to an executable path.
@@ -279,6 +340,8 @@ class Build:
         """
         self.logger.info("Starting the CMake configuration.")
 
+        qt6_dir = self.__resolve_qt6_dir()
+
         cmake_command = [
             self.cmake,
             "-B",
@@ -286,7 +349,7 @@ class Build:
             f"-DCMAKE_CXX_COMPILER={self.compiler}",
             "-DIS_COMPILING_STATIC=true",
             "-DIS_COMPILING_SHARED=false",
-            "-DCMAKE_PREFIX_PATH=$Qt6_DIR",
+            f"-DQt6_DIR={qt6_dir}",
         ]
 
         cmake_prefix_path = os.environ.get("CMAKE_PREFIX_PATH")
