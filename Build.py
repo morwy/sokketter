@@ -381,12 +381,12 @@ class Build:
                     set shows icon preview to true
                 end tell
 
-                -- Centered horizontally, roughly around the middle of the window
-                set position of item "sokketter-ui.app" to {{180, 200}}
-                set position of item "Applications" to {{460, 200}}
+                -- 835 x 600 window
+                set bounds of container window to {{100, 100, 935, 700}}
 
-                -- 640 x 400 window
-                set bounds of container window to {{100, 100, 740, 600}}
+                -- Centered horizontally, roughly around the middle of the window
+                set position of item "sokketter-ui.app" to {{210, 280}}
+                set position of item "Applications" to {{625, 280}}
 
                 close
                 open
