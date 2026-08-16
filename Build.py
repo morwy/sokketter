@@ -403,8 +403,8 @@ class Build:
                 set bounds of container window to {{100, 100, 760, 500}}
 
                 -- Centered horizontally, roughly around the middle of the window
-                set position of item "sokketter-ui.app" to {{165, 190}}
-                set position of item "Applications" to {{495, 190}}
+                set position of item "sokketter-ui.app" to {{185, 195}}
+                set position of item "Applications" to {{475, 195}}
 
                 close
                 open
