@@ -57,6 +57,7 @@ MainWindow::MainWindow(QWidget *parent)
      * the device's single-session nature.
      */
     m_device_pool.setMaxThreadCount(1);
+    m_update_check_pool.setMaxThreadCount(1);
 
     app_settings_storage::instance().load();
 
@@ -195,10 +196,11 @@ MainWindow::MainWindow(QWidget *parent)
                 }
             });
 
-        update_watcher->setFuture(QtConcurrent::run([]() -> update_check_result {
-            std::string latest_version;
-            return {sokketter::is_new_release_available(latest_version)};
-        }));
+        update_watcher->setFuture(
+            QtConcurrent::run(&m_update_check_pool, []() -> update_check_result {
+                std::string latest_version;
+                return {sokketter::is_new_release_available(latest_version)};
+            }));
     });
 
     QTimer::singleShot(25, [this]() { repopulate_device_list(); });
@@ -208,6 +210,8 @@ MainWindow::~MainWindow()
 {
     m_device_pool.clear();
     m_device_pool.waitForDone();
+    m_update_check_pool.clear();
+    m_update_check_pool.waitForDone();
 
     if (m_device != nullptr)
     {
