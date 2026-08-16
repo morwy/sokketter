@@ -370,7 +370,8 @@ class Build:
                 open
 
                 set current view of container window to icon view
-                set resizable of container window to false
+                set toolbar visible of container window to false
+                set statusbar visible of container window to false
 
                 tell icon view options of container window
                     set icon size to 128
