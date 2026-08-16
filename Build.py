@@ -397,12 +397,14 @@ class Build:
                     set shows icon preview to true
                 end tell
 
-                -- 835 x 600 window
-                set bounds of container window to {{100, 100, 935, 700}}
+                set background picture of icon view options of container window to file ".background:background.tiff"
+
+                -- 660 x 400 window
+                set bounds of container window to {{100, 100, 760, 500}}
 
                 -- Centered horizontally, roughly around the middle of the window
-                set position of item "sokketter-ui.app" to {{210, 280}}
-                set position of item "Applications" to {{625, 280}}
+                set position of item "sokketter-ui.app" to {{165, 190}}
+                set position of item "Applications" to {{495, 190}}
 
                 close
                 open
@@ -431,6 +433,14 @@ class Build:
 
             # Applications symlink
             (staging / "Applications").symlink_to("/Applications")
+
+            # Hidden folder holding the Finder background image
+            background_dir = staging / ".background"
+            background_dir.mkdir()
+            shutil.copy(
+                os.path.join(self.workspace, "sokketter-ui", "background.tiff"),
+                background_dir / "background.tiff",
+            )
 
             # Create read/write DMG first
             rw_dmg = pathlib.Path(tmp) / "sokketter-rw.dmg"
