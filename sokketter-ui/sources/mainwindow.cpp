@@ -180,7 +180,7 @@ MainWindow::MainWindow(QWidget *parent)
                 if (result.has_update)
                 {
                     const QString latest_release_url =
-                        QStringLiteral("https://github.com/morwy/sokketter/releases/latest");
+                        QString::fromStdString(sokketter::release_link());
                     m_ui->about_new_version_label->setText(
                         QStringLiteral("<a href=\"%1\">(new version is available)</a>")
                             .arg(latest_release_url));

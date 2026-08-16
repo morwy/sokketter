@@ -337,11 +337,16 @@ auto sokketter_core::is_newer_version(
     return false;
 }
 
+auto sokketter_core::release_link() -> std::string
+{
+    return RELEASE_LINK;
+}
+
 auto sokketter_core::is_new_release_available(std::string &latest_version) -> bool
 {
     latest_version.clear();
     const auto current_version = sokketter::version().to_string();
-    const std::string url = "https://api.github.com/repos/morwy/sokketter/releases/latest";
+    const std::string url = RELEASE_API_LINK;
 
     CURL *curl = curl_easy_init();
     if (curl == nullptr)
