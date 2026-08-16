@@ -206,7 +206,7 @@ MainWindow::MainWindow(QWidget *parent)
 
         update_watcher->setFuture(QtConcurrent::run([]() -> update_check_result {
             std::string latest_version;
-            const bool has_update = sokketter::check_for_updates(latest_version);
+            const bool has_update = sokketter::is_new_version_available(latest_version);
             return {has_update, QString::fromStdString(latest_version)};
         }));
     });

@@ -1,11 +1,8 @@
 #include "libsokketter.h"
 
-#include <algorithm>
 #include <cstdint>
-#include <sstream>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <database_storage.h>
 #include <devices/power_strip_base.h>
@@ -122,87 +119,9 @@ auto sokketter::version() noexcept -> sokketter::version_information
         SOKKETTER_VERSION_NANO, SOKKETTER_VERSION_SHA};
 }
 
-auto sokketter::is_newer_version(
-    const std::string &current_version, const std::string &candidate_version) -> bool
+auto sokketter::is_new_version_available(std::string &latest_version) -> bool
 {
-    const auto normalize = [](std::string version) {
-        while (!version.empty() && (version.front() == 'v' || version.front() == 'V'))
-        {
-            version.erase(version.begin());
-        }
-
-        std::string normalized;
-        normalized.reserve(version.size());
-        for (const char ch : version)
-        {
-            if (std::isdigit(static_cast<unsigned char>(ch)) || ch == '.')
-            {
-                normalized.push_back(ch);
-            }
-        }
-
-        return normalized.empty() ? std::string("0.0.0.0") : normalized;
-    };
-
-    const auto parse_parts = [](const std::string &version) {
-        std::vector<uint32_t> parts;
-        std::stringstream stream(version);
-        std::string part;
-
-        while (std::getline(stream, part, '.'))
-        {
-            if (part.empty())
-            {
-                continue;
-            }
-
-            try
-            {
-                parts.push_back(static_cast<uint32_t>(std::stoul(part)));
-            }
-            catch (const std::exception &)
-            {
-                parts.push_back(0u);
-            }
-        }
-
-        while (parts.size() < 4)
-        {
-            parts.push_back(0u);
-        }
-
-        return parts;
-    };
-
-    const auto current_normalized = normalize(current_version);
-    const auto candidate_normalized = normalize(candidate_version);
-
-    const auto current_parts = parse_parts(current_normalized);
-    const auto candidate_parts = parse_parts(candidate_normalized);
-
-    const auto max_size = std::max(current_parts.size(), candidate_parts.size());
-    for (size_t i = 0; i < max_size; ++i)
-    {
-        const auto current_part = i < current_parts.size() ? current_parts[i] : 0u;
-        const auto candidate_part = i < candidate_parts.size() ? candidate_parts[i] : 0u;
-
-        if (candidate_part > current_part)
-        {
-            return true;
-        }
-
-        if (candidate_part < current_part)
-        {
-            return false;
-        }
-    }
-
-    return false;
-}
-
-auto sokketter::check_for_updates(std::string &latest_version) -> bool
-{
-    return sokketter_core::instance().check_for_updates(latest_version);
+    return sokketter_core::instance().is_new_version_available(latest_version);
 }
 
 sokketter::socket::socket(const socket_configuration &configuration)

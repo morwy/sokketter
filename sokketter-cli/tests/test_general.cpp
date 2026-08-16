@@ -45,10 +45,3 @@ TEST(cli_general_tests, no_args)
     ASSERT_EQ(err, "A subcommand is required\nRun with --help for more information.\n");
 }
 
-TEST(cli_general_tests, version_update_detection)
-{
-    EXPECT_TRUE(sokketter::is_newer_version("1.3.2.0", "1.3.3.0"));
-    EXPECT_TRUE(sokketter::is_newer_version("1.3.2.0", "v1.3.2.1"));
-    EXPECT_FALSE(sokketter::is_newer_version("1.3.3.0", "1.3.3.0"));
-    EXPECT_FALSE(sokketter::is_newer_version("1.3.3.1", "1.3.3.0"));
-}

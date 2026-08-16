@@ -318,7 +318,51 @@ namespace {
     }
 } // namespace
 
-auto sokketter_core::check_for_updates(std::string &latest_version) -> bool
+auto sokketter_core::is_newer_version(
+    const std::string &current_version, const std::string &candidate_version) -> bool
+{
+    const auto normalize = [](std::string version) {
+        while (!version.empty() && (version.front() == 'v' || version.front() == 'V'))
+        {
+            version.erase(version.begin());
+        }
+
+        std::string normalized;
+        normalized.reserve(version.size());
+        for (const char ch : version)
+        {
+            if (std::isdigit(static_cast<unsigned char>(ch)) || ch == '.')
+            {
+                normalized.push_back(ch);
+            }
+        }
+
+        return normalized.empty() ? std::string("0.0.0.0") : normalized;
+    };
+
+    const auto current_parts = parse_version_parts(normalize(current_version));
+    const auto candidate_parts = parse_version_parts(normalize(candidate_version));
+
+    for (size_t i = 0; i < std::max(current_parts.size(), candidate_parts.size()); ++i)
+    {
+        const auto current_part = i < current_parts.size() ? current_parts[i] : 0u;
+        const auto candidate_part = i < candidate_parts.size() ? candidate_parts[i] : 0u;
+
+        if (candidate_part > current_part)
+        {
+            return true;
+        }
+
+        if (candidate_part < current_part)
+        {
+            return false;
+        }
+    }
+
+    return false;
+}
+
+auto sokketter_core::is_new_version_available(std::string &latest_version) -> bool
 {
     latest_version.clear();
     const auto current_version = sokketter::version().to_string();
@@ -379,7 +423,7 @@ auto sokketter_core::check_for_updates(std::string &latest_version) -> bool
         return false;
     }
 
-    return sokketter::is_newer_version(current_version, latest_version);
+    return is_newer_version(current_version, latest_version);
 }
 
 auto sokketter_core::initialize_logger() -> void

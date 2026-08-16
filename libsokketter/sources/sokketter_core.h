@@ -41,7 +41,7 @@ public:
 
     auto device(const std::string &serial_number) -> std::shared_ptr<sokketter::power_strip>;
 
-    auto check_for_updates(std::string &latest_version) -> bool;
+    auto is_new_version_available(std::string &latest_version) -> bool;
 
 private:
     sokketter::settings_structure m_settings;
@@ -55,6 +55,9 @@ private:
 
     auto initialize_logger() -> void;
     auto deinitialize_logger() -> void;
+
+    auto is_newer_version(const std::string &current_version, const std::string &candidate_version)
+        -> bool;
 
     auto logging_callback(const kommpot::callback_response_structure &response) -> void;
 
