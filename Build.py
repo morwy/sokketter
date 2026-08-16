@@ -289,6 +289,10 @@ class Build:
             "-DCMAKE_PREFIX_PATH=$Qt6_DIR",
         ]
 
+        cmake_prefix_path = os.environ.get("CMAKE_PREFIX_PATH")
+        if cmake_prefix_path:
+            cmake_command.append(f"-DCMAKE_PREFIX_PATH={cmake_prefix_path}")
+
         if BuildStage.TEST.value in self.stages and platform.system() != "Windows":
             cmake_command.append("-DSOKKETTER_ENABLE_TESTING=true")
 
