@@ -390,7 +390,7 @@ class Build:
                 set statusbar visible of container window to false
 
                 tell icon view options of container window
-                    set icon size to 128
+                    set icon size to 64
                     set arrangement to not arranged
                     set text size to 12
                     set shows item info to false
