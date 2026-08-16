@@ -41,7 +41,7 @@ public:
 
     auto device(const std::string &serial_number) -> std::shared_ptr<sokketter::power_strip>;
 
-    auto is_new_version_available(std::string &latest_version) -> bool;
+    auto is_new_release_available(std::string &latest_version) -> bool;
 
 private:
     sokketter::settings_structure m_settings;

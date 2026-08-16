@@ -362,7 +362,7 @@ auto sokketter_core::is_newer_version(
     return false;
 }
 
-auto sokketter_core::is_new_version_available(std::string &latest_version) -> bool
+auto sokketter_core::is_new_release_available(std::string &latest_version) -> bool
 {
     latest_version.clear();
     const auto current_version = sokketter::version().to_string();

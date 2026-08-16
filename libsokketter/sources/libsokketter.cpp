@@ -121,7 +121,7 @@ auto sokketter::version() noexcept -> sokketter::version_information
 
 auto sokketter::is_new_release_available(std::string &latest_version) -> bool
 {
-    return sokketter_core::instance().is_new_version_available(latest_version);
+    return sokketter_core::instance().is_new_release_available(latest_version);
 }
 
 sokketter::socket::socket(const socket_configuration &configuration)
