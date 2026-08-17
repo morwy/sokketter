@@ -16,6 +16,8 @@ power_strip_list_item::power_strip_list_item(
 {
     m_ui->setupUi(this);
 
+    m_ui->description_label->hide();
+
     configure(configuration);
     setThemeAccordingToMode();
 }
@@ -25,20 +27,27 @@ power_strip_list_item::~power_strip_list_item()
     delete m_ui;
 }
 
-auto power_strip_list_item::configure(const sokketter::power_strip_configuration &configuration) -> void
+auto power_strip_list_item::configure(const sokketter::power_strip_configuration &configuration)
+    -> void
 {
     m_configuration = configuration;
 
     m_ui->name_label->setText(QString::fromStdString(configuration.name));
 
-    auto description =
+    auto type_n_address =
         QString::fromStdString(sokketter::power_strip_type_to_string(configuration.type));
     if (!configuration.address.empty())
     {
-        description += ", available at " + QString::fromStdString(configuration.address);
+        type_n_address += ", available at " + QString::fromStdString(configuration.address);
     }
 
-    m_ui->description_label->setText(description);
+    m_ui->type_n_address_label->setText(type_n_address);
+
+    if (!configuration.description.empty())
+    {
+        m_ui->description_label->show();
+        m_ui->description_label->setText(QString::fromStdString(configuration.description));
+    }
 }
 
 auto power_strip_list_item::configuration() const -> const sokketter::power_strip_configuration &

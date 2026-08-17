@@ -267,6 +267,10 @@ const QString light_theme = base_theme + R"(
         color: #82827C;
     }
 
+    SubLabel {
+        color: #82827C;
+    }
+
     a {
         color: #0B6BCB;
         text-decoration: underline;
@@ -499,6 +503,10 @@ const QString dark_theme = base_theme + R"(
 
     SubheaderLabel {
         font-size: 16px;
+        color: #7d7c75;
+    }
+
+    SubLabel {
         color: #7d7c75;
     }
 
