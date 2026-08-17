@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>power_strip_list_item</class>
- <widget class="QWidget" name="power_strip_list_item">
+ <class>PowerStripListItem</class>
+ <widget class="QWidget" name="PowerStripListItem">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -74,7 +74,8 @@
       <string/>
      </property>
      <property name="pixmap">
-      <pixmap resource="../resources/resources.qrc">:/icons/power_strip_icon_black.png</pixmap>
+      <pixmap>
+                            :/icons/power_strip_icon_black.png</pixmap>
      </property>
      <property name="scaledContents">
       <bool>true</bool>
@@ -199,8 +200,6 @@
    <header>SubLabel.h</header>
   </customwidget>
  </customwidgets>
- <resources>
-  <include location="../resources/resources.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>
