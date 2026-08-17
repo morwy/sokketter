@@ -147,7 +147,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QLabel" name="description_label">
+       <widget class="QLabel" name="type_n_address_label">
         <property name="enabled">
          <bool>false</bool>
         </property>
@@ -159,6 +159,13 @@
         </property>
         <property name="text">
          <string>Address</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="SubLabel" name="description_label">
+        <property name="text">
+         <string>TextLabel</string>
         </property>
        </widget>
       </item>
@@ -185,6 +192,11 @@
    <class>QLedLabel</class>
    <extends>QLabel</extends>
    <header location="global">QLedLabel.h</header>
+  </customwidget>
+  <customwidget>
+   <class>SubLabel</class>
+   <extends>QLabel</extends>
+   <header>SubLabel.h</header>
   </customwidget>
  </customwidgets>
  <resources>
