@@ -3,12 +3,12 @@
 #include "ui_mainwindow.h"
 
 #include <Qt/DeviceEditForm.h>
+#include <Qt/PowerStripListItem.h>
 #include <Qt/SocketEditForm.h>
 #include <Qt/SocketListItem.h>
 #include <app_logger.h>
 #include <app_settings_storage.h>
 #include <empty_power_strip_list_item.h>
-#include <power_strip_list_item.h>
 #include <spdlog/sinks/daily_file_sink.h>
 #include <spdlog/spdlog.h>
 #include <theme_stylesheets.h>
@@ -34,12 +34,11 @@
 #include <QUrl>
 #include <QtConcurrent>
 
-namespace
-{
-struct update_check_result
-{
-    bool has_update = false;
-};
+namespace {
+    struct update_check_result
+    {
+        bool has_update = false;
+    };
 } // namespace
 
 MainWindow::MainWindow(QWidget *parent)
@@ -262,7 +261,7 @@ auto MainWindow::onNewPowerStripReceived(
 
     for (const auto &power_strip : power_strips)
     {
-        auto *power_strip_item = new power_strip_list_item(power_strip->configuration());
+        auto *power_strip_item = new PowerStripListItem(power_strip->configuration());
         power_strip_item->setMaximumWidth(visible_width);
         power_strip_item->set_state(power_strip->is_connected());
 
@@ -383,7 +382,7 @@ auto MainWindow::redraw_device_list() -> void
                 list_widget->setSizeHint(QSize(std::max(size_hint.width(), visible_width),
                     std::max(size_hint.width(), visible_height)));
             }
-            else if (qobject_cast<power_strip_list_item *>(widget))
+            else if (qobject_cast<PowerStripListItem *>(widget))
             {
                 widget->setMaximumWidth(visible_width);
 
@@ -702,7 +701,7 @@ auto MainWindow::forget_selected_device() -> void
     sokketter::forget_device(m_device);
 }
 
-auto MainWindow::populate_authentication_page(power_strip_list_item *item) -> void
+auto MainWindow::populate_authentication_page(PowerStripListItem *item) -> void
 {
     if (m_device == nullptr)
     {
@@ -1056,7 +1055,7 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
         m_device = nullptr;
     }
 
-    auto *list_item = dynamic_cast<power_strip_list_item *>(widget);
+    auto *list_item = dynamic_cast<PowerStripListItem *>(widget);
     const auto &configuration = list_item->configuration();
 
     m_device = sokketter::device(configuration.id);

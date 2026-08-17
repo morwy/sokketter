@@ -1,5 +1,5 @@
-#include "power_strip_list_item.h"
-#include "ui_power_strip_list_item.h"
+#include "PowerStripListItem.h"
+#include "ui_PowerStripListItem.h"
 
 #include <libsokketter.h>
 #include <spdlog/spdlog.h>
@@ -9,10 +9,10 @@
 #include <QPixmap>
 #include <QStyleHints>
 
-power_strip_list_item::power_strip_list_item(
+PowerStripListItem::PowerStripListItem(
     const sokketter::power_strip_configuration &configuration, QWidget *parent)
     : QWidget(parent)
-    , m_ui(new Ui::power_strip_list_item)
+    , m_ui(new Ui::PowerStripListItem)
 {
     m_ui->setupUi(this);
 
@@ -20,12 +20,12 @@ power_strip_list_item::power_strip_list_item(
     setThemeAccordingToMode();
 }
 
-power_strip_list_item::~power_strip_list_item()
+PowerStripListItem::~PowerStripListItem()
 {
     delete m_ui;
 }
 
-auto power_strip_list_item::configure(const sokketter::power_strip_configuration &configuration)
+auto PowerStripListItem::configure(const sokketter::power_strip_configuration &configuration)
     -> void
 {
     m_configuration = configuration;
@@ -52,18 +52,18 @@ auto power_strip_list_item::configure(const sokketter::power_strip_configuration
     }
 }
 
-auto power_strip_list_item::configuration() const -> const sokketter::power_strip_configuration &
+auto PowerStripListItem::configuration() const -> const sokketter::power_strip_configuration &
 {
     return m_configuration;
 }
 
-void power_strip_list_item::set_state(const bool is_on) const
+void PowerStripListItem::set_state(const bool is_on) const
 {
     m_ui->status_label->setState(is_on);
     m_ui->status_label->setToolTip(is_on ? tr("connected") : tr("disconnected"));
 }
 
-auto power_strip_list_item::event(QEvent *event) -> bool
+auto PowerStripListItem::event(QEvent *event) -> bool
 {
     if (event->type() == QEvent::ThemeChange || event->type() == QEvent::PaletteChange)
     {
@@ -75,7 +75,7 @@ auto power_strip_list_item::event(QEvent *event) -> bool
     return QWidget::event(event);
 }
 
-void power_strip_list_item::setThemeAccordingToMode()
+void PowerStripListItem::setThemeAccordingToMode()
 {
     QPixmap pixmap;
 
