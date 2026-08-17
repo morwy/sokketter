@@ -16,8 +16,6 @@ power_strip_list_item::power_strip_list_item(
 {
     m_ui->setupUi(this);
 
-    m_ui->description_label->hide();
-
     configure(configuration);
     setThemeAccordingToMode();
 }
@@ -47,6 +45,10 @@ auto power_strip_list_item::configure(const sokketter::power_strip_configuration
     {
         m_ui->description_label->show();
         m_ui->description_label->setText(QString::fromStdString(configuration.description));
+    }
+    else
+    {
+        m_ui->description_label->hide();
     }
 }
 
