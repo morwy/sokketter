@@ -74,7 +74,7 @@ const QString light_theme = base_theme + R"(
         background-color: #F0F0EE;
     }
 
-    HoverableListWidget::item:hover {
+    HoverableListWidget::item:enabled:hover {
         background-color: #F1F0EF;
     }
 
@@ -313,7 +313,7 @@ const QString dark_theme = base_theme + R"(
         background-color: #21211F;
     }
 
-    HoverableListWidget::item:hover {
+    HoverableListWidget::item:enabled:hover {
         background-color: #222325;
     }
 
