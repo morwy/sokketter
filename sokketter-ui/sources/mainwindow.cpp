@@ -1040,7 +1040,7 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
     SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Detected onPowerStripClicked() signal.");
 
     /**
-     * @brief ignore click if it's a EmptyPowerStripListItem.
+     * @brief ignore click if it's an EmptyPowerStripListItem.
      */
     QWidget *widget = m_ui->power_strip_list_widget->itemWidget(item);
     if (qobject_cast<EmptyPowerStripListItem *>(widget))
