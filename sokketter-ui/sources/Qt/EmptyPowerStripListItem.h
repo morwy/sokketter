@@ -1,6 +1,8 @@
 #ifndef EMPTYPOWERSTRIPLISTITEM_H
 #define EMPTYPOWERSTRIPLISTITEM_H
 
+#pragma once
+
 #include <QWidget>
 
 namespace Ui {
