@@ -280,6 +280,7 @@ auto MainWindow::onNewPowerStripReceived(
         empty_item->setMaximumWidth(visible_width);
 
         auto *item = new QListWidgetItem();
+        item->setFlags(Qt::NoItemFlags);
         item->setSizeHint(QSize(visible_width, visible_height));
 
         m_ui->power_strip_list_widget->addItem(item);
