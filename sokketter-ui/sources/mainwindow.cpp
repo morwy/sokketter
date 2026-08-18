@@ -3,12 +3,12 @@
 #include "ui_mainwindow.h"
 
 #include <Qt/DeviceEditForm.h>
+#include <Qt/EmptyPowerStripListItem.h>
 #include <Qt/PowerStripListItem.h>
 #include <Qt/SocketEditForm.h>
 #include <Qt/SocketListItem.h>
 #include <app_logger.h>
 #include <app_settings_storage.h>
-#include <empty_power_strip_list_item.h>
 #include <spdlog/sinks/daily_file_sink.h>
 #include <spdlog/spdlog.h>
 #include <theme_stylesheets.h>
@@ -275,7 +275,7 @@ auto MainWindow::onNewPowerStripReceived(
 
     if (power_strips.empty())
     {
-        auto *empty_item = new empty_power_strip_list_item();
+        auto *empty_item = new EmptyPowerStripListItem();
         empty_item->setMaximumHeight(visible_height);
         empty_item->setMaximumWidth(visible_width);
 
@@ -374,7 +374,7 @@ auto MainWindow::redraw_device_list() -> void
                 continue;
             }
 
-            if (qobject_cast<empty_power_strip_list_item *>(widget))
+            if (qobject_cast<EmptyPowerStripListItem *>(widget))
             {
                 widget->setMaximumWidth(visible_width);
 
@@ -1040,10 +1040,10 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
     SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Detected onPowerStripClicked() signal.");
 
     /**
-     * @brief ignore click if it's a empty_power_strip_list_item.
+     * @brief ignore click if it's a EmptyPowerStripListItem.
      */
     QWidget *widget = m_ui->power_strip_list_widget->itemWidget(item);
-    if (qobject_cast<empty_power_strip_list_item *>(widget))
+    if (qobject_cast<EmptyPowerStripListItem *>(widget))
     {
         SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Ignoring click on empty power strip item.");
         return;
