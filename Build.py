@@ -465,6 +465,11 @@ class Build:
             staging = pathlib.Path(tmp) / "sokketter-ui"
             staging.mkdir()
 
+            # Prevent Spotlight from indexing the mounted volume; mdworker locking
+            # a just-unmounted image is a common cause of hdiutil convert failing
+            # with "Resource temporarily unavailable" on macOS CI runners.
+            (staging / ".metadata_never_index").touch()
+
             # Copy application
             shutil.copytree(app, staging / app.name)
 
@@ -522,6 +527,9 @@ class Build:
 
             if not mount_point:
                 raise RuntimeError("Could not find mounted DMG")
+
+            # Belt-and-braces: also disable indexing directly on the mounted volume.
+            subprocess.run(["mdutil", "-i", "off", str(mount_point)], check=False)
 
             try:
                 self.__configure_finder(mount_point)
