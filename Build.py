@@ -15,6 +15,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from enum import Enum
 
 from Environment import Environment
@@ -157,39 +158,6 @@ class Build:
         else:
             self.logger.error("Unsupported platform: %s", platform.system())
             raise EnvironmentError("Unsupported platform")
-
-    def __running_in_github_actions(self) -> bool:
-        return os.getenv("GITHUB_ACTIONS") == "true"
-
-    def __get_vcvarsall_path(self) -> str:
-        """
-        Get the path to the vcvarsall.bat file for Visual Studio.
-        """
-        root_paths = [
-            r"C:\Program Files\Microsoft Visual Studio\2022\Community",
-            r"C:\Program Files\Microsoft Visual Studio\2022\Professional",
-            r"C:\Program Files\Microsoft Visual Studio\2022\Enterprise",
-            r"C:\Program Files\Microsoft Visual Studio\2019\Community",
-            r"C:\Program Files\Microsoft Visual Studio\2019\Professional",
-            r"C:\Program Files\Microsoft Visual Studio\2019\Enterprise",
-            r"C:\Program Files\Microsoft Visual Studio\2017\Community",
-            r"C:\Program Files\Microsoft Visual Studio\2017\Professional",
-            r"C:\Program Files\Microsoft Visual Studio\2017\Enterprise",
-            r"C:\Program Files\Microsoft Visual Studio\2022\BuildTools",
-            r"C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools",
-            r"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools",
-        ]
-
-        for root_path in root_paths:
-            internal_path = os.path.join("VC", "Auxiliary", "Build", "vcvarsall.bat")
-            vcvarsall_path = os.path.join(root_path, internal_path)
-
-            if os.path.exists(vcvarsall_path):
-                self.logger.info("vcvarsall.bat was found at: %s", vcvarsall_path)
-                return vcvarsall_path
-
-        self.logger.error("vcvarsall.bat not found!")
-        raise EnvironmentError("vcvarsall.bat not found!")
 
     def __resolve_qt6_dir(self) -> str:
         """
@@ -420,6 +388,34 @@ class Build:
             check=True,
         )
 
+    def __detach_volume(self, mount_point: pathlib.Path) -> None:
+        """
+        Detach a mounted DMG volume, retrying and forcing detach if it is still busy
+        (e.g. Finder hasn't released its handle on the volume yet).
+        """
+        max_attempts = 5
+        for attempt in range(1, max_attempts + 1):
+            command = ["hdiutil", "detach", str(mount_point)]
+            if attempt == max_attempts:
+                command.insert(2, "-force")
+
+            result = subprocess.run(
+                command, capture_output=True, text=True, check=False
+            )
+            if result.returncode == 0:
+                return
+
+            self.logger.warning(
+                "Detaching %s failed (attempt %d/%d): %s",
+                mount_point,
+                attempt,
+                max_attempts,
+                result.stderr.strip(),
+            )
+            time.sleep(2)
+
+        raise RuntimeError(f"Could not detach volume: {mount_point}")
+
     def __create_dmg(self, app_path: str, output_path: str):
         app = pathlib.Path(app_path).resolve()
         output = pathlib.Path(output_path).resolve()
@@ -489,8 +485,11 @@ class Build:
             try:
                 self.__configure_finder(mount_point)
 
+                # Give Finder a moment to fully release the volume before detaching.
+                time.sleep(2)
+
                 # Unmount
-                subprocess.run(["hdiutil", "detach", str(mount_point)], check=True)
+                self.__detach_volume(mount_point)
 
                 # Compress to final DMG
                 subprocess.run(
@@ -512,9 +511,10 @@ class Build:
             finally:
                 # Best effort cleanup if something failed
                 subprocess.run(
-                    ["hdiutil", "detach", str(mount_point)],
+                    ["hdiutil", "detach", "-force", str(mount_point)],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
+                    check=False,
                 )
 
     def __build(self) -> None:
