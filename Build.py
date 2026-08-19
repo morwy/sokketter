@@ -391,16 +391,26 @@ class Build:
     def __detach_volume(self, mount_point: pathlib.Path) -> None:
         """
         Detach a mounted DMG volume, retrying and forcing detach if it is still busy
-        (e.g. Finder hasn't released its handle on the volume yet).
+        (e.g. Finder hasn't released its handle on the volume yet). A prior attempt
+        may still succeed asynchronously even after reporting "Resource busy", so the
+        mount point is checked before each further attempt to avoid spurious
+        "No such file or directory" failures on an already-detached volume.
         """
+        if not mount_point.exists():
+            return
+
         try:
             self.__run_hdiutil_with_retry(
                 ["hdiutil", "detach", str(mount_point)],
                 max_attempts=4,
                 capture_output=True,
                 text=True,
+                stop_if_missing=mount_point,
             )
         except subprocess.CalledProcessError:
+            if not mount_point.exists():
+                return
+
             self.__run_hdiutil_with_retry(
                 ["hdiutil", "detach", "-force", str(mount_point)],
                 max_attempts=1,
@@ -409,7 +419,11 @@ class Build:
             )
 
     def __run_hdiutil_with_retry(
-        self, command: list[str], max_attempts: int = 5, **kwargs
+        self,
+        command: list[str],
+        max_attempts: int = 5,
+        stop_if_missing: pathlib.Path | None = None,
+        **kwargs,
     ) -> subprocess.CompletedProcess:
         """
         Run an hdiutil command, retrying on transient "Resource busy" failures
@@ -418,6 +432,9 @@ class Build:
         for attempt in range(1, max_attempts + 1):
             result = subprocess.run(command, check=False, **kwargs)
             if result.returncode == 0:
+                return result
+
+            if stop_if_missing is not None and not stop_if_missing.exists():
                 return result
 
             stderr = getattr(result, "stderr", None) or ""
