@@ -448,7 +448,7 @@ class Build:
             if attempt == max_attempts:
                 raise subprocess.CalledProcessError(result.returncode, command)
 
-            time.sleep(3)
+            time.sleep(min(3 * attempt, 30))
 
         raise RuntimeError("Unreachable")
 
@@ -546,6 +546,7 @@ class Build:
                         "-o",
                         str(output),
                     ],
+                    max_attempts=10,
                     capture_output=True,
                     text=True,
                 )
