@@ -15,6 +15,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from enum import Enum
 
 from Environment import Environment
@@ -157,39 +158,6 @@ class Build:
         else:
             self.logger.error("Unsupported platform: %s", platform.system())
             raise EnvironmentError("Unsupported platform")
-
-    def __running_in_github_actions(self) -> bool:
-        return os.getenv("GITHUB_ACTIONS") == "true"
-
-    def __get_vcvarsall_path(self) -> str:
-        """
-        Get the path to the vcvarsall.bat file for Visual Studio.
-        """
-        root_paths = [
-            r"C:\Program Files\Microsoft Visual Studio\2022\Community",
-            r"C:\Program Files\Microsoft Visual Studio\2022\Professional",
-            r"C:\Program Files\Microsoft Visual Studio\2022\Enterprise",
-            r"C:\Program Files\Microsoft Visual Studio\2019\Community",
-            r"C:\Program Files\Microsoft Visual Studio\2019\Professional",
-            r"C:\Program Files\Microsoft Visual Studio\2019\Enterprise",
-            r"C:\Program Files\Microsoft Visual Studio\2017\Community",
-            r"C:\Program Files\Microsoft Visual Studio\2017\Professional",
-            r"C:\Program Files\Microsoft Visual Studio\2017\Enterprise",
-            r"C:\Program Files\Microsoft Visual Studio\2022\BuildTools",
-            r"C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools",
-            r"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools",
-        ]
-
-        for root_path in root_paths:
-            internal_path = os.path.join("VC", "Auxiliary", "Build", "vcvarsall.bat")
-            vcvarsall_path = os.path.join(root_path, internal_path)
-
-            if os.path.exists(vcvarsall_path):
-                self.logger.info("vcvarsall.bat was found at: %s", vcvarsall_path)
-                return vcvarsall_path
-
-        self.logger.error("vcvarsall.bat not found!")
-        raise EnvironmentError("vcvarsall.bat not found!")
 
     def __resolve_qt6_dir(self) -> str:
         """
@@ -420,13 +388,87 @@ class Build:
             check=True,
         )
 
+    def __detach_volume(self, mount_point: pathlib.Path) -> None:
+        """
+        Detach a mounted DMG volume, retrying and forcing detach if it is still busy
+        (e.g. Finder hasn't released its handle on the volume yet). A prior attempt
+        may still succeed asynchronously even after reporting "Resource busy", so the
+        mount point is checked before each further attempt to avoid spurious
+        "No such file or directory" failures on an already-detached volume.
+        """
+        if not mount_point.exists():
+            return
+
+        try:
+            self.__run_hdiutil_with_retry(
+                ["hdiutil", "detach", str(mount_point)],
+                max_attempts=4,
+                capture_output=True,
+                text=True,
+                stop_if_missing=mount_point,
+            )
+        except subprocess.CalledProcessError:
+            if not mount_point.exists():
+                return
+
+            self.__run_hdiutil_with_retry(
+                ["hdiutil", "detach", "-force", str(mount_point)],
+                max_attempts=1,
+                capture_output=True,
+                text=True,
+            )
+
+    def __run_hdiutil_with_retry(
+        self,
+        command: list[str],
+        max_attempts: int = 5,
+        stop_if_missing: pathlib.Path | None = None,
+        **kwargs,
+    ) -> subprocess.CompletedProcess:
+        """
+        Run an hdiutil command, retrying on transient "Resource busy" failures
+        (disk arbitration can briefly hold a lock on shared CI runners).
+        """
+        for attempt in range(1, max_attempts + 1):
+            result = subprocess.run(command, check=False, **kwargs)
+            if result.returncode == 0:
+                return result
+
+            if stop_if_missing is not None and not stop_if_missing.exists():
+                return result
+
+            stderr = getattr(result, "stderr", None) or ""
+            self.logger.warning(
+                "hdiutil command failed (attempt %d/%d): %s",
+                attempt,
+                max_attempts,
+                stderr.strip() if isinstance(stderr, str) else stderr,
+            )
+
+            if attempt == max_attempts:
+                raise subprocess.CalledProcessError(result.returncode, command)
+
+            time.sleep(min(3 * attempt, 30))
+
+        raise RuntimeError("Unreachable")
+
     def __create_dmg(self, app_path: str, output_path: str):
         app = pathlib.Path(app_path).resolve()
         output = pathlib.Path(output_path).resolve()
 
+        # Detach any leftover volume from a previous failed run before starting.
+        stale_mount_point = pathlib.Path("/Volumes/sokketter-ui")
+        if stale_mount_point.exists():
+            self.__detach_volume(stale_mount_point)
+
         with tempfile.TemporaryDirectory() as tmp:
             staging = pathlib.Path(tmp) / "sokketter-ui"
             staging.mkdir()
+
+            # Prevent Spotlight from indexing the mounted volume; mdworker locking
+            # a just-unmounted image is a common cause of hdiutil convert failing
+            # with "Resource temporarily unavailable" on macOS CI runners.
+            (staging / ".metadata_never_index").touch()
 
             # Copy application
             shutil.copytree(app, staging / app.name)
@@ -445,7 +487,7 @@ class Build:
             # Create read/write DMG first
             rw_dmg = pathlib.Path(tmp) / "sokketter-rw.dmg"
 
-            subprocess.run(
+            self.__run_hdiutil_with_retry(
                 [
                     "hdiutil",
                     "create",
@@ -458,11 +500,12 @@ class Build:
                     "UDRW",
                     str(rw_dmg),
                 ],
-                check=True,
+                capture_output=True,
+                text=True,
             )
 
             # Mount it
-            result = subprocess.run(
+            result = self.__run_hdiutil_with_retry(
                 [
                     "hdiutil",
                     "attach",
@@ -471,7 +514,6 @@ class Build:
                     "-noautoopen",
                     str(rw_dmg),
                 ],
-                check=True,
                 capture_output=True,
                 text=True,
             )
@@ -486,14 +528,20 @@ class Build:
             if not mount_point:
                 raise RuntimeError("Could not find mounted DMG")
 
+            # Belt-and-braces: also disable indexing directly on the mounted volume.
+            subprocess.run(["mdutil", "-i", "off", str(mount_point)], check=False)
+
             try:
                 self.__configure_finder(mount_point)
 
+                # Give Finder a moment to fully release the volume before detaching.
+                time.sleep(2)
+
                 # Unmount
-                subprocess.run(["hdiutil", "detach", str(mount_point)], check=True)
+                self.__detach_volume(mount_point)
 
                 # Compress to final DMG
-                subprocess.run(
+                self.__run_hdiutil_with_retry(
                     [
                         "hdiutil",
                         "convert",
@@ -506,16 +554,22 @@ class Build:
                         "-o",
                         str(output),
                     ],
-                    check=True,
+                    max_attempts=10,
+                    capture_output=True,
+                    text=True,
                 )
 
             finally:
-                # Best effort cleanup if something failed
-                subprocess.run(
-                    ["hdiutil", "detach", str(mount_point)],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
+                # Best effort cleanup if something failed; never raise from here.
+                try:
+                    self.__run_hdiutil_with_retry(
+                        ["hdiutil", "detach", "-force", str(mount_point)],
+                        max_attempts=1,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
+                except subprocess.CalledProcessError:
+                    pass
 
     def __build(self) -> None:
         """
