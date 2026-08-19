@@ -393,32 +393,56 @@ class Build:
         Detach a mounted DMG volume, retrying and forcing detach if it is still busy
         (e.g. Finder hasn't released its handle on the volume yet).
         """
-        max_attempts = 5
-        for attempt in range(1, max_attempts + 1):
-            command = ["hdiutil", "detach", str(mount_point)]
-            if attempt == max_attempts:
-                command.insert(2, "-force")
-
-            result = subprocess.run(
-                command, capture_output=True, text=True, check=False
+        try:
+            self.__run_hdiutil_with_retry(
+                ["hdiutil", "detach", str(mount_point)],
+                max_attempts=4,
+                capture_output=True,
+                text=True,
             )
-            if result.returncode == 0:
-                return
+        except subprocess.CalledProcessError:
+            self.__run_hdiutil_with_retry(
+                ["hdiutil", "detach", "-force", str(mount_point)],
+                max_attempts=1,
+                capture_output=True,
+                text=True,
+            )
 
+    def __run_hdiutil_with_retry(
+        self, command: list[str], max_attempts: int = 5, **kwargs
+    ) -> subprocess.CompletedProcess:
+        """
+        Run an hdiutil command, retrying on transient "Resource busy" failures
+        (disk arbitration can briefly hold a lock on shared CI runners).
+        """
+        for attempt in range(1, max_attempts + 1):
+            result = subprocess.run(command, check=False, **kwargs)
+            if result.returncode == 0:
+                return result
+
+            stderr = getattr(result, "stderr", None) or ""
             self.logger.warning(
-                "Detaching %s failed (attempt %d/%d): %s",
-                mount_point,
+                "hdiutil command failed (attempt %d/%d): %s",
                 attempt,
                 max_attempts,
-                result.stderr.strip(),
+                stderr.strip() if isinstance(stderr, str) else stderr,
             )
-            time.sleep(2)
 
-        raise RuntimeError(f"Could not detach volume: {mount_point}")
+            if attempt == max_attempts:
+                raise subprocess.CalledProcessError(result.returncode, command)
+
+            time.sleep(3)
+
+        raise RuntimeError("Unreachable")
 
     def __create_dmg(self, app_path: str, output_path: str):
         app = pathlib.Path(app_path).resolve()
         output = pathlib.Path(output_path).resolve()
+
+        # Detach any leftover volume from a previous failed run before starting.
+        stale_mount_point = pathlib.Path("/Volumes/sokketter-ui")
+        if stale_mount_point.exists():
+            self.__detach_volume(stale_mount_point)
 
         with tempfile.TemporaryDirectory() as tmp:
             staging = pathlib.Path(tmp) / "sokketter-ui"
@@ -441,7 +465,7 @@ class Build:
             # Create read/write DMG first
             rw_dmg = pathlib.Path(tmp) / "sokketter-rw.dmg"
 
-            subprocess.run(
+            self.__run_hdiutil_with_retry(
                 [
                     "hdiutil",
                     "create",
@@ -454,11 +478,12 @@ class Build:
                     "UDRW",
                     str(rw_dmg),
                 ],
-                check=True,
+                capture_output=True,
+                text=True,
             )
 
             # Mount it
-            result = subprocess.run(
+            result = self.__run_hdiutil_with_retry(
                 [
                     "hdiutil",
                     "attach",
@@ -467,7 +492,6 @@ class Build:
                     "-noautoopen",
                     str(rw_dmg),
                 ],
-                check=True,
                 capture_output=True,
                 text=True,
             )
@@ -492,7 +516,7 @@ class Build:
                 self.__detach_volume(mount_point)
 
                 # Compress to final DMG
-                subprocess.run(
+                self.__run_hdiutil_with_retry(
                     [
                         "hdiutil",
                         "convert",
@@ -505,17 +529,21 @@ class Build:
                         "-o",
                         str(output),
                     ],
-                    check=True,
+                    capture_output=True,
+                    text=True,
                 )
 
             finally:
-                # Best effort cleanup if something failed
-                subprocess.run(
-                    ["hdiutil", "detach", "-force", str(mount_point)],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    check=False,
-                )
+                # Best effort cleanup if something failed; never raise from here.
+                try:
+                    self.__run_hdiutil_with_retry(
+                        ["hdiutil", "detach", "-force", str(mount_point)],
+                        max_attempts=1,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
+                except subprocess.CalledProcessError:
+                    pass
 
     def __build(self) -> None:
         """
