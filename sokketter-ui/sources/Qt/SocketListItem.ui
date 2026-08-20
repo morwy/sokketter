@@ -159,7 +159,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QLabel" name="description_label">
+       <widget class="SubLabel" name="description_label">
         <property name="enabled">
          <bool>false</bool>
         </property>
@@ -230,6 +230,11 @@
   </layout>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>SubLabel</class>
+   <extends>QLabel</extends>
+   <header>SubLabel.h</header>
+  </customwidget>
   <customwidget>
    <class>QLedLabel</class>
    <extends>QLabel</extends>
