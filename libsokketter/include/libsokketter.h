@@ -146,6 +146,28 @@ namespace sokketter {
     auto EXPORTED is_new_release_available(std::string &latest_version) -> bool;
 
     /**
+     * @brief cached result of the latest background update check.
+     */
+    struct EXPORTED update_check_status
+    {
+        int64_t timestamp = 0;
+        std::string new_version = "";
+    };
+
+    /**
+     * @brief starts a background check for a newer release and persists the result to disk.
+     * @attention the check runs on a background thread; deinitialize() waits for it to finish.
+     */
+    auto EXPORTED check_for_update_async() -> void;
+
+    /**
+     * @brief gets the result of the last background update check performed via
+     *        check_for_update_async().
+     * @return cached update check status, empty new_version when no update was found.
+     */
+    auto EXPORTED last_update_check_status() -> update_check_status;
+
+    /**
      * @brief structure containing configuration parameters of the specific socket.
      */
     struct EXPORTED socket_configuration

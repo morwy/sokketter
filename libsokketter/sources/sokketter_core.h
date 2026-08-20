@@ -7,6 +7,9 @@
 #include <libsokketter.h>
 #include <spdlog/logger.h>
 #include <third-party/kommpot/libkommpot/include/libkommpot.h>
+#include <update_check_storage.h>
+
+#include <thread>
 
 constexpr auto LOGGER_NAME = "sokketter";
 #define SOKKETTER_LOGGER spdlog::get(LOGGER_NAME)
@@ -44,6 +47,9 @@ public:
     auto release_link() -> std::string;
     auto is_new_release_available(std::string &latest_version) -> bool;
 
+    auto check_for_update_async() -> void;
+    auto last_update_check_status() -> sokketter::update_check_status;
+
 private:
     inline static constexpr auto RELEASE_LINK =
         "https://github.com/morwy/sokketter/releases/latest";
@@ -53,6 +59,8 @@ private:
     sokketter::settings_structure m_settings;
     std::shared_ptr<spdlog::logger> m_logger = nullptr;
     database_storage m_database;
+    update_check_storage m_update_check_storage;
+    std::thread m_update_check_thread;
     sokketter::device_callback m_device_cb = nullptr;
     sokketter::status_callback m_status_cb = nullptr;
 

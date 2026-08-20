@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <curl/curl.h>
 #include <json/json.hpp>
 #include <spdlog/sinks/callback_sink.h>
@@ -77,6 +78,11 @@ auto sokketter_core::initialize() -> bool
 
 auto sokketter_core::deinitialize() -> bool
 {
+    if (m_update_check_thread.joinable())
+    {
+        m_update_check_thread.join();
+    }
+
     m_database.save();
 
     /**
@@ -340,6 +346,36 @@ auto sokketter_core::is_newer_version(
 auto sokketter_core::release_link() -> std::string
 {
     return RELEASE_LINK;
+}
+
+auto sokketter_core::check_for_update_async() -> void
+{
+    if (m_update_check_thread.joinable())
+    {
+        m_update_check_thread.join();
+    }
+
+    m_update_check_thread = std::thread([this]() {
+        std::string latest_version;
+        const bool has_update = is_new_release_available(latest_version);
+
+        update_check_storage::result result;
+        result.timestamp = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::system_clock::now().time_since_epoch())
+                               .count();
+        result.new_version = has_update ? latest_version : std::string();
+
+        m_update_check_storage.set(result);
+        m_update_check_storage.save();
+    });
+}
+
+auto sokketter_core::last_update_check_status() -> sokketter::update_check_status
+{
+    m_update_check_storage.load();
+    const auto &result = m_update_check_storage.get();
+
+    return {result.timestamp, result.new_version};
 }
 
 auto sokketter_core::is_new_release_available(std::string &latest_version) -> bool
