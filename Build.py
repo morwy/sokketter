@@ -561,7 +561,7 @@ class Build:
             command_environment = None
 
             if (
-                platform.system() == "Windows"
+                self.os_name == "windows"
                 and isinstance(command_to_run, list)
                 and self.windows_msvc_env_script is not None
             ):
