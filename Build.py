@@ -227,6 +227,8 @@ class Build:
             if platform.system() != "Windows":
                 return None
 
+            user_profile = os.environ.get("USERPROFILE", "")
+
             arch = self.architecture.lower()
             patterns: list[str]
             if arch in ["x86_64", "amd64"]:
@@ -299,7 +301,6 @@ class Build:
                 )
 
         home_dir = os.environ.get("HOME", "")
-        user_profile = os.environ.get("USERPROFILE", "")
 
         if platform.system() == "Darwin":
             patterns = [
