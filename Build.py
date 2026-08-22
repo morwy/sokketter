@@ -478,11 +478,9 @@ class Build:
 
         return None
 
-    def __create_windows_msvc_wrapper_command(
-        self, command: list[str]
-    ) -> tuple[list[str], str]:
+    def __get_windows_msvc_environment(self) -> dict[str, str]:
         """
-        Create a temporary .cmd wrapper that initializes VS dev env and executes command.
+        Capture the environment initialized by the Visual Studio developer command file.
         """
         if self.windows_msvc_env_script is None:
             raise RuntimeError("Visual Studio environment script is not available.")
@@ -490,23 +488,25 @@ class Build:
         arch_token = self.__msvc_arch_token()
 
         script_name = os.path.basename(self.windows_msvc_env_script).lower()
+        capture_environment = os.environ.copy()
+        capture_environment["SOKKETTER_MSVC_ENV_SCRIPT"] = self.windows_msvc_env_script
         if script_name == "vsdevcmd.bat":
             vcvars_call = (
-                f'call "{self.windows_msvc_env_script}" '
+                'call "%SOKKETTER_MSVC_ENV_SCRIPT%" '
                 f"-arch={arch_token} -host_arch={arch_token} >nul"
             )
         elif script_name == "vcvarsall.bat":
-            vcvars_call = f'call "{self.windows_msvc_env_script}" {arch_token} >nul'
+            vcvars_call = 'call "%SOKKETTER_MSVC_ENV_SCRIPT%" ' f"{arch_token} >nul"
         else:
-            vcvars_call = f'call "{self.windows_msvc_env_script}" >nul'
+            vcvars_call = 'call "%SOKKETTER_MSVC_ENV_SCRIPT%" >nul'
 
-        command_line = subprocess.list2cmdline(command)
+        # Keep the original command out of the batch file. list2cmdline() quotes for
+        # CreateProcess, but does not escape metacharacters interpreted by cmd.exe.
         wrapper_content = (
             "@echo off\n"
             f"{vcvars_call}\n"
             "if errorlevel 1 exit /b %errorlevel%\n"
-            f"{command_line}\n"
-            "exit /b %errorlevel%\n"
+            "set\n"
         )
 
         with tempfile.NamedTemporaryFile(
@@ -515,21 +515,45 @@ class Build:
             wrapper_file.write(wrapper_content)
             wrapper_path = wrapper_file.name
 
-        return ["cmd.exe", "/c", wrapper_path], wrapper_path
+        try:
+            result = subprocess.run(
+                [
+                    "cmd.exe",
+                    "/d",
+                    "/c",
+                    "call",
+                    wrapper_path,
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+                env={
+                    **capture_environment,
+                },
+            )
+        finally:
+            if os.path.exists(wrapper_path):
+                os.remove(wrapper_path)
+
+        environment = os.environ.copy()
+        for line in result.stdout.splitlines():
+            name, separator, value = line.partition("=")
+            if separator:
+                environment[name] = value
+
+        return environment
 
     def __execute_command(self, cmake_command, cwd: str | None = None):
-        wrapper_path: str | None = None
         try:
             command_to_run = cmake_command
+            command_environment = None
 
             if (
                 platform.system() == "Windows"
                 and isinstance(command_to_run, list)
                 and self.windows_msvc_env_script is not None
             ):
-                command_to_run, wrapper_path = (
-                    self.__create_windows_msvc_wrapper_command(command_to_run)
-                )
+                command_environment = self.__get_windows_msvc_environment()
 
             self.logger.info(
                 "Executing command: %s",
@@ -546,7 +570,8 @@ class Build:
                 stderr=subprocess.STDOUT,
                 text=True,
                 cwd=cwd,
-                shell=isinstance(command_to_run, str),
+                env=command_environment,
+                shell=False,
             ) as process:
                 if process.stdout is not None:
                     for line in process.stdout:
@@ -565,10 +590,6 @@ class Build:
         except subprocess.CalledProcessError as e:
             self.logger.error("Command failed with error:\n%s", e.stderr)
             raise
-
-        finally:
-            if wrapper_path and os.path.exists(wrapper_path):
-                os.remove(wrapper_path)
 
     def __get_cached_cmake_generator(self, build_dir: str) -> str | None:
         """
