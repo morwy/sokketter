@@ -14,12 +14,12 @@ include_directories(${CMAKE_CURRENT_LIST_DIR}/../third-party)
 #
 string(TIMESTAMP BUILD_YEAR "%Y")
 
-set(SOKKETTER_COMPANY "Pavel Ivanov")
+set(SOKKETTER_COMPANY "Paul Ergård")
 set(SOKKETTER_DESCRIPTION "sokketter-cli")
 
 set(SOKKETTER_NAME "sokketter-cli")
 
-set(SOKKETTER_COPYRIGHT "${BUILD_YEAR} Pavel Ivanov")
+set(SOKKETTER_COPYRIGHT "${BUILD_YEAR} Paul Ergård")
 
 if(PLATFORM_OS_WINDOWS)
 set(SOKKETTER_EXECUTABLE "sokketter-cli.exe")
