@@ -33,6 +33,7 @@ class BuildStage(str, Enum):
     """
 
     ALL = "ALL"
+    CLEAN = "CLEAN"
     CONFIGURE = "CONFIGURE"
     BUILD = "BUILD"
     VERIFY = "VERIFY"
