@@ -93,12 +93,13 @@ class Build:
         self.qt_version = qt_version
         self.logger.info("Target Qt version: %s", self.qt_version)
 
-        self.qt_version, self.qt_root_folder, self.qt_version_folder = (
+        self.qt_version, self.qt_root_folder, self.qt_version_folder, self.qt_cmake_folder = (
             self.__resolve_qt6_package()
         )
         self.logger.info("Selected Qt version: %s", self.qt_version)
         self.logger.info("Selected Qt root folder: %s", self.qt_root_folder)
         self.logger.info("Selected Qt version folder: %s", self.qt_version_folder)
+        self.logger.info("Selected Qt CMake folder: %s", self.qt_cmake_folder)
 
         self.cmake = self.__get_cmake()
         self.logger.info("Target CMake executable: %s", self.cmake)
@@ -184,8 +185,9 @@ class Build:
         """
         Get the binary output directory based on the platform.
         """
+        os_name = self.os_name if not Environment.is_unix_based() else "linux"
         return os.path.join(
-            workspace, "bin", f"{self.os_name}_{self.architecture}", "Release"
+            workspace, "bin", f"{os_name}_{self.architecture}", "Release"
         )
 
     def __get_debian_architecture(self) -> str:
@@ -220,7 +222,7 @@ class Build:
             f"Unsupported linuxdeployqt architecture: {self.architecture}"
         )
 
-    def __resolve_qt6_package(self) -> tuple[str, str, str]:
+    def __resolve_qt6_package(self) -> tuple[str, str, str, str]:
         """
         Find the Qt6 package matching the requested version and target architecture.
         """
@@ -371,6 +373,7 @@ class Build:
                 ".".join(str(component) for component in selected_version),
                 str(selected_folder.parent.parent.parent.parent.parent),
                 str(selected_folder.parent.parent.parent.parent),
+                str(selected_folder),
             )
 
         raise EnvironmentError(
@@ -947,7 +950,7 @@ class Build:
         """
         self.logger.info("Starting the CMake configuration.")
 
-        qt6_dir = self.qt_version_folder
+        qt6_dir = self.qt_cmake_folder
         qt6_root = self.qt_root_folder
 
         cmake_command = [
