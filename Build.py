@@ -223,11 +223,11 @@ class Build:
 
             return True
 
+        user_profile = os.environ.get("USERPROFILE", "")
+
         def discover_windows_qt6_dir_for_arch() -> str | None:
             if platform.system() != "Windows":
                 return None
-
-            user_profile = os.environ.get("USERPROFILE", "")
 
             arch = self.architecture.lower()
             patterns: list[str]
