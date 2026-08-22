@@ -392,33 +392,10 @@ class Build:
             version_folder = pathlib.Path(self.qt_version_folder)
             candidates.extend(version_folder.glob(f"*/bin/{executable_name}"))
 
-        qt6_dir = os.environ.get("Qt6_DIR") or os.environ.get("QT6_DIR")
-        if qt6_dir:
-            qt6_path = pathlib.Path(qt6_dir).expanduser().resolve()
-            # Qt6_DIR usually points to <qt-root>/lib/cmake/Qt6, so go to <qt-root>/bin.
-            qt_root_candidate = qt6_path.parent.parent.parent
-            candidates.append(qt_root_candidate / "bin" / executable_name)
-
-        tool_in_path = shutil.which(tool_name)
-        if tool_in_path:
-            candidates.append(pathlib.Path(tool_in_path))
-
-        home_dir = os.environ.get("HOME", "")
-        if platform.system() == "Darwin":
-            for path in glob.glob(
-                os.path.join(home_dir, "Qt", "*", "macos", "bin", executable_name)
-            ):
-                candidates.append(pathlib.Path(path))
-        elif platform.system() == "Linux":
-            for path in glob.glob(
-                os.path.join(home_dir, "Qt", "*", "gcc_64", "bin", executable_name)
-            ):
-                candidates.append(pathlib.Path(path))
-        elif platform.system() == "Windows":
-            for path in glob.glob(
-                os.path.join("C:\\Qt", "*", "*", "bin", executable_name)
-            ):
-                candidates.append(pathlib.Path(path))
+        qt_root_path = pathlib.Path(self.qt_root_folder)
+        candidates.extend(
+            (qt_root_path / self.qt_version).glob(f"*/bin/{executable_name}")
+        )
 
         for candidate in candidates:
             if candidate.exists():
