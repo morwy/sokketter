@@ -135,6 +135,20 @@ int cli_parser::parse_and_process(int argc, char *argv[])
 
     /** ************************************************************************
      *
+     * @brief show update information section.
+     *
+     ** ***********************************************************************/
+    const auto update_status = sokketter::last_update_check_status();
+    if (!update_status.new_version.empty())
+    {
+        std::cerr << "A new sokketter version " << update_status.new_version << " is available at "
+                  << sokketter::release_link() << "." << std::endl;
+    }
+
+    sokketter::check_for_update_async();
+
+    /** ************************************************************************
+     *
      * @brief list processing section.
      *
      ** ***********************************************************************/
