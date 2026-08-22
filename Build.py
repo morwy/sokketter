@@ -603,24 +603,45 @@ class Build:
         self.logger.info("Cleaning build and output directories.")
 
         if os.path.exists(self.temp_build_output_dir):
-            shutil.rmtree(self.temp_build_output_dir)
+            self.__remove_directory(self.temp_build_output_dir)
             self.logger.info(
                 "Removed temporary build output directory: %s",
                 self.temp_build_output_dir,
             )
 
         if os.path.exists(self.temp_binary_output_dir):
-            shutil.rmtree(self.temp_binary_output_dir)
+            self.__remove_directory(self.temp_binary_output_dir)
             self.logger.info(
                 "Removed temporary binary output directory: %s",
                 self.temp_binary_output_dir,
             )
 
         if os.path.exists(self.results_output_dir):
-            shutil.rmtree(self.results_output_dir)
+            self.__remove_directory(self.results_output_dir)
             self.logger.info(
                 "Removed results output directory: %s", self.results_output_dir
             )
+
+    def __remove_directory(self, directory: str) -> None:
+        """
+        Remove a directory, retrying transient Windows races with indexers.
+        """
+        retry_count = 5
+        retry_delay_seconds = 0.5
+
+        for attempt in range(retry_count):
+            try:
+                shutil.rmtree(directory)
+                return
+            except OSError:
+                if attempt == retry_count - 1:
+                    raise
+
+                self.logger.warning(
+                    "Directory removal was interrupted; retrying: %s",
+                    directory,
+                )
+                time.sleep(retry_delay_seconds)
 
     def __configure(self) -> None:
         """
