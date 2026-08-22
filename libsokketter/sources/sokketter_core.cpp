@@ -407,9 +407,10 @@ auto sokketter_core::check_for_update_async() -> void
             return;
         }
 
-        sokketter::update_check_status result;
-        result.checked_at = current_timestamp();
-        result.new_version = has_update ? latest_version : std::string();
+        update_check_storage::cached_status result;
+        result.status.checked_at = current_timestamp();
+        result.status.new_version = has_update ? latest_version : std::string();
+        result.latest_version = latest_version;
 
         const std::lock_guard<std::mutex> lock(m_update_check_storage_mutex);
         m_update_check_storage.set(result);
@@ -422,9 +423,16 @@ auto sokketter_core::last_update_check_status() -> sokketter::update_check_statu
     const std::lock_guard<std::mutex> lock(m_update_check_storage_mutex);
 
     m_update_check_storage.load();
-    const auto &result = m_update_check_storage.get();
+    auto result = m_update_check_storage.get();
 
-    return result;
+    if (!result.latest_version.empty())
+    {
+        const auto current_version = sokketter::version().to_string();
+        result.status.new_version =
+            is_newer_version(current_version, result.latest_version) ? result.latest_version : "";
+    }
+
+    return result.status;
 }
 
 auto sokketter_core::is_new_release_available(std::string &latest_version) -> bool

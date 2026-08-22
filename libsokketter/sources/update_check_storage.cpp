@@ -28,37 +28,39 @@ auto epoch_seconds_to_timestamp_string(const int64_t epoch_seconds) -> std::stri
     return stream.str();
 }
 
-auto parse_update_check_status(const nlohmann::json &j) -> sokketter::update_check_status
+auto parse_update_check_status(const nlohmann::json &j) -> update_check_storage::cached_status
 {
-    sokketter::update_check_status r;
+    update_check_storage::cached_status r;
 
     if (j.contains("checked_at") && j["checked_at"].is_string())
     {
-        r.checked_at = j["checked_at"].get<std::string>();
+        r.status.checked_at = j["checked_at"].get<std::string>();
     }
     else if (j.contains("timestamp") && j["timestamp"].is_string())
     {
-        r.checked_at = j["timestamp"].get<std::string>();
+        r.status.checked_at = j["timestamp"].get<std::string>();
     }
     else if (j.contains("timestamp") && j["timestamp"].is_number_integer())
     {
-        r.checked_at = epoch_seconds_to_timestamp_string(j["timestamp"].get<int64_t>());
+        r.status.checked_at = epoch_seconds_to_timestamp_string(j["timestamp"].get<int64_t>());
     }
     else
     {
-        r.checked_at = "";
+        r.status.checked_at = "";
     }
 
-    r.new_version = j.value("new_version", "");
+    r.status.new_version = j.value("new_version", "");
+    r.latest_version = j.value("latest_version", r.status.new_version);
+
     return r;
 }
 
-auto update_check_storage::get() const -> sokketter::update_check_status
+auto update_check_storage::get() const -> cached_status
 {
     return m_result;
 }
 
-auto update_check_storage::set(const sokketter::update_check_status &value) -> void
+auto update_check_storage::set(const cached_status &value) -> void
 {
     m_result = value;
 }
@@ -75,8 +77,8 @@ auto update_check_storage::save() const -> void
         return;
     }
 
-    nlohmann::json j =
-        nlohmann::json{{"checked_at", m_result.checked_at}, {"new_version", m_result.new_version}};
+    nlohmann::json j = nlohmann::json{{"checked_at", m_result.status.checked_at},
+        {"new_version", m_result.status.new_version}, {"latest_version", m_result.latest_version}};
     file << j.dump(4);
 }
 

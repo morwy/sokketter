@@ -13,11 +13,17 @@
 class update_check_storage
 {
 public:
+    struct cached_status
+    {
+        sokketter::update_check_status status;
+        std::string latest_version;
+    };
+
     update_check_storage() = default;
     ~update_check_storage() = default;
 
-    auto get() const -> sokketter::update_check_status;
-    auto set(const sokketter::update_check_status &value) -> void;
+    auto get() const -> cached_status;
+    auto set(const cached_status &value) -> void;
 
     auto save() const -> void;
     auto load() -> void;
@@ -25,7 +31,7 @@ public:
     auto path() const -> std::filesystem::path;
 
 private:
-    sokketter::update_check_status m_result;
+    cached_status m_result;
 };
 
 #endif // UPDATE_CHECK_STORAGE_H
