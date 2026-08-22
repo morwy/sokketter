@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cctype>
 #include <chrono>
+#include <cstdlib>
 #include <ctime>
 #include <curl/curl.h>
 #include <iomanip>
@@ -372,6 +373,14 @@ auto current_timestamp() -> std::string
 
 auto sokketter_core::check_for_update_async() -> void
 {
+    /**
+     * @attention lets tests stub out the real GitHub request.
+     */
+    if (std::getenv("LIBSOKKETTER_TEST_SKIP_UPDATE_CHECK") != nullptr)
+    {
+        return;
+    }
+
     const std::lock_guard<std::mutex> lock(m_update_check_thread_mutex);
 
     if (m_update_check_running.load())

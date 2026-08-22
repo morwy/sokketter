@@ -3,6 +3,7 @@
 #include <sokketter_core.h>
 
 #include <chrono>
+#include <cstdlib>
 #include <ctime>
 #include <fstream>
 #include <iomanip>
@@ -121,5 +122,14 @@ auto update_check_storage::load() -> void
 
 auto update_check_storage::path() const -> std::filesystem::path
 {
+    /**
+     * @attention lets tests point the cache at a temp file instead of the real storage path.
+     */
+    const char *test_path = std::getenv("LIBSOKKETTER_TEST_UPDATE_CHECK_PATH");
+    if (test_path != nullptr && test_path[0] != '\0')
+    {
+        return test_path;
+    }
+
     return sokketter::storage_path() / "update-check.json";
 }
