@@ -328,6 +328,8 @@ class Build:
 
         cmake_command = [
             self.cmake,
+            "-S",
+            self.workspace,
             "-B",
             self.temp_build_output_dir,
             f"-DCMAKE_CXX_COMPILER={self.compiler}",
