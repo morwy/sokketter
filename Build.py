@@ -1163,6 +1163,19 @@ class Build:
 
         self.logger.info("CLI files packaged successfully.")
 
+    def __resolve_qt_runtime_version(self) -> str:
+        """
+        Get the exact Qt runtime version the binary was linked against.
+        """
+        qmake = self.__resolve_qt_tool("qmake")
+        result = subprocess.run(
+            [qmake, "-query", "QT_VERSION"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return result.stdout.strip()
+
     def __compute_linux_deb_depends(self, binary_path: str) -> str:
         """
         Derive a versioned Depends field from the built binary.
@@ -1563,7 +1576,8 @@ exit 0
         pathlib.Path(linuxdeployqt_idiot_fix_path).touch()
 
         linuxdeployqt_path = os.path.join(
-            self.workspace, "linuxdeployqt-continuous-x86_64.AppImage"
+            self.workspace,
+            f"linuxdeployqt-continuous-{self.__get_linuxdeployqt_architecture()}.AppImage",
         )
 
         packing_command = [
