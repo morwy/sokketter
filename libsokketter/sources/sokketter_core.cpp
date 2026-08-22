@@ -80,9 +80,12 @@ auto sokketter_core::initialize() -> bool
 
 auto sokketter_core::deinitialize() -> bool
 {
-    if (m_update_check_thread.joinable())
     {
-        m_update_check_thread.join();
+        const std::lock_guard<std::mutex> lock(m_update_check_thread_mutex);
+        if (m_update_check_thread.joinable())
+        {
+            m_update_check_thread.join();
+        }
     }
 
     m_database.save();
@@ -369,12 +372,34 @@ auto current_timestamp() -> std::string
 
 auto sokketter_core::check_for_update_async() -> void
 {
+    const std::lock_guard<std::mutex> lock(m_update_check_thread_mutex);
+
+    if (m_update_check_running.load())
+    {
+        SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
+            "Skipping update check request because another check is already running.");
+        return;
+    }
+
     if (m_update_check_thread.joinable())
     {
         m_update_check_thread.join();
     }
 
+    m_update_check_running.store(true);
+
     m_update_check_thread = std::thread([this]() {
+        struct update_check_running_guard
+        {
+            std::atomic_bool &running;
+            ~update_check_running_guard()
+            {
+                running.store(false);
+            }
+        };
+
+        update_check_running_guard running_guard{m_update_check_running};
+
         std::string latest_version;
         const bool has_update = is_new_release_available(latest_version);
         if (!has_update && latest_version.empty())
