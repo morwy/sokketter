@@ -588,6 +588,13 @@ class Build:
 
             return "Ninja"
 
+        if shutil.which("ninja"):
+            self.logger.info(
+                "Using Ninja generator because Ninja is available on PATH."
+            )
+
+            return "Ninja"
+
         desired_generator = "Visual Studio 17 2022"
         qt6_dir_lower = qt6_dir.lower()
         if "msvc2019" in qt6_dir_lower:
