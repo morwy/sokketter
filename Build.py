@@ -962,7 +962,7 @@ class Build:
             f"-DQt6_DIR={qt6_dir}",
         ]
 
-        if platform.system() == "Windows":
+        if self.os_name == "windows":
             cmake_generator = os.environ.get("CMAKE_GENERATOR")
             if not cmake_generator:
                 desired_generator = self.__get_cmake_generator(qt6_dir)
@@ -989,7 +989,7 @@ class Build:
         else:
             cmake_command.append(f"-DCMAKE_PREFIX_PATH={qt6_root}")
 
-        if BuildStage.TEST.value in self.stages and platform.system() != "Windows":
+        if BuildStage.TEST.value in self.stages and self.os_name != "windows":
             cmake_command.append("-DSOKKETTER_ENABLE_TESTING=true")
 
         self.__execute_command(cmake_command)
