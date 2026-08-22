@@ -71,15 +71,6 @@ class Build:
         self.compiler = self.__get_cpp_compiler()
         self.logger.info("C++ compiler: %s", self.compiler)
 
-        self.windows_msvc_env_script: str | None = None
-        if platform.system() == "Windows":
-            self.windows_msvc_env_script = self.__resolve_windows_msvc_env_script()
-            if self.windows_msvc_env_script:
-                self.logger.info(
-                    "Using Visual Studio developer environment script: %s",
-                    self.windows_msvc_env_script,
-                )
-
         self.os_name = Environment.get_os_name()
         self.logger.info("Operating system: %s", self.os_name)
 
@@ -88,6 +79,15 @@ class Build:
 
         self.architecture = Environment.get_architecture()
         self.logger.info("Architecture: %s", self.architecture)
+
+        self.windows_msvc_env_script: str | None = None
+        if platform.system() == "Windows":
+            self.windows_msvc_env_script = self.__resolve_windows_msvc_env_script()
+            if self.windows_msvc_env_script:
+                self.logger.info(
+                    "Using Visual Studio developer environment script: %s",
+                    self.windows_msvc_env_script,
+                )
 
         self.version = ProjectVersion().get()
         self.logger.info("Project version: %s", self.version)
@@ -390,12 +390,23 @@ class Build:
             f"Could not find '{tool_name}'. Add Qt's bin directory to PATH or set Qt6_DIR/QT6_DIR."
         )
 
+    def __msvc_arch_token(self) -> str:
+        """
+        Map the detected architecture to the token MSVC dev environment scripts expect.
+        """
+        if self.architecture.lower() in ["arm64", "aarch64"]:
+            return "arm64"
+
+        return "x64"
+
     def __resolve_windows_msvc_env_script(self) -> str | None:
         """
         Resolve a Visual Studio developer environment batch script path.
         """
         if platform.system() != "Windows":
             return None
+
+        arch_token = self.__msvc_arch_token()
 
         vswhere = os.path.join(
             os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)"),
@@ -407,9 +418,15 @@ class Build:
         if os.path.exists(vswhere):
             script_patterns = [
                 "Common7\\Tools\\VsDevCmd.bat",
-                "VC\\Auxiliary\\Build\\vcvars64.bat",
+                f"VC\\Auxiliary\\Build\\vcvars{arch_token}.bat",
                 "VC\\Auxiliary\\Build\\vcvarsall.bat",
             ]
+
+            required_component = (
+                "Microsoft.VisualStudio.Component.VC.Tools.ARM64"
+                if arch_token == "arm64"
+                else "Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
+            )
 
             for pattern in script_patterns:
                 result = subprocess.run(
@@ -419,7 +436,7 @@ class Build:
                         "-products",
                         "*",
                         "-requires",
-                        "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+                        required_component,
                         "-find",
                         pattern,
                     ],
@@ -449,7 +466,7 @@ class Build:
 
         fallback_paths = [
             os.path.join("Common7", "Tools", "VsDevCmd.bat"),
-            os.path.join("VC", "Auxiliary", "Build", "vcvars64.bat"),
+            os.path.join("VC", "Auxiliary", "Build", f"vcvars{arch_token}.bat"),
             os.path.join("VC", "Auxiliary", "Build", "vcvarsall.bat"),
         ]
 
@@ -470,13 +487,16 @@ class Build:
         if self.windows_msvc_env_script is None:
             raise RuntimeError("Visual Studio environment script is not available.")
 
+        arch_token = self.__msvc_arch_token()
+
         script_name = os.path.basename(self.windows_msvc_env_script).lower()
         if script_name == "vsdevcmd.bat":
             vcvars_call = (
-                f'call "{self.windows_msvc_env_script}" -arch=x64 -host_arch=x64 >nul'
+                f'call "{self.windows_msvc_env_script}" '
+                f"-arch={arch_token} -host_arch={arch_token} >nul"
             )
         elif script_name == "vcvarsall.bat":
-            vcvars_call = f'call "{self.windows_msvc_env_script}" x64 >nul'
+            vcvars_call = f'call "{self.windows_msvc_env_script}" {arch_token} >nul'
         else:
             vcvars_call = f'call "{self.windows_msvc_env_script}" >nul'
 
