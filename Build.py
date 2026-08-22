@@ -1,5 +1,15 @@
 #!/usr/bin/env python
 
+"""
+Build script for the project.
+
+Project is intended to be built using C++17, Qt6 and tools bundled with Qt6 (CMake, Ninja, etc.).
+This script is designed to be cross-platform and should work on Windows, Linux, and macOS.
+It handles the build process, including configuration, compilation, testing, and packaging of
+the application. The script is designed to be run from the command line and can be integrated
+into CI/CD pipelines.
+"""
+
 # --------------------------------------------------------------------------------------------------
 #
 # Imports.
@@ -75,20 +85,15 @@ class Build:
         self.compiler = self.__get_cpp_compiler()
         self.logger.info("C++ compiler: %s", self.compiler)
 
-        self.os_name = Environment.get_os_name()
-        self.logger.info("Operating system: %s", self.os_name)
-
-        self.os_version = Environment.get_os_version()
-        self.logger.info("Operating system version: %s", self.os_version)
-
-        self.logger.info("Architecture: %s", self.architecture)
+        self.qt_version = qt_version
+        self.logger.info("Qt version: %s", self.qt_version)
 
         self.windows_msvc_env_script: str | None = None
         if platform.system() == "Windows":
             self.windows_msvc_env_script = self.__resolve_windows_msvc_env_script()
             if self.windows_msvc_env_script:
                 self.logger.info(
-                    "Using Visual Studio developer environment script: %s",
+                    "Visual Studio developer environment script: %s",
                     self.windows_msvc_env_script,
                 )
 
