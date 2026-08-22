@@ -34,13 +34,6 @@
 #include <QUrl>
 #include <QtConcurrent>
 
-namespace {
-    struct update_check_result
-    {
-        bool has_update = false;
-    };
-} // namespace
-
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , m_ui(new Ui::MainWindow)
@@ -56,7 +49,6 @@ MainWindow::MainWindow(QWidget *parent)
      * the device's single-session nature.
      */
     m_device_pool.setMaxThreadCount(1);
-    m_update_check_pool.setMaxThreadCount(1);
 
     app_settings_storage::instance().load();
 
@@ -169,38 +161,26 @@ MainWindow::MainWindow(QWidget *parent)
     QObject::connect(m_ui->about_new_version_label, &QLabel::linkActivated, this,
         [](const QString &link) { QDesktopServices::openUrl(QUrl(link)); });
 
-    QTimer::singleShot(0, this, [this]() {
-        auto *update_watcher = new QFutureWatcher<update_check_result>(this);
-        QObject::connect(update_watcher, &QFutureWatcher<update_check_result>::finished, this,
-            [this, update_watcher]() {
-                const auto result = update_watcher->result();
-                update_watcher->deleteLater();
+    /**
+     * @brief show the result of the previous background update check immediately, then refresh it
+     * in the background for the next launch.
+     */
+    const auto cached_update_status = sokketter::last_update_check_status();
+    if (!cached_update_status.new_version.empty())
+    {
+        const QString latest_release_url = QString::fromStdString(sokketter::release_link());
+        const QString escaped_new_version =
+            QString::fromStdString(cached_update_status.new_version).toHtmlEscaped();
+        m_ui->about_new_version_label->setText(
+            QStringLiteral("<a href=\"%1\">(new version %2 is available)</a>")
+                .arg(latest_release_url, escaped_new_version));
+        m_ui->about_new_version_label->setOpenExternalLinks(true);
+        m_ui->about_new_version_label->setTextInteractionFlags(Qt::TextBrowserInteraction);
+        m_ui->about_new_version_label->setCursor(Qt::PointingHandCursor);
+        m_ui->about_new_version_label->show();
+    }
 
-                if (result.has_update)
-                {
-                    const QString latest_release_url =
-                        QString::fromStdString(sokketter::release_link());
-                    m_ui->about_new_version_label->setText(
-                        QStringLiteral("<a href=\"%1\">(new version is available)</a>")
-                            .arg(latest_release_url));
-                    m_ui->about_new_version_label->setOpenExternalLinks(true);
-                    m_ui->about_new_version_label->setTextInteractionFlags(
-                        Qt::TextBrowserInteraction);
-                    m_ui->about_new_version_label->setCursor(Qt::PointingHandCursor);
-                    m_ui->about_new_version_label->show();
-                }
-                else
-                {
-                    m_ui->about_new_version_label->hide();
-                }
-            });
-
-        update_watcher->setFuture(
-            QtConcurrent::run(&m_update_check_pool, []() -> update_check_result {
-                std::string latest_version;
-                return {sokketter::is_new_release_available(latest_version)};
-            }));
-    });
+    sokketter::check_for_update_async();
 
     QTimer::singleShot(25, [this]() { repopulate_device_list(); });
 }
@@ -209,8 +189,6 @@ MainWindow::~MainWindow()
 {
     m_device_pool.clear();
     m_device_pool.waitForDone();
-    m_update_check_pool.clear();
-    m_update_check_pool.waitForDone();
 
     if (m_device != nullptr)
     {

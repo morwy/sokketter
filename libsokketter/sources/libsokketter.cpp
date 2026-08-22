@@ -129,6 +129,16 @@ auto sokketter::is_new_release_available(std::string &latest_version) -> bool
     return sokketter_core::instance().is_new_release_available(latest_version);
 }
 
+auto sokketter::check_for_update_async() -> void
+{
+    sokketter_core::instance().check_for_update_async();
+}
+
+auto sokketter::last_update_check_status() -> update_check_status
+{
+    return sokketter_core::instance().last_update_check_status();
+}
+
 sokketter::socket::socket(const socket_configuration &configuration)
 {
     m_configuration = configuration;

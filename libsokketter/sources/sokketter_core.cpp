@@ -7,7 +7,11 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
+#include <cstdlib>
+#include <ctime>
 #include <curl/curl.h>
+#include <iomanip>
 #include <json/json.hpp>
 #include <spdlog/sinks/callback_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -77,6 +81,14 @@ auto sokketter_core::initialize() -> bool
 
 auto sokketter_core::deinitialize() -> bool
 {
+    {
+        const std::lock_guard<std::mutex> lock(m_update_check_thread_mutex);
+        if (m_update_check_thread.joinable())
+        {
+            m_update_check_thread.join();
+        }
+    }
+
     m_database.save();
 
     /**
@@ -340,6 +352,96 @@ auto sokketter_core::is_newer_version(
 auto sokketter_core::release_link() -> std::string
 {
     return RELEASE_LINK;
+}
+
+auto current_timestamp() -> std::string
+{
+    const auto now = std::chrono::system_clock::now();
+    const std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+
+    std::tm local_time = {};
+#ifdef _WIN32
+    localtime_s(&local_time, &now_time);
+#else
+    localtime_r(&now_time, &local_time);
+#endif
+
+    std::ostringstream stream;
+    stream << std::put_time(&local_time, "%Y-%m-%d %H:%M:%S");
+    return stream.str();
+}
+
+auto sokketter_core::check_for_update_async() -> void
+{
+    /**
+     * @attention lets tests stub out the real GitHub request.
+     */
+    if (std::getenv("LIBSOKKETTER_TEST_SKIP_UPDATE_CHECK") != nullptr)
+    {
+        return;
+    }
+
+    const std::lock_guard<std::mutex> lock(m_update_check_thread_mutex);
+
+    if (m_update_check_running.load())
+    {
+        SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
+            "Skipping update check request because another check is already running.");
+        return;
+    }
+
+    if (m_update_check_thread.joinable())
+    {
+        m_update_check_thread.join();
+    }
+
+    m_update_check_running.store(true);
+
+    m_update_check_thread = std::thread([this]() {
+        struct update_check_running_guard
+        {
+            std::atomic_bool &running;
+            ~update_check_running_guard()
+            {
+                running.store(false);
+            }
+        };
+
+        update_check_running_guard running_guard{m_update_check_running};
+
+        std::string latest_version;
+        const bool has_update = is_new_release_available(latest_version);
+        if (!has_update && latest_version.empty())
+        {
+            return;
+        }
+
+        update_check_storage::cached_status result;
+        result.status.checked_at = current_timestamp();
+        result.status.new_version = has_update ? latest_version : std::string();
+        result.latest_version = latest_version;
+
+        const std::lock_guard<std::mutex> lock(m_update_check_storage_mutex);
+        m_update_check_storage.set(result);
+        m_update_check_storage.save();
+    });
+}
+
+auto sokketter_core::last_update_check_status() -> sokketter::update_check_status
+{
+    const std::lock_guard<std::mutex> lock(m_update_check_storage_mutex);
+
+    m_update_check_storage.load();
+    auto result = m_update_check_storage.get();
+
+    if (!result.latest_version.empty())
+    {
+        const auto current_version = sokketter::version().to_string();
+        result.status.new_version =
+            is_newer_version(current_version, result.latest_version) ? result.latest_version : "";
+    }
+
+    return result.status;
 }
 
 auto sokketter_core::is_new_release_available(std::string &latest_version) -> bool
