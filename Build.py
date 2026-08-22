@@ -76,8 +76,14 @@ class Build:
         self.stages = stages
         self.logger.info("Build stages: %s", self.stages)
 
-        self.qt_version = qt_version
+        self.os_name = Environment.get_os_name()
+        self.logger.info("Operating system: %s", self.os_name)
+
+        self.os_version = Environment.get_os_version()
+        self.logger.info("Operating system version: %s", self.os_version)
+
         self.architecture = architecture
+        self.logger.info("Architecture: %s", self.architecture)
 
         self.cmake = self.__get_cmake()
         self.logger.info("CMake executable: %s", self.cmake)
