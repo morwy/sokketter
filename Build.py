@@ -319,6 +319,32 @@ class Build:
             self.logger.error("Command failed with error:\n%s", e.stderr)
             raise
 
+    def __clean(self) -> None:
+        """
+        Clean the build and output directories.
+        """
+        self.logger.info("Cleaning build and output directories.")
+
+        if os.path.exists(self.temp_build_output_dir):
+            shutil.rmtree(self.temp_build_output_dir)
+            self.logger.info(
+                "Removed temporary build output directory: %s",
+                self.temp_build_output_dir,
+            )
+
+        if os.path.exists(self.temp_binary_output_dir):
+            shutil.rmtree(self.temp_binary_output_dir)
+            self.logger.info(
+                "Removed temporary binary output directory: %s",
+                self.temp_binary_output_dir,
+            )
+
+        if os.path.exists(self.results_output_dir):
+            shutil.rmtree(self.results_output_dir)
+            self.logger.info(
+                "Removed results output directory: %s", self.results_output_dir
+            )
+
     def __configure(self) -> None:
         """
         Configure the project using CMake.
@@ -910,6 +936,9 @@ class Build:
         Run the build process.
         """
         self.logger.info("Starting the build process.")
+
+        if BuildStage.CLEAN.value in self.stages or BuildStage.ALL.value in self.stages:
+            self.__clean()
 
         if (
             BuildStage.CONFIGURE.value in self.stages
