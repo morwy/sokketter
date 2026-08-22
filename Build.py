@@ -953,6 +953,7 @@ class Build:
             self.workspace,
             "-B",
             self.temp_build_output_dir,
+            "-DCMAKE_BUILD_TYPE=Release",
             "-DIS_COMPILING_STATIC=true",
             "-DIS_COMPILING_SHARED=false",
             f"-DQt6_DIR={qt6_dir}",
