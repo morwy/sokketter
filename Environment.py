@@ -68,6 +68,14 @@ class Environment:
         raise EnvironmentError("Unsupported operating system")
 
     @staticmethod
+    def is_unix_based() -> bool:
+        """
+        Check if the operating system is Unix-based.
+        """
+        os_name = platform.system().lower()
+        return os_name in ["linux", "darwin"]
+
+    @staticmethod
     def get_os_version() -> str:
         """
         Get the version of the operating system.
