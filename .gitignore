@@ -10,6 +10,7 @@ build.log
 *.zip
 *.AppImage
 *.deb
+results/
 
 # Testing temp files.
 Testing/
