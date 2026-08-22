@@ -10,6 +10,13 @@
 #include <json/json.hpp>
 #include <spdlog/spdlog.h>
 #include <sstream>
+#include <thread>
+
+#ifdef _WIN32
+#    include <windows.h>
+#else
+#    include <unistd.h>
+#endif
 
 auto epoch_seconds_to_timestamp_string(const int64_t epoch_seconds) -> std::string
 {
@@ -68,19 +75,61 @@ auto update_check_storage::set(const cached_status &value) -> void
 
 auto update_check_storage::save() const -> void
 {
-    SPDLOG_LOGGER_DEBUG(
-        SOKKETTER_LOGGER, "Saving the update check result to '{}' file.", path().string());
+    const auto &destination = path();
 
-    std::ofstream file(path().string());
-    if (!file.is_open())
+    SPDLOG_LOGGER_DEBUG(
+        SOKKETTER_LOGGER, "Saving the update check result to '{}' file.", destination.string());
+
+    std::error_code error_code;
+    std::filesystem::create_directories(destination.parent_path(), error_code);
+
+    /**
+     * @attention write to a sibling temp file and rename it into place, so a concurrent reader
+     * (CLI/UI both use this cache) never observes a truncated or partially written file.
+     */
+    const auto temporary_path =
+        destination.parent_path() /
+        (destination.filename().string() + ".tmp." +
+            std::to_string(
+#ifdef _WIN32
+                static_cast<unsigned long>(GetCurrentProcessId())
+#else
+                static_cast<unsigned long>(getpid())
+#endif
+                    ) +
+            "." + std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id())));
+
     {
-        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "Failed opening the update check file for writing!");
-        return;
+        std::ofstream file(temporary_path.string(), std::ios::trunc);
+        if (!file.is_open())
+        {
+            SPDLOG_LOGGER_ERROR(
+                SOKKETTER_LOGGER, "Failed opening the update check temp file for writing!");
+            return;
+        }
+
+        nlohmann::json j = nlohmann::json{{"checked_at", m_result.status.checked_at},
+            {"new_version", m_result.status.new_version},
+            {"latest_version", m_result.latest_version}};
+        file << j.dump(4);
+
+        if (!file.good())
+        {
+            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "Failed writing the update check temp file!");
+            file.close();
+            std::filesystem::remove(temporary_path, error_code);
+            return;
+        }
     }
 
-    nlohmann::json j = nlohmann::json{{"checked_at", m_result.status.checked_at},
-        {"new_version", m_result.status.new_version}, {"latest_version", m_result.latest_version}};
-    file << j.dump(4);
+    std::filesystem::rename(temporary_path, destination, error_code);
+    if (error_code)
+    {
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+            "Failed replacing '{}' with the update check temp file: {}.", destination.string(),
+            error_code.message());
+        std::filesystem::remove(temporary_path, error_code);
+    }
 }
 
 auto update_check_storage::load() -> void
