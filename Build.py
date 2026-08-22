@@ -52,9 +52,7 @@ class Build:
     Class to handle the build process.
     """
 
-    def __init__(
-        self, stages: list[str], qt_version: str, architecture: str
-    ) -> None:
+    def __init__(self, stages: list[str], qt_version: str, architecture: str) -> None:
         """
         Initialize the build class.
         """
@@ -1751,10 +1749,12 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--qt-version",
-        type=lambda value: value
-        if value == "latest" or re.fullmatch(r"\d+\.\d+(?:\.\d+)?", value)
-        else parser.error(
-            "argument --qt-version: must be 'latest' or a two-/three-component version"
+        type=lambda value: (
+            value
+            if value == "latest" or re.fullmatch(r"\d+\.\d+(?:\.\d+)?", value)
+            else parser.error(
+                "argument --qt-version: must be 'latest' or a two-/three-component version"
+            )
         ),
         default="latest",
         metavar="QT_VERSION",
@@ -1766,7 +1766,7 @@ if __name__ == "__main__":
         type=str,
         default=Environment.get_architecture(),
         metavar="ARCHITECTURE",
-        help="Target architecture for the build.",
+        help=f"Target architecture for the build (default: current host architecture, which is currently {Environment.get_architecture()}).",
     )
 
     args = parser.parse_args()
