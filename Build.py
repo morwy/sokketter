@@ -1235,7 +1235,7 @@ Section: utils
 Priority: optional
 Architecture: {package_architecture}
 Maintainer: Paul Ergard
-Depends: libc6, libstdc++6, libudev1, libqt6widgets6, libqt6gui6, libqt6core6t64 | libqt6core6
+Depends: libc6, libstdc++6, libudev1, libqt6widgets6, libqt6gui6, libqt6concurrent6, libqt6core6t64 | libqt6core6
 Description: UI application for controlling connected power strips and sockets.
  sokketter-ui provides a Qt-based desktop interface for supported USB and Ethernet power strips.
 """
