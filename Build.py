@@ -574,6 +574,28 @@ class Build:
         if os.path.exists(cache_dir):
             shutil.rmtree(cache_dir)
 
+    def __get_cmake_generator(self, qt6_dir):
+        desired_generator = "Visual Studio 17 2022"
+        qt6_dir_lower = qt6_dir.lower()
+        if "msvc2019" in qt6_dir_lower:
+            desired_generator = "Visual Studio 16 2019"
+        elif "msvc2022" in qt6_dir_lower:
+            desired_generator = "Visual Studio 17 2022"
+
+        cached_generator = self.__get_cached_cmake_generator(self.temp_build_output_dir)
+        if cached_generator and cached_generator != desired_generator:
+            self.logger.info(
+                "Switching CMake generator from '%s' to '%s'. Clearing stale cache.",
+                cached_generator,
+                desired_generator,
+            )
+            self.__reset_cmake_cache(self.temp_build_output_dir)
+            deps_dir = os.path.join(self.temp_build_output_dir, "_deps")
+            if os.path.exists(deps_dir):
+                shutil.rmtree(deps_dir)
+
+        return desired_generator
+
     def __clean(self) -> None:
         """
         Clean the build and output directories.
@@ -623,26 +645,7 @@ class Build:
         if platform.system() == "Windows":
             cmake_generator = os.environ.get("CMAKE_GENERATOR")
             if not cmake_generator:
-                desired_generator = "Visual Studio 17 2022"
-                qt6_dir_lower = qt6_dir.lower()
-                if "msvc2019" in qt6_dir_lower:
-                    desired_generator = "Visual Studio 16 2019"
-                elif "msvc2022" in qt6_dir_lower:
-                    desired_generator = "Visual Studio 17 2022"
-
-                cached_generator = self.__get_cached_cmake_generator(
-                    self.temp_build_output_dir
-                )
-                if cached_generator and cached_generator != desired_generator:
-                    self.logger.info(
-                        "Switching CMake generator from '%s' to '%s'. Clearing stale cache.",
-                        cached_generator,
-                        desired_generator,
-                    )
-                    self.__reset_cmake_cache(self.temp_build_output_dir)
-                    deps_dir = os.path.join(self.temp_build_output_dir, "_deps")
-                    if os.path.exists(deps_dir):
-                        shutil.rmtree(deps_dir)
+                desired_generator = self.__get_cmake_generator(qt6_dir)
 
                 cmake_command.extend(["-G", desired_generator])
                 if self.architecture.lower() in ["x86_64", "amd64"]:
