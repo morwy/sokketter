@@ -13,11 +13,13 @@ Cross-platform C++17 project. Three first-party components plus vendored depende
 
 ## Build & test
 
-Build locally by calling Build.py Python script. Build.py allows selecting which actions to perform (configure, build, test, package) by specifying `--stages` (default: all).
+Build locally by calling Build.py Python script. Build.py allows selecting which actions to perform (configure, build, test, package) by specifying `--stages` (default: all). Always test and build the project by running the following command in a terminal:
 
 ```powershell
-python Build.py --stages CONFIGURE BUILD VERIFY
+python Build.py --stages CLEAN CONFIGURE BUILD VERIFY
 ```
+
+NEVER try to build the project by calling CMake directly, as Build.py handles platform-specific quirks and dependencies.
 
 - Tests are opt-in via `-DSOKKETTER_ENABLE_TESTING=true` (GoogleTest, discovered with `gtest_discover_tests`). Run them with `ctest --test-dir build --output-on-failure`.
 - Coverage: [get_coverage.sh](get_coverage.sh) (lcov, non-Windows only). CMake option is `-DSOKKETTER_ENABLE_COVERAGE=true`.
