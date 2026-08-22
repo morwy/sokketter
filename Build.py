@@ -611,7 +611,7 @@ class Build:
         if not os.path.exists(cache_file):
             return None
 
-        with open(cache_file, "r", encoding="utf-8", errors="ignore") as file:
+        with open(cache_file, mode="r", encoding="utf-8", errors="ignore") as file:
             for line in file:
                 if line.startswith("CMAKE_GENERATOR:INTERNAL="):
                     return line.strip().split("=", maxsplit=1)[1]
