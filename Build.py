@@ -166,14 +166,14 @@ class Build:
         """
         compiler = ""
 
-        if platform.system() == "Windows":
+        if self.os_name == "windows":
             compiler = "cl"
-        elif platform.system() == "Linux":
-            compiler = "g++"
-        elif platform.system() == "Darwin":
+        elif self.os_name == "macos":
             compiler = "clang++"
+        elif Environment.is_unix_based():
+            compiler = "g++"
         else:
-            self.logger.error("Unsupported platform: %s", platform.system())
+            self.logger.error("Unsupported platform: %s", self.os_name)
             raise EnvironmentError("Unsupported platform")
 
         return compiler
