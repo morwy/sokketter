@@ -146,7 +146,11 @@ class Build:
             else ["CMake"]
         )
         qt_cmake_candidates = [
-            pathlib.Path(self.qt_root_folder) / "Tools" / cmake_tool_name / "bin" / executable_name
+            pathlib.Path(self.qt_root_folder)
+            / "Tools"
+            / cmake_tool_name
+            / "bin"
+            / executable_name
             for cmake_tool_name in cmake_tool_names
         ]
 
