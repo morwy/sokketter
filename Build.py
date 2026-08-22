@@ -178,23 +178,9 @@ class Build:
         """
         Get the binary output directory based on the platform.
         """
-        if platform.system() == "Windows":
-            return os.path.join(
-                workspace, "bin", f"windows_{self.architecture}", "Release"
-            )
-
-        if platform.system() == "Linux":
-            return os.path.join(
-                workspace, "bin", f"linux_{self.architecture}", "Release"
-            )
-
-        if platform.system() == "Darwin":
-            return os.path.join(
-                workspace, "bin", f"macos_{self.architecture}", "Release"
-            )
-
-        self.logger.error("Unsupported platform: %s", platform.system())
-        raise EnvironmentError("Unsupported platform")
+        return os.path.join(
+            workspace, "bin", f"{self.os_name}_{self.architecture}", "Release"
+        )
 
     def __get_debian_architecture(self) -> str:
         """
