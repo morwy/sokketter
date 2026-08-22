@@ -150,14 +150,18 @@ class Build:
             if self.architecture.lower() in ["x86_64", "amd64"]
             else ["CMake"]
         )
+        qt_tools_dir = pathlib.Path(self.qt_root_folder) / "Tools"
         qt_cmake_candidates = [
-            pathlib.Path(self.qt_root_folder)
-            / "Tools"
-            / cmake_tool_name
-            / "bin"
-            / executable_name
+            qt_tools_dir / cmake_tool_name / "bin" / executable_name
             for cmake_tool_name in cmake_tool_names
         ]
+
+        # Iterate and log all folders in the Qt Tools directory for debugging purposes
+        if qt_tools_dir.exists() and qt_tools_dir.is_dir():
+            self.logger.debug(
+                "Qt Tools directory contents: %s",
+                [str(item) for item in qt_tools_dir.iterdir()],
+            )
 
         for candidate in qt_cmake_candidates:
             if candidate.exists():
