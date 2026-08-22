@@ -211,6 +211,22 @@ class Build:
             f"Unsupported Debian package architecture: {self.architecture}"
         )
 
+    def __get_linuxdeployqt_architecture(self) -> str:
+        """
+        Get the linuxdeployqt continuous release architecture token for the current platform.
+        """
+        architecture = self.architecture.lower()
+
+        if architecture in ["x86_64", "amd64"]:
+            return "x86_64"
+
+        if architecture in ["arm64", "aarch64"]:
+            return "aarch64"
+
+        raise EnvironmentError(
+            f"Unsupported linuxdeployqt architecture: {self.architecture}"
+        )
+
     def __resolve_qt6_dir(self) -> str:
         """
         Resolve Qt6_DIR to a path containing Qt6Config.cmake across supported platforms.
@@ -1147,6 +1163,67 @@ class Build:
 
         self.logger.info("CLI files packaged successfully.")
 
+    def __compute_linux_deb_depends(self, binary_path: str) -> str:
+        """
+        Derive a versioned Depends field from the built binary.
+
+        dpkg-shlibdeps resolves minimum versions for shared libraries owned by apt
+        packages (e.g. libc6, libstdc++6, libudev1). Qt6 libraries are excluded from
+        that lookup because Qt is installed via aqtinstall rather than apt, so dpkg
+        cannot map them to an owning package; their minimum version is derived
+        instead from the Qt version the binary was actually linked against, which
+        keeps the dependency versioned instead of falling back to an unversioned one.
+        """
+        scratch_dir = os.path.join(
+            self.temp_binary_output_dir, "sokketter-ui-shlibdeps"
+        )
+        if os.path.exists(scratch_dir):
+            shutil.rmtree(scratch_dir)
+
+        debian_dir = os.path.join(scratch_dir, "debian")
+        os.makedirs(debian_dir)
+
+        with open(
+            file=os.path.join(debian_dir, "control"), mode="w", encoding="utf-8"
+        ) as file:
+            file.write(
+                "Source: sokketter-ui\n"
+                "Priority: optional\n"
+                "Maintainer: Paul Ergard <64430090+morwy@users.noreply.github.com>\n"
+                "\n"
+                "Package: sokketter-ui\n"
+                "Architecture: any\n"
+                "Depends: ${shlibs:Depends}\n"
+                "Description: UI application for controlling connected power strips and sockets.\n"
+            )
+
+        try:
+            result = subprocess.run(
+                ["dpkg-shlibdeps", "-O", "--ignore-missing-info", "-e", binary_path],
+                check=True,
+                capture_output=True,
+                text=True,
+                cwd=scratch_dir,
+            )
+        finally:
+            shutil.rmtree(scratch_dir)
+
+        shlibs_depends = ""
+        for line in result.stdout.splitlines():
+            if line.startswith("shlibs:Depends="):
+                shlibs_depends = line.split("=", maxsplit=1)[1].strip()
+                break
+
+        qt_version = self.__resolve_qt_runtime_version()
+        qt_depends = (
+            f"libqt6widgets6 (>= {qt_version}), "
+            f"libqt6gui6 (>= {qt_version}), "
+            f"libqt6concurrent6 (>= {qt_version}), "
+            f"libqt6core6t64 (>= {qt_version}) | libqt6core6 (>= {qt_version})"
+        )
+
+        return f"{shlibs_depends}, {qt_depends}" if shlibs_depends else qt_depends
+
     def __package_linux_ui_deb(self) -> None:
         """
         Package the Linux UI application as a Debian package.
@@ -1229,13 +1306,17 @@ class Build:
         )
         os.chmod(os.path.join(udev_rules_folder, "101-sokketter.rules"), 0o644)
 
+        package_depends = self.__compute_linux_deb_depends(
+            os.path.join(usr_bin_folder, "sokketter-ui")
+        )
+
         control_content = f"""Package: {package_name}
 Version: {package_version}
 Section: utils
 Priority: optional
 Architecture: {package_architecture}
 Maintainer: Paul Ergard <64430090+morwy@users.noreply.github.com>
-Depends: libc6, libstdc++6, libudev1, libqt6widgets6, libqt6gui6, libqt6concurrent6, libqt6core6t64 | libqt6core6
+Depends: {package_depends}
 Description: UI application for controlling connected power strips and sockets.
  sokketter-ui provides a Qt-based desktop interface for supported USB and Ethernet power strips.
 """
