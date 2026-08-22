@@ -369,6 +369,7 @@ auto sokketter_core::check_for_update_async() -> void
                                .count();
         result.new_version = has_update ? latest_version : std::string();
 
+        const std::lock_guard<std::mutex> lock(m_update_check_storage_mutex);
         m_update_check_storage.set(result);
         m_update_check_storage.save();
     });
@@ -376,6 +377,8 @@ auto sokketter_core::check_for_update_async() -> void
 
 auto sokketter_core::last_update_check_status() -> sokketter::update_check_status
 {
+    const std::lock_guard<std::mutex> lock(m_update_check_storage_mutex);
+
     m_update_check_storage.load();
     const auto &result = m_update_check_storage.get();
 

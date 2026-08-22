@@ -9,6 +9,7 @@
 #include <third-party/kommpot/libkommpot/include/libkommpot.h>
 #include <update_check_storage.h>
 
+#include <mutex>
 #include <thread>
 
 constexpr auto LOGGER_NAME = "sokketter";
@@ -59,8 +60,11 @@ private:
     sokketter::settings_structure m_settings;
     std::shared_ptr<spdlog::logger> m_logger = nullptr;
     database_storage m_database;
+
     update_check_storage m_update_check_storage;
+    std::mutex m_update_check_storage_mutex;
     std::thread m_update_check_thread;
+
     sokketter::device_callback m_device_cb = nullptr;
     sokketter::status_callback m_status_cb = nullptr;
 
