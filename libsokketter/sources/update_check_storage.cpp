@@ -122,7 +122,16 @@ auto update_check_storage::save() const -> void
         }
     }
 
+    error_code.clear();
+#ifdef _WIN32
+    if (!MoveFileExW(temporary_path.c_str(), destination.c_str(), MOVEFILE_REPLACE_EXISTING))
+    {
+        error_code =
+            std::error_code(static_cast<int>(GetLastError()), std::system_category());
+    }
+#else
     std::filesystem::rename(temporary_path, destination, error_code);
+#endif
     if (error_code)
     {
         SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
