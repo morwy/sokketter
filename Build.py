@@ -92,16 +92,16 @@ class Build:
         self.logger.info("Operating system version: %s", self.os_version)
 
         self.architecture = architecture
-        self.logger.info("Architecture: %s", self.architecture)
+        self.logger.info("Target architecture: %s", self.architecture)
 
         self.qt_version = qt_version
-        self.logger.info("Qt version: %s", self.qt_version)
+        self.logger.info("Target Qt version: %s", self.qt_version)
 
         self.cmake = self.__get_cmake()
-        self.logger.info("CMake executable: %s", self.cmake)
+        self.logger.info("Target CMake executable: %s", self.cmake)
 
         self.compiler = self.__get_cpp_compiler()
-        self.logger.info("C++ compiler: %s", self.compiler)
+        self.logger.info("Target C++ compiler: %s", self.compiler)
 
         self.windows_msvc_env_script: str | None = None
         if platform.system() == "Windows":
