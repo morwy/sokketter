@@ -1249,6 +1249,9 @@ class Build:
         ]
         self.__execute_command(cmake_command=deploy_command, cwd=deb_root_folder)
 
+        # The workaround file is owned by the real libc6 package; strip it before packaging.
+        shutil.rmtree(os.path.join(deb_root_folder, "usr", "share", "doc", "libc6"))
+
         # linuxdeployqt deploys Qt into usr/lib and usr/plugins (RPATH: $ORIGIN/../lib).
         # Relocate that into a private subfolder so it cannot collide with system Qt.
         deployed_lib_folder = os.path.join(deb_root_folder, "usr", "lib")
