@@ -11,6 +11,7 @@ import logging
 import os
 import pathlib
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -51,7 +52,9 @@ class Build:
     Class to handle the build process.
     """
 
-    def __init__(self, stages: list[str]) -> None:
+    def __init__(
+        self, stages: list[str], qt_version: str, architecture: str
+    ) -> None:
         """
         Initialize the build class.
         """
@@ -65,6 +68,9 @@ class Build:
         self.stages = stages
         self.logger.info("Build stages: %s", self.stages)
 
+        self.qt_version = qt_version
+        self.architecture = architecture
+
         self.cmake = self.__get_cmake()
         self.logger.info("CMake executable: %s", self.cmake)
 
@@ -77,7 +83,6 @@ class Build:
         self.os_version = Environment.get_os_version()
         self.logger.info("Operating system version: %s", self.os_version)
 
-        self.architecture = Environment.get_architecture()
         self.logger.info("Architecture: %s", self.architecture)
 
         self.windows_msvc_env_script: str | None = None
@@ -1744,10 +1749,30 @@ if __name__ == "__main__":
         help=f"Stages to run (default: {BuildStage.ALL.name}). Available stages: {', '.join(stage.value for stage in BuildStage)}.",
     )
 
+    parser.add_argument(
+        "--qt-version",
+        type=lambda value: value
+        if value == "latest" or re.fullmatch(r"\d+\.\d+(?:\.\d+)?", value)
+        else parser.error(
+            "argument --qt-version: must be 'latest' or a two-/three-component version"
+        ),
+        default="latest",
+        metavar="QT_VERSION",
+        help="Qt version to use (default: latest; format: major.minor[.patch]).",
+    )
+
+    parser.add_argument(
+        "--architecture",
+        type=str,
+        default=Environment.get_architecture(),
+        metavar="ARCHITECTURE",
+        help="Target architecture for the build.",
+    )
+
     args = parser.parse_args()
 
     if not args.stages:
         print("No stages specified. Use --help to see available stages.")
         sys.exit(1)
 
-    Build(args.stages).run()
+    Build(args.stages, args.qt_version, args.architecture).run()
