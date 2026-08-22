@@ -139,47 +139,22 @@ class Build:
         """
         Get the CMake executable from the environment variable.
         """
-        cmake = "cmake"
-        cmake_in_path = shutil.which(cmake)
-        if cmake_in_path:
-            if platform.system() == "Windows" and any(
-                marker in cmake_in_path.lower()
-                for marker in ["mingw", "msys", "cygwin"]
-            ):
-                self.logger.warning(
-                    "Detected MSYS/MinGW CMake on PATH (%s). Looking for native Windows CMake instead.",
-                    cmake_in_path,
-                )
-            else:
-                return cmake
-
-        self.logger.warning(
-            "Using a fallback CMake resolution path instead of the default PATH entry."
+        executable_name = "cmake.exe" if platform.system() == "Windows" else "cmake"
+        cmake_tool_names = (
+            ["CMake_64", "CMake"]
+            if self.architecture.lower() in ["x86_64", "amd64"]
+            else ["CMake"]
         )
+        qt_cmake_candidates = [
+            pathlib.Path(self.qt_root_folder) / "Tools" / cmake_tool_name / "bin" / executable_name
+            for cmake_tool_name in cmake_tool_names
+        ]
 
-        if platform.system() == "Windows":
-            windows_cmake_candidates = [
-                "C:\\Qt\\Tools\\CMake_64\\bin\\cmake.exe",
-                "C:\\Program Files\\CMake\\bin\\cmake.exe",
-            ]
+        for candidate in qt_cmake_candidates:
+            if candidate.exists():
+                return str(candidate)
 
-            for candidate in windows_cmake_candidates:
-                if os.path.exists(candidate):
-                    return candidate
-
-            if cmake_in_path:
-                return cmake_in_path
-
-            cmake = windows_cmake_candidates[0]
-        elif platform.system() in ["Linux", "Darwin"]:
-            cmake = os.path.join(
-                os.environ.get("HOME", ""), "Qt", "Tools", "CMake", "bin", "cmake"
-            )
-
-        if not os.path.exists(cmake):
-            raise EnvironmentError("CMake executable not found")
-
-        return cmake
+        raise EnvironmentError("CMake executable not found")
 
     def __get_cpp_compiler(self) -> str:
         """
