@@ -631,7 +631,9 @@ class Build:
                 "Using Ninja generator because Ninja is available at: %s",
                 ninja_filepath,
             )
-
+            os.environ["PATH"] = os.pathsep.join(
+                [os.path.dirname(ninja_filepath), os.environ.get("PATH", "")]
+            )
             desired_generator = "Ninja"
 
         elif iqta_tools:
