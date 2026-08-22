@@ -383,7 +383,7 @@ auto sokketter_core::check_for_update_async() -> void
         }
 
         sokketter::update_check_status result;
-        result.timestamp = current_timestamp();
+        result.checked_at = current_timestamp();
         result.new_version = has_update ? latest_version : std::string();
 
         const std::lock_guard<std::mutex> lock(m_update_check_storage_mutex);

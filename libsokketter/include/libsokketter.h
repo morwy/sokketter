@@ -150,7 +150,16 @@ namespace sokketter {
      */
     struct EXPORTED update_check_status
     {
-        std::string timestamp = "";
+        /**
+         * @brief checked_at date and time in format YYYY-MM-DD HH:MM:SS.
+         * @return empty string when no update check was performed yet.
+         */
+        std::string checked_at = "";
+
+        /**
+         * @brief latest available version string.
+         * @return empty string when no update was found.
+         */
         std::string new_version = "";
     };
 

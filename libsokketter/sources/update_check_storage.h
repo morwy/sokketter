@@ -6,7 +6,6 @@
 #include "../include/libsokketter.h"
 
 #include <filesystem>
-#include <string>
 
 /**
  * @brief persists the result of the latest background update check to disk.

@@ -32,17 +32,21 @@ auto parse_update_check_status(const nlohmann::json &j) -> sokketter::update_che
 {
     sokketter::update_check_status r;
 
-    if (j.contains("timestamp") && j["timestamp"].is_string())
+    if (j.contains("checked_at") && j["checked_at"].is_string())
     {
-        r.timestamp = j["timestamp"].get<std::string>();
+        r.checked_at = j["checked_at"].get<std::string>();
+    }
+    else if (j.contains("timestamp") && j["timestamp"].is_string())
+    {
+        r.checked_at = j["timestamp"].get<std::string>();
     }
     else if (j.contains("timestamp") && j["timestamp"].is_number_integer())
     {
-        r.timestamp = epoch_seconds_to_timestamp_string(j["timestamp"].get<int64_t>());
+        r.checked_at = epoch_seconds_to_timestamp_string(j["timestamp"].get<int64_t>());
     }
     else
     {
-        r.timestamp = "";
+        r.checked_at = "";
     }
 
     r.new_version = j.value("new_version", "");
@@ -50,10 +54,14 @@ auto parse_update_check_status(const nlohmann::json &j) -> sokketter::update_che
 }
 
 auto update_check_storage::get() const -> sokketter::update_check_status
-{ return m_result; }
+{
+    return m_result;
+}
 
 auto update_check_storage::set(const sokketter::update_check_status &value) -> void
-{ m_result = value; }
+{
+    m_result = value;
+}
 
 auto update_check_storage::save() const -> void
 {
@@ -68,7 +76,7 @@ auto update_check_storage::save() const -> void
     }
 
     nlohmann::json j =
-        nlohmann::json{{"timestamp", m_result.timestamp}, {"new_version", m_result.new_version}};
+        nlohmann::json{{"checked_at", m_result.checked_at}, {"new_version", m_result.new_version}};
     file << j.dump(4);
 }
 
@@ -110,4 +118,6 @@ auto update_check_storage::load() -> void
 }
 
 auto update_check_storage::path() const -> std::filesystem::path
-{ return sokketter::storage_path() / "update-check.json"; }
+{
+    return sokketter::storage_path() / "update-check.json";
+}
