@@ -356,10 +356,11 @@ auto MainWindow::redraw_device_list() -> void
             if (qobject_cast<EmptyPowerStripListItem *>(widget))
             {
                 widget->setMaximumWidth(visible_width);
+                widget->setMaximumHeight(visible_height);
 
                 const auto &size_hint = widget->sizeHint();
                 list_widget->setSizeHint(QSize(std::max(size_hint.width(), visible_width),
-                    std::max(size_hint.width(), visible_height)));
+                    std::max(size_hint.height(), visible_height)));
             }
             else if (qobject_cast<PowerStripListItem *>(widget))
             {
