@@ -52,6 +52,15 @@ class BuildStage(str, Enum):
     TEST = "TEST"
 
 
+class TargetArchitecture(str, Enum):
+    """
+    Enum to define the target architectures.
+    """
+
+    X86_64 = "x86_64"
+    ARM64 = "arm64"
+
+
 # --------------------------------------------------------------------------------------------------
 #
 # Class definition.
