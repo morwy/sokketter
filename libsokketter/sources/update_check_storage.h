@@ -3,7 +3,8 @@
 
 #pragma once
 
-#include <cstdint>
+#include "../include/libsokketter.h"
+
 #include <filesystem>
 #include <string>
 
@@ -13,17 +14,11 @@
 class update_check_storage
 {
 public:
-    struct result
-    {
-        int64_t timestamp = 0;
-        std::string new_version;
-    };
-
     update_check_storage() = default;
     ~update_check_storage() = default;
 
-    auto get() const -> result;
-    auto set(const result &value) -> void;
+    auto get() const -> sokketter::update_check_status;
+    auto set(const sokketter::update_check_status &value) -> void;
 
     auto save() const -> void;
     auto load() -> void;
@@ -31,7 +26,7 @@ public:
     auto path() const -> std::filesystem::path;
 
 private:
-    result m_result;
+    sokketter::update_check_status m_result;
 };
 
 #endif // UPDATE_CHECK_STORAGE_H

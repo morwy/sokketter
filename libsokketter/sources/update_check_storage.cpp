@@ -1,32 +1,59 @@
 #include <update_check_storage.h>
 
-#include <libsokketter.h>
 #include <sokketter_core.h>
 
+#include <chrono>
+#include <ctime>
 #include <fstream>
+#include <iomanip>
 #include <json/json.hpp>
 #include <spdlog/spdlog.h>
+#include <sstream>
 
-void to_json(nlohmann::json &j, const update_check_storage::result &r)
+auto epoch_seconds_to_timestamp_string(const int64_t epoch_seconds) -> std::string
 {
-    j = nlohmann::json{{"timestamp", r.timestamp}, {"new_version", r.new_version}};
+    const auto time_point =
+        std::chrono::system_clock::time_point(std::chrono::seconds(epoch_seconds));
+    const std::time_t date_time = std::chrono::system_clock::to_time_t(time_point);
+
+    std::tm local_time = {};
+#ifdef _WIN32
+    localtime_s(&local_time, &date_time);
+#else
+    localtime_r(&date_time, &local_time);
+#endif
+
+    std::ostringstream stream;
+    stream << std::put_time(&local_time, "%Y-%m-%d %H:%M:%S");
+    return stream.str();
 }
 
-void from_json(const nlohmann::json &j, update_check_storage::result &r)
+auto parse_update_check_status(const nlohmann::json &j) -> sokketter::update_check_status
 {
-    r.timestamp = j.value("timestamp", static_cast<int64_t>(0));
+    sokketter::update_check_status r;
+
+    if (j.contains("timestamp") && j["timestamp"].is_string())
+    {
+        r.timestamp = j["timestamp"].get<std::string>();
+    }
+    else if (j.contains("timestamp") && j["timestamp"].is_number_integer())
+    {
+        r.timestamp = epoch_seconds_to_timestamp_string(j["timestamp"].get<int64_t>());
+    }
+    else
+    {
+        r.timestamp = "";
+    }
+
     r.new_version = j.value("new_version", "");
+    return r;
 }
 
-auto update_check_storage::get() const -> result
-{
-    return m_result;
-}
+auto update_check_storage::get() const -> sokketter::update_check_status
+{ return m_result; }
 
-auto update_check_storage::set(const result &value) -> void
-{
-    m_result = value;
-}
+auto update_check_storage::set(const sokketter::update_check_status &value) -> void
+{ m_result = value; }
 
 auto update_check_storage::save() const -> void
 {
@@ -40,7 +67,8 @@ auto update_check_storage::save() const -> void
         return;
     }
 
-    nlohmann::json j = m_result;
+    nlohmann::json j =
+        nlohmann::json{{"timestamp", m_result.timestamp}, {"new_version", m_result.new_version}};
     file << j.dump(4);
 }
 
@@ -69,7 +97,7 @@ auto update_check_storage::load() -> void
     {
         file >> j;
 
-        auto value = j.get<result>();
+        auto value = parse_update_check_status(j);
         m_result = std::move(value);
     }
     catch (const nlohmann::json::exception &exception)
@@ -82,6 +110,4 @@ auto update_check_storage::load() -> void
 }
 
 auto update_check_storage::path() const -> std::filesystem::path
-{
-    return sokketter::storage_path() / "update-check.json";
-}
+{ return sokketter::storage_path() / "update-check.json"; }

@@ -150,7 +150,7 @@ namespace sokketter {
      */
     struct EXPORTED update_check_status
     {
-        int64_t timestamp = 0;
+        std::string timestamp = "";
         std::string new_version = "";
     };
 

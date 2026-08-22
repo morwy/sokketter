@@ -8,7 +8,9 @@
 #include <algorithm>
 #include <cctype>
 #include <chrono>
+#include <ctime>
 #include <curl/curl.h>
+#include <iomanip>
 #include <json/json.hpp>
 #include <spdlog/sinks/callback_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -348,6 +350,23 @@ auto sokketter_core::release_link() -> std::string
     return RELEASE_LINK;
 }
 
+auto current_timestamp() -> std::string
+{
+    const auto now = std::chrono::system_clock::now();
+    const std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+
+    std::tm local_time = {};
+#ifdef _WIN32
+    localtime_s(&local_time, &now_time);
+#else
+    localtime_r(&now_time, &local_time);
+#endif
+
+    std::ostringstream stream;
+    stream << std::put_time(&local_time, "%Y-%m-%d %H:%M:%S");
+    return stream.str();
+}
+
 auto sokketter_core::check_for_update_async() -> void
 {
     if (m_update_check_thread.joinable())
@@ -363,10 +382,8 @@ auto sokketter_core::check_for_update_async() -> void
             return;
         }
 
-        update_check_storage::result result;
-        result.timestamp = std::chrono::duration_cast<std::chrono::seconds>(
-            std::chrono::system_clock::now().time_since_epoch())
-                               .count();
+        sokketter::update_check_status result;
+        result.timestamp = current_timestamp();
         result.new_version = has_update ? latest_version : std::string();
 
         const std::lock_guard<std::mutex> lock(m_update_check_storage_mutex);
@@ -382,7 +399,7 @@ auto sokketter_core::last_update_check_status() -> sokketter::update_check_statu
     m_update_check_storage.load();
     const auto &result = m_update_check_storage.get();
 
-    return {result.timestamp, result.new_version};
+    return result;
 }
 
 auto sokketter_core::is_new_release_available(std::string &latest_version) -> bool
