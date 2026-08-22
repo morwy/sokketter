@@ -1442,7 +1442,7 @@ exit 0
                 "icons",
                 "socket-icon-256x256.png",
             ),
-            sokketter_app_image_folder,
+            os.path.join(sokketter_app_image_folder, "sokketter-ui-icon.png"),
         )
 
         desktop_file_path = os.path.join(
