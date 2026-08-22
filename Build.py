@@ -145,11 +145,15 @@ class Build:
         Get the CMake executable from the environment variable.
         """
         executable_name = "cmake.exe" if self.os_name == "windows" else "cmake"
+
         cmake_tool_names = (
             ["CMake_64", "CMake"]
             if self.architecture.lower() in ["x86_64", "amd64"]
             else ["CMake"]
         )
+        if self.os_name == "macos":
+            cmake_tool_names = ["CMake.app/Contents"]
+
         qt_tools_dir = pathlib.Path(self.qt_root_folder) / "Tools"
         qt_cmake_candidates = [
             qt_tools_dir / cmake_tool_name / "bin" / executable_name
