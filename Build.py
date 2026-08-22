@@ -275,6 +275,10 @@ class Build:
                             fallback_qt6_dir,
                         )
                         return fallback_qt6_dir
+                    raise EnvironmentError(
+                        f"Qt6_DIR '{qt6_path}' does not match build architecture "
+                        f"'{self.architecture}', and no compatible Qt installation was found."
+                    )
                 return str(qt6_path)
             raise EnvironmentError(
                 f"Qt6_DIR is set to '{qt6_path}' but Qt6Config.cmake was not found there."
