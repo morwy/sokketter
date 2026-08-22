@@ -640,9 +640,11 @@ class Build:
         if os.path.exists(cache_dir):
             shutil.rmtree(cache_dir)
 
-    def __get_cmake_generator(self, qt6_dir):
+    def __get_cmake_generator(self):
         ninja_executable = "ninja.exe" if self.os_name == "windows" else "ninja"
-        ninja_filepath = os.path.join(qt6_dir, "Tools", "Ninja", ninja_executable)
+        ninja_filepath = os.path.join(
+            self.qt_root_folder, "Tools", "Ninja", ninja_executable
+        )
         desired_generator = "Ninja"
 
         if os.path.exists(ninja_filepath):
@@ -956,9 +958,6 @@ class Build:
         """
         self.logger.info("Starting the CMake configuration.")
 
-        qt6_dir = self.qt_cmake_folder
-        qt6_root = self.qt_root_folder
-
         cmake_command = [
             self.cmake,
             "-S",
@@ -968,13 +967,13 @@ class Build:
             "-DCMAKE_BUILD_TYPE=Release",
             "-DIS_COMPILING_STATIC=true",
             "-DIS_COMPILING_SHARED=false",
-            f"-DQt6_DIR={qt6_dir}",
+            f"-DQt6_DIR={self.qt_cmake_folder}",
         ]
 
         if self.os_name == "windows":
             cmake_generator = os.environ.get("CMAKE_GENERATOR")
             if not cmake_generator:
-                desired_generator = self.__get_cmake_generator(qt6_dir)
+                desired_generator = self.__get_cmake_generator()
 
                 cmake_command.extend(["-G", desired_generator])
 
@@ -993,10 +992,12 @@ class Build:
 
         cmake_prefix_path = os.environ.get("CMAKE_PREFIX_PATH")
         if cmake_prefix_path:
-            merged_prefix_path = os.pathsep.join([qt6_root, cmake_prefix_path])
+            merged_prefix_path = os.pathsep.join(
+                [self.qt_root_folder, cmake_prefix_path]
+            )
             cmake_command.append(f"-DCMAKE_PREFIX_PATH={merged_prefix_path}")
         else:
-            cmake_command.append(f"-DCMAKE_PREFIX_PATH={qt6_root}")
+            cmake_command.append(f"-DCMAKE_PREFIX_PATH={self.qt_root_folder}")
 
         if BuildStage.TEST.value in self.stages and self.os_name != "windows":
             cmake_command.append("-DSOKKETTER_ENABLE_TESTING=true")
