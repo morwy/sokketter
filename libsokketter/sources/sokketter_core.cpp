@@ -358,6 +358,10 @@ auto sokketter_core::check_for_update_async() -> void
     m_update_check_thread = std::thread([this]() {
         std::string latest_version;
         const bool has_update = is_new_release_available(latest_version);
+        if (!has_update && latest_version.empty())
+        {
+            return;
+        }
 
         update_check_storage::result result;
         result.timestamp = std::chrono::duration_cast<std::chrono::seconds>(
