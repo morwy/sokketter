@@ -1163,29 +1163,15 @@ class Build:
 
         self.logger.info("CLI files packaged successfully.")
 
-    def __resolve_qt_runtime_version(self) -> str:
-        """
-        Get the exact Qt runtime version the binary was linked against.
-        """
-        qmake = self.__resolve_qt_tool("qmake")
-        result = subprocess.run(
-            [qmake, "-query", "QT_VERSION"],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        return result.stdout.strip()
-
     def __compute_linux_deb_depends(self, binary_path: str) -> str:
         """
         Derive a versioned Depends field from the built binary.
 
         dpkg-shlibdeps resolves minimum versions for shared libraries owned by apt
-        packages (e.g. libc6, libstdc++6, libudev1). Qt6 libraries are excluded from
-        that lookup because Qt is installed via aqtinstall rather than apt, so dpkg
-        cannot map them to an owning package; their minimum version is derived
-        instead from the Qt version the binary was actually linked against, which
-        keeps the dependency versioned instead of falling back to an unversioned one.
+        packages (e.g. libc6, libstdc++6, libudev1). Qt6 libraries are bundled
+        privately with the package (see __bundle_qt_runtime_for_deb), so they are not
+        owned by any distro package; --ignore-missing-info makes dpkg-shlibdeps skip
+        them instead of failing or guessing at a package name.
         """
         scratch_dir = os.path.join(
             self.temp_binary_output_dir, "sokketter-ui-shlibdeps"
@@ -1227,15 +1213,76 @@ class Build:
                 shlibs_depends = line.split("=", maxsplit=1)[1].strip()
                 break
 
-        qt_version = self.__resolve_qt_runtime_version()
-        qt_depends = (
-            f"libqt6widgets6 (>= {qt_version}), "
-            f"libqt6gui6 (>= {qt_version}), "
-            f"libqt6concurrent6 (>= {qt_version}), "
-            f"libqt6core6t64 (>= {qt_version}) | libqt6core6 (>= {qt_version})"
+        return shlibs_depends
+
+    def __bundle_qt_runtime_for_deb(
+        self, usr_bin_folder: str, deb_root_folder: str
+    ) -> None:
+        """
+        Deploy a private copy of the linked Qt runtime under usr/lib/sokketter-ui so the
+        Debian package does not depend on the target distro's Qt6 packages, whose names
+        and available versions vary across supported releases.
+        """
+        self.logger.info("Bundling a private Qt runtime for the Debian package.")
+
+        # linuxdeployqt looks for this file due to a known upstream glibc-version check bug.
+        linuxdeployqt_idiot_fix_folder_path = os.path.join(
+            deb_root_folder, "usr", "share", "doc", "libc6"
+        )
+        os.makedirs(linuxdeployqt_idiot_fix_folder_path, exist_ok=True)
+        pathlib.Path(
+            os.path.join(linuxdeployqt_idiot_fix_folder_path, "copyright")
+        ).touch()
+
+        linuxdeployqt_path = os.path.join(
+            self.workspace,
+            f"linuxdeployqt-continuous-{self.__get_linuxdeployqt_architecture()}.AppImage",
         )
 
-        return f"{shlibs_depends}, {qt_depends}" if shlibs_depends else qt_depends
+        binary_path = os.path.join(usr_bin_folder, "sokketter-ui")
+        deploy_command = [
+            linuxdeployqt_path,
+            binary_path,
+            "-verbose=2",
+            "-unsupported-allow-new-glibc",
+            "-qmake=" + self.__resolve_qt_tool("qmake"),
+        ]
+        self.__execute_command(cmake_command=deploy_command, cwd=deb_root_folder)
+
+        # linuxdeployqt deploys Qt into usr/lib and usr/plugins (RPATH: $ORIGIN/../lib).
+        # Relocate that into a private subfolder so it cannot collide with system Qt.
+        deployed_lib_folder = os.path.join(deb_root_folder, "usr", "lib")
+        deployed_plugins_folder = os.path.join(deb_root_folder, "usr", "plugins")
+
+        staging_folder = os.path.join(deb_root_folder, "usr", "lib-staging")
+        shutil.move(deployed_lib_folder, staging_folder)
+        os.makedirs(deployed_lib_folder)
+        private_lib_folder = os.path.join(deployed_lib_folder, "sokketter-ui")
+        shutil.move(staging_folder, private_lib_folder)
+
+        if os.path.exists(deployed_plugins_folder):
+            shutil.move(
+                deployed_plugins_folder, os.path.join(private_lib_folder, "plugins")
+            )
+
+        for root, dirs, files in os.walk(private_lib_folder):
+            for directory in dirs:
+                os.chmod(os.path.join(root, directory), 0o755)
+            for filename in files:
+                os.chmod(os.path.join(root, filename), 0o644)
+
+        # Only the executable's RPATH needs adjusting; libraries reference each other
+        # via $ORIGIN, which is unaffected by the extra sokketter-ui path segment.
+        self.__execute_command(
+            ["patchelf", "--set-rpath", "$ORIGIN/../lib/sokketter-ui", binary_path]
+        )
+
+        qt_conf_path = os.path.join(usr_bin_folder, "qt.conf")
+        with open(file=qt_conf_path, mode="w", encoding="utf-8") as file:
+            file.write("[Paths]\nPrefix = ../lib/sokketter-ui\nPlugins = plugins\n")
+        os.chmod(qt_conf_path, 0o644)
+
+        self.logger.info("Private Qt runtime bundled successfully.")
 
     def __package_linux_ui_deb(self) -> None:
         """
@@ -1319,18 +1366,20 @@ class Build:
         )
         os.chmod(os.path.join(udev_rules_folder, "101-sokketter.rules"), 0o644)
 
+        self.__bundle_qt_runtime_for_deb(usr_bin_folder, deb_root_folder)
+
         package_depends = self.__compute_linux_deb_depends(
             os.path.join(usr_bin_folder, "sokketter-ui")
         )
 
+        depends_line = f"Depends: {package_depends}\n" if package_depends else ""
         control_content = f"""Package: {package_name}
 Version: {package_version}
 Section: utils
 Priority: optional
 Architecture: {package_architecture}
 Maintainer: Paul Ergard <64430090+morwy@users.noreply.github.com>
-Depends: {package_depends}
-Description: UI application for controlling connected power strips and sockets.
+{depends_line}Description: UI application for controlling connected power strips and sockets.
  sokketter-ui provides a Qt-based desktop interface for supported USB and Ethernet power strips.
 """
         with open(
@@ -1668,6 +1717,16 @@ exit 0
 #
 # --------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+            logging.FileHandler("build.log", mode="w"),
+        ],
+    )
+
     parser = argparse.ArgumentParser(
         description="Build script for the sokketter project."
     )
