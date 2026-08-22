@@ -588,12 +588,16 @@ class Build:
 
             return "Ninja"
 
-        if shutil.which("ninja"):
-            self.logger.info(
-                "Using Ninja generator because Ninja is available on PATH."
-            )
+        iqta_tools = os.environ.get("IQTA_TOOLS")
+        if iqta_tools:
+            ninja_filepath = os.path.join(iqta_tools, "Ninja", "ninja")
+            if os.path.exists(ninja_filepath):
+                self.logger.info(
+                    "Using Ninja generator because Ninja is available at: %s",
+                    ninja_filepath,
+                )
 
-            return "Ninja"
+                return "Ninja"
 
         desired_generator = "Visual Studio 17 2022"
         qt6_dir_lower = qt6_dir.lower()
