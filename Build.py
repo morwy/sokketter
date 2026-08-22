@@ -688,86 +688,6 @@ class Build:
                 )
                 time.sleep(retry_delay_seconds)
 
-    def __clean(self) -> None:
-        """
-        Clean the build and output directories.
-        """
-        self.logger.info("Cleaning build and output directories.")
-
-        if os.path.exists(self.temp_build_output_dir):
-            self.__remove_directory(self.temp_build_output_dir)
-            self.logger.info(
-                "Removed temporary build output directory: %s",
-                self.temp_build_output_dir,
-            )
-
-        if os.path.exists(self.temp_binary_output_dir):
-            self.__remove_directory(self.temp_binary_output_dir)
-            self.logger.info(
-                "Removed temporary binary output directory: %s",
-                self.temp_binary_output_dir,
-            )
-
-        if os.path.exists(self.results_output_dir):
-            self.__remove_directory(self.results_output_dir)
-            self.logger.info(
-                "Removed results output directory: %s", self.results_output_dir
-            )
-
-    def __configure(self) -> None:
-        """
-        Configure the project using CMake.
-        """
-        self.logger.info("Starting the CMake configuration.")
-
-        qt6_dir = self.__resolve_qt6_dir()
-        qt6_root = str(pathlib.Path(qt6_dir).parent.parent.parent)
-
-        cmake_command = [
-            self.cmake,
-            "-S",
-            self.workspace,
-            "-B",
-            self.temp_build_output_dir,
-            "-DIS_COMPILING_STATIC=true",
-            "-DIS_COMPILING_SHARED=false",
-            f"-DQt6_DIR={qt6_dir}",
-        ]
-
-        if platform.system() == "Windows":
-            cmake_generator = os.environ.get("CMAKE_GENERATOR")
-            if not cmake_generator:
-                desired_generator = self.__get_cmake_generator(qt6_dir)
-
-                cmake_command.extend(["-G", desired_generator])
-
-                if "Visual Studio" in desired_generator:
-                    if self.architecture.lower() in ["x86_64", "amd64"]:
-                        cmake_command.extend(["-A", "x64"])
-                    elif self.architecture.lower() in ["arm64", "aarch64"]:
-                        cmake_command.extend(["-A", "ARM64"])
-
-            # Do not force CMAKE_CXX_COMPILER on Windows; Visual Studio generators
-            # resolve MSVC correctly even when cl.exe is not on PATH.
-            cmake_command.extend(["-U", "CMAKE_CXX_COMPILER"])
-        else:
-            cmake_command.append(f"-DCMAKE_CXX_COMPILER={self.compiler}")
-            cmake_command.append("-DCMAKE_GENERATOR:STRING=Ninja")
-
-        cmake_prefix_path = os.environ.get("CMAKE_PREFIX_PATH")
-        if cmake_prefix_path:
-            merged_prefix_path = os.pathsep.join([qt6_root, cmake_prefix_path])
-            cmake_command.append(f"-DCMAKE_PREFIX_PATH={merged_prefix_path}")
-        else:
-            cmake_command.append(f"-DCMAKE_PREFIX_PATH={qt6_root}")
-
-        if BuildStage.TEST.value in self.stages and platform.system() != "Windows":
-            cmake_command.append("-DSOKKETTER_ENABLE_TESTING=true")
-
-        self.__execute_command(cmake_command)
-
-        self.logger.info("CMake configuration completed successfully.")
-
     def __configure_finder(self, mount_point: pathlib.Path):
         script = f"""
         tell application "Finder"
@@ -991,6 +911,86 @@ class Build:
                     )
                 except subprocess.CalledProcessError:
                     pass
+
+    def __clean(self) -> None:
+        """
+        Clean the build and output directories.
+        """
+        self.logger.info("Cleaning build and output directories.")
+
+        if os.path.exists(self.temp_build_output_dir):
+            self.__remove_directory(self.temp_build_output_dir)
+            self.logger.info(
+                "Removed temporary build output directory: %s",
+                self.temp_build_output_dir,
+            )
+
+        if os.path.exists(self.temp_binary_output_dir):
+            self.__remove_directory(self.temp_binary_output_dir)
+            self.logger.info(
+                "Removed temporary binary output directory: %s",
+                self.temp_binary_output_dir,
+            )
+
+        if os.path.exists(self.results_output_dir):
+            self.__remove_directory(self.results_output_dir)
+            self.logger.info(
+                "Removed results output directory: %s", self.results_output_dir
+            )
+
+    def __configure(self) -> None:
+        """
+        Configure the project using CMake.
+        """
+        self.logger.info("Starting the CMake configuration.")
+
+        qt6_dir = self.__resolve_qt6_dir()
+        qt6_root = str(pathlib.Path(qt6_dir).parent.parent.parent)
+
+        cmake_command = [
+            self.cmake,
+            "-S",
+            self.workspace,
+            "-B",
+            self.temp_build_output_dir,
+            "-DIS_COMPILING_STATIC=true",
+            "-DIS_COMPILING_SHARED=false",
+            f"-DQt6_DIR={qt6_dir}",
+        ]
+
+        if platform.system() == "Windows":
+            cmake_generator = os.environ.get("CMAKE_GENERATOR")
+            if not cmake_generator:
+                desired_generator = self.__get_cmake_generator(qt6_dir)
+
+                cmake_command.extend(["-G", desired_generator])
+
+                if "Visual Studio" in desired_generator:
+                    if self.architecture.lower() in ["x86_64", "amd64"]:
+                        cmake_command.extend(["-A", "x64"])
+                    elif self.architecture.lower() in ["arm64", "aarch64"]:
+                        cmake_command.extend(["-A", "ARM64"])
+
+            # Do not force CMAKE_CXX_COMPILER on Windows; Visual Studio generators
+            # resolve MSVC correctly even when cl.exe is not on PATH.
+            cmake_command.extend(["-U", "CMAKE_CXX_COMPILER"])
+        else:
+            cmake_command.append(f"-DCMAKE_CXX_COMPILER={self.compiler}")
+            cmake_command.append("-DCMAKE_GENERATOR:STRING=Ninja")
+
+        cmake_prefix_path = os.environ.get("CMAKE_PREFIX_PATH")
+        if cmake_prefix_path:
+            merged_prefix_path = os.pathsep.join([qt6_root, cmake_prefix_path])
+            cmake_command.append(f"-DCMAKE_PREFIX_PATH={merged_prefix_path}")
+        else:
+            cmake_command.append(f"-DCMAKE_PREFIX_PATH={qt6_root}")
+
+        if BuildStage.TEST.value in self.stages and platform.system() != "Windows":
+            cmake_command.append("-DSOKKETTER_ENABLE_TESTING=true")
+
+        self.__execute_command(cmake_command)
+
+        self.logger.info("CMake configuration completed successfully.")
 
     def __build(self) -> None:
         """
