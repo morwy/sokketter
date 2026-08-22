@@ -4,7 +4,14 @@
 #include <fstream>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <sstream>
 #include <vector>
+
+#ifdef _WIN32
+#    include <process.h>
+#else
+#    include <unistd.h>
+#endif
 
 using namespace testing;
 
@@ -28,6 +35,26 @@ namespace {
     }
 
     /**
+     * @brief builds a cache path unique to this process and test, so parallel ctest runs
+     * (each discovered TEST_F is its own process) never race on a shared temp file.
+     */
+    auto unique_cache_path() -> std::filesystem::path
+    {
+        const auto *test_info = testing::UnitTest::GetInstance()->current_test_info();
+
+        std::ostringstream name;
+        name << "sokketter-update-check-test-"
+#ifdef _WIN32
+             << _getpid()
+#else
+             << getpid()
+#endif
+             << "-" << (test_info != nullptr ? test_info->name() : "unknown") << ".json";
+
+        return std::filesystem::temp_directory_path() / name.str();
+    }
+
+    /**
      * @brief points the update check cache at a temp file and stubs the real GitHub request,
      * so the notification branch of parse_and_process() is deterministic and offline.
      */
@@ -36,8 +63,7 @@ namespace {
     protected:
         auto SetUp() -> void override
         {
-            m_cache_path =
-                std::filesystem::temp_directory_path() / "sokketter-update-check-test.json";
+            m_cache_path = unique_cache_path();
             std::filesystem::remove(m_cache_path);
 
             set_env("LIBSOKKETTER_TEST_UPDATE_CHECK_PATH", m_cache_path.string().c_str());
