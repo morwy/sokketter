@@ -1213,7 +1213,11 @@ class Build:
 
         shutil.copy(
             os.path.join(
-                self.workspace, "sokketter-ui", "resources", "sokketter-ui-icon.png"
+                self.workspace,
+                "sokketter-ui",
+                "resources",
+                "icons",
+                "socket-icon-256x256.png",
             ),
             os.path.join(icons_folder, "sokketter-ui-icon.png"),
         )
@@ -1432,7 +1436,11 @@ exit 0
 
         shutil.copy(
             os.path.join(
-                self.workspace, "sokketter-ui", "resources", "sokketter-ui-icon.png"
+                self.workspace,
+                "sokketter-ui",
+                "resources",
+                "icons",
+                "socket-icon-256x256.png",
             ),
             sokketter_app_image_folder,
         )
