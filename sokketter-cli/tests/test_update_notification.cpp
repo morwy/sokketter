@@ -47,8 +47,11 @@ namespace {
 
         auto TearDown() -> void override
         {
-            unset_env("LIBSOKKETTER_TEST_UPDATE_CHECK_PATH");
-            unset_env("LIBSOKKETTER_TEST_SKIP_UPDATE_CHECK");
+            /** @attention restore the suite-wide default so other test files stay stubbed. */
+            const auto &default_path =
+                std::filesystem::temp_directory_path() / "sokketter-cli-tests-update-check.json";
+            set_env("LIBSOKKETTER_TEST_UPDATE_CHECK_PATH", default_path.string().c_str());
+            set_env("LIBSOKKETTER_TEST_SKIP_UPDATE_CHECK", "1");
             unset_env("LIBSOKKETTER_TEST_DEVICE_NUMBER");
             std::filesystem::remove(m_cache_path);
         }

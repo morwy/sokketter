@@ -29,7 +29,7 @@ include(ConvenienceDefinitions.cmake)
 #
 # Tests.
 #
-option(SOKKETTER_ENABLE_TESTING "Enable testing" ON)
+option(SOKKETTER_ENABLE_TESTING "Enable testing" OFF)
 option(SOKKETTER_ENABLE_COVERAGE "Enable coverage reporting" OFF)
 
 #

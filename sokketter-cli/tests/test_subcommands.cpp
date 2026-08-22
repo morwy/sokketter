@@ -41,6 +41,14 @@ namespace {
         return devices.front();
     }
 
+    bool any_device_available(const sokketter::power_strip_type &included_types)
+    {
+        sokketter::device_filter filter;
+        filter.included_types = included_types;
+
+        return !sokketter::devices(filter).empty();
+    }
+
     std::string expected_list_output()
     {
         sokketter::device_filter filter;
@@ -305,6 +313,11 @@ TEST(cli_subcommand_tests, list_include_ethernet_device_types_is_case_insensitiv
     const auto out_upper = testing::internal::GetCapturedStdout();
     const auto err_upper = testing::internal::GetCapturedStderr();
 
+    if (!any_device_available(sokketter::power_strip_type::ALL_DEVICES))
+    {
+        GTEST_SKIP() << "no devices are available";
+    }
+
     ASSERT_EQ(return_code_lower, EXIT_SUCCESS);
     ASSERT_EQ(return_code_upper, EXIT_SUCCESS);
     EXPECT_EQ(return_code_lower, return_code_upper);
@@ -336,6 +349,11 @@ TEST(cli_subcommand_tests, list_include_lan_device_types_is_case_insensitive)
         cli_parser::parse_and_process(args_upper.size(), args_upper.data());
     const auto out_upper = testing::internal::GetCapturedStdout();
     const auto err_upper = testing::internal::GetCapturedStderr();
+
+    if (!any_device_available(sokketter::power_strip_type::ALL_DEVICES))
+    {
+        GTEST_SKIP() << "no devices are available";
+    }
 
     ASSERT_EQ(return_code_lower, EXIT_SUCCESS);
     ASSERT_EQ(return_code_upper, EXIT_SUCCESS);
