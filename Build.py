@@ -1404,88 +1404,100 @@ exit 0
             self.__create_dmg(app_path=app_filepath, output_path=dmg_filename)
 
         elif platform.system() == "Linux":
-            sokketter_app_image_folder = os.path.join(
-                self.temp_binary_output_dir, "sokketter-ui.AppImage"
-            )
-            os.makedirs(sokketter_app_image_folder, exist_ok=True)
-
-            usr_bin_folder = os.path.join(sokketter_app_image_folder, "usr", "bin")
-            os.makedirs(usr_bin_folder, exist_ok=True)
-
-            shutil.copy(
-                os.path.join(self.temp_binary_output_dir, "bin", "sokketter-ui"),
-                usr_bin_folder,
-            )
-
-            shutil.copy(
-                os.path.join(
-                    self.workspace, "sokketter-ui", "resources", "sokketter-ui.desktop"
-                ),
-                sokketter_app_image_folder,
-            )
-
-            shutil.copy(
-                os.path.join(
-                    self.workspace, "sokketter-ui", "resources", "sokketter-ui-icon.png"
-                ),
-                sokketter_app_image_folder,
-            )
-
-            desktop_file_path = os.path.join(
-                sokketter_app_image_folder, "sokketter-ui.desktop"
-            )
-            with open(file=desktop_file_path, mode="r", encoding="utf-8") as file:
-                desktop_file_lines = file.readlines()
-
-            with open(file=desktop_file_path, mode="w", encoding="utf-8") as file:
-                for line in desktop_file_lines:
-                    if line.startswith("X-AppImage-Version="):
-                        file.write(f"X-AppImage-Version={self.version}\n")
-                    else:
-                        file.write(line)
-
-            linuxdeployqt_path = os.path.join(
-                self.workspace, "linuxdeployqt-continuous-x86_64.AppImage"
-            )
-
-            packing_command = [
-                linuxdeployqt_path,
-                os.path.join(usr_bin_folder, "sokketter-ui"),
-                "-appimage",
-                f"-executable={os.path.join(usr_bin_folder, 'sokketter-ui')}",
-                "-verbose=2",
-            ]
-            self.__execute_command(
-                cmake_command=packing_command, cwd=sokketter_ui_zip_folder
-            )
-
-            appimage_pattern = os.path.join(
-                sokketter_ui_zip_folder, "sokketter-ui-*.AppImage"
-            )
-            appimage_files = glob.glob(appimage_pattern)
-
-            for appimage_file in appimage_files:
-                new_appimage_path = os.path.join(
-                    sokketter_ui_zip_folder, "sokketter-ui.AppImage"
-                )
-                os.rename(appimage_file, new_appimage_path)
-                self.logger.info("Renamed %s to %s", appimage_file, new_appimage_path)
-                break
-
-            zip_name = shutil.make_archive(
-                base_name=f"sokketter-ui-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}",
-                format="zip",
-                root_dir=sokketter_ui_zip_folder,
-            )
-
-            shutil.move(
-                src=os.path.join(self.workspace, zip_name),
-                dst=sokketter_ui_folder,
-            )
-
+            self.__package_linux_app_image(sokketter_ui_folder, sokketter_ui_zip_folder)
             self.__package_linux_ui_deb()
 
         self.logger.info("UI files packaged successfully.")
+
+    def __package_linux_app_image(self, sokketter_ui_folder, sokketter_ui_zip_folder):
+        sokketter_app_image_folder = os.path.join(
+            self.temp_binary_output_dir, "sokketter-ui.AppImage"
+        )
+        os.makedirs(sokketter_app_image_folder, exist_ok=True)
+
+        usr_bin_folder = os.path.join(sokketter_app_image_folder, "usr", "bin")
+        os.makedirs(usr_bin_folder, exist_ok=True)
+
+        shutil.copy(
+            os.path.join(self.temp_binary_output_dir, "bin", "sokketter-ui"),
+            usr_bin_folder,
+        )
+
+        shutil.copy(
+            os.path.join(
+                self.workspace, "sokketter-ui", "resources", "sokketter-ui.desktop"
+            ),
+            sokketter_app_image_folder,
+        )
+
+        shutil.copy(
+            os.path.join(
+                self.workspace, "sokketter-ui", "resources", "sokketter-ui-icon.png"
+            ),
+            sokketter_app_image_folder,
+        )
+
+        desktop_file_path = os.path.join(
+            sokketter_app_image_folder, "sokketter-ui.desktop"
+        )
+        with open(file=desktop_file_path, mode="r", encoding="utf-8") as file:
+            desktop_file_lines = file.readlines()
+
+        with open(file=desktop_file_path, mode="w", encoding="utf-8") as file:
+            for line in desktop_file_lines:
+                if line.startswith("X-AppImage-Version="):
+                    file.write(f"X-AppImage-Version={self.version}\n")
+                else:
+                    file.write(line)
+
+        linuxdeployqt_idiot_fix_folder_path = os.path.join(
+            sokketter_app_image_folder, "usr", "share", "doc", "libc6"
+        )
+        os.makedirs(linuxdeployqt_idiot_fix_folder_path, exist_ok=True)
+        linuxdeployqt_idiot_fix_path = os.path.join(
+            linuxdeployqt_idiot_fix_folder_path, "copyright"
+        )
+        pathlib.Path(linuxdeployqt_idiot_fix_path).touch()
+
+        linuxdeployqt_path = os.path.join(
+            self.workspace, "linuxdeployqt-continuous-x86_64.AppImage"
+        )
+
+        packing_command = [
+            linuxdeployqt_path,
+            os.path.join(usr_bin_folder, "sokketter-ui"),
+            "-appimage",
+            f"-executable={os.path.join(usr_bin_folder, 'sokketter-ui')}",
+            "-verbose=2",
+            "-unsupported-allow-new-glibc",
+        ]
+        self.__execute_command(
+            cmake_command=packing_command, cwd=sokketter_ui_zip_folder
+        )
+
+        appimage_pattern = os.path.join(
+            sokketter_ui_zip_folder, "sokketter-ui-*.AppImage"
+        )
+        appimage_files = glob.glob(appimage_pattern)
+
+        for appimage_file in appimage_files:
+            new_appimage_path = os.path.join(
+                sokketter_ui_zip_folder, "sokketter-ui.AppImage"
+            )
+            os.rename(appimage_file, new_appimage_path)
+            self.logger.info("Renamed %s to %s", appimage_file, new_appimage_path)
+            break
+
+        zip_name = shutil.make_archive(
+            base_name=f"sokketter-ui-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}",
+            format="zip",
+            root_dir=sokketter_ui_zip_folder,
+        )
+
+        shutil.move(
+            src=os.path.join(self.workspace, zip_name),
+            dst=sokketter_ui_folder,
+        )
 
     def __package(self) -> None:
         """
