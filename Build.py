@@ -97,6 +97,10 @@ class Build:
         self.qt_version = qt_version
         self.logger.info("Target Qt version: %s", self.qt_version)
 
+        self.qt_version, self.qt_folder = self.__resolve_qt6_package()
+        self.logger.info("Selected Qt version: %s", self.qt_version)
+        self.logger.info("Selected Qt folder: %s", self.qt_folder)
+
         self.cmake = self.__get_cmake()
         self.logger.info("Target CMake executable: %s", self.cmake)
 
@@ -250,15 +254,44 @@ class Build:
             f"Unsupported linuxdeployqt architecture: {self.architecture}"
         )
 
-    def __resolve_qt6_dir(self) -> str:
+    def __resolve_qt6_package(self) -> tuple[str, str]:
         """
-        Resolve Qt6_DIR to a path containing Qt6Config.cmake across supported platforms.
+        Find the Qt6 package matching the requested version and target architecture.
         """
+
+        version_pattern = re.compile(r"^(\d+)\.(\d+)(?:\.(\d+))?$")
 
         def has_qt6_config(path: pathlib.Path) -> bool:
             return (path / "Qt6Config.cmake").exists() or (
                 path / "qt6-config.cmake"
             ).exists()
+
+        def get_qt_version(path: pathlib.Path) -> tuple[int, int, int] | None:
+            for parent in [path, *path.parents]:
+                match = version_pattern.fullmatch(parent.name)
+                if match:
+                    return (
+                        int(match.group(1)),
+                        int(match.group(2)),
+                        int(match.group(3) or 0),
+                    )
+
+            config_version = path / "Qt6ConfigVersion.cmake"
+            if not config_version.exists():
+                config_version = path / "qt6-config-version.cmake"
+            if config_version.exists():
+                contents = config_version.read_text(encoding="utf-8", errors="ignore")
+                match = re.search(
+                    r"PACKAGE_VERSION\s+\"(\d+)\.(\d+)(?:\.(\d+))?\"", contents
+                )
+                if match:
+                    return (
+                        int(match.group(1)),
+                        int(match.group(2)),
+                        int(match.group(3) or 0),
+                    )
+
+            return None
 
         def qt6_dirs_from_prefix(prefix: pathlib.Path) -> list[pathlib.Path]:
             return [prefix, prefix / "lib" / "cmake" / "Qt6"]
@@ -280,68 +313,11 @@ class Build:
 
         user_profile = os.environ.get("USERPROFILE", "")
 
-        def discover_windows_qt6_dir_for_arch() -> str | None:
-            if platform.system() != "Windows":
-                return None
-
-            arch = self.architecture.lower()
-            patterns: list[str]
-            if arch in ["x86_64", "amd64"]:
-                patterns = [
-                    os.path.join("C:\\Qt", "*", "msvc*_64", "lib", "cmake", "Qt6"),
-                    os.path.join("C:\\Qt", "*", "mingw*_64", "lib", "cmake", "Qt6"),
-                    os.path.join(
-                        user_profile, "Qt", "*", "msvc*_64", "lib", "cmake", "Qt6"
-                    ),
-                    os.path.join(
-                        user_profile, "Qt", "*", "mingw*_64", "lib", "cmake", "Qt6"
-                    ),
-                ]
-            elif arch in ["arm64", "aarch64"]:
-                patterns = [
-                    os.path.join("C:\\Qt", "*", "*arm64*", "lib", "cmake", "Qt6"),
-                    os.path.join(
-                        user_profile, "Qt", "*", "*arm64*", "lib", "cmake", "Qt6"
-                    ),
-                ]
-            else:
-                patterns = []
-
-            discovered: list[pathlib.Path] = []
-            for pattern in patterns:
-                for match in sorted(glob.glob(pattern), reverse=True):
-                    discovered.append(pathlib.Path(match).resolve())
-
-            for candidate in discovered:
-                if has_qt6_config(candidate):
-                    return str(candidate)
-
-            return None
-
+        candidates: list[pathlib.Path] = []
         qt6_dir = os.environ.get("Qt6_DIR") or os.environ.get("QT6_DIR")
         if qt6_dir:
-            qt6_path = pathlib.Path(qt6_dir).expanduser().resolve()
-            if has_qt6_config(qt6_path):
-                if not is_qt_dir_arch_compatible(qt6_path):
-                    fallback_qt6_dir = discover_windows_qt6_dir_for_arch()
-                    if fallback_qt6_dir:
-                        self.logger.warning(
-                            "Qt6_DIR '%s' does not match build architecture '%s'. Using '%s' instead.",
-                            qt6_path,
-                            self.architecture,
-                            fallback_qt6_dir,
-                        )
-                        return fallback_qt6_dir
-                    raise EnvironmentError(
-                        f"Qt6_DIR '{qt6_path}' does not match build architecture "
-                        f"'{self.architecture}', and no compatible Qt installation was found."
-                    )
-                return str(qt6_path)
-            raise EnvironmentError(
-                f"Qt6_DIR is set to '{qt6_path}' but Qt6Config.cmake was not found there."
-            )
+            candidates.append(pathlib.Path(qt6_dir).expanduser().resolve())
 
-        candidates: list[pathlib.Path] = []
         qt_root_dir = os.environ.get("QT_ROOT_DIR")
         if qt_root_dir:
             candidates.extend(
@@ -386,33 +362,68 @@ class Build:
             for match in sorted(glob.glob(pattern), reverse=True):
                 candidates.append(pathlib.Path(match).resolve())
 
+        packages: list[tuple[tuple[int, int, int], pathlib.Path]] = []
+        seen: set[pathlib.Path] = set()
         for candidate in candidates:
-            if has_qt6_config(candidate) and is_qt_dir_arch_compatible(candidate):
-                return str(candidate)
+            if candidate in seen or not has_qt6_config(candidate):
+                continue
+            seen.add(candidate)
+            if not is_qt_dir_arch_compatible(candidate):
+                continue
+            version = get_qt_version(candidate)
+            if version is not None:
+                packages.append((version, candidate))
 
-        if platform.system() == "Windows":
-            fallback_qt6_dir = discover_windows_qt6_dir_for_arch()
-            if fallback_qt6_dir:
-                return fallback_qt6_dir
+        requested_match = version_pattern.fullmatch(self.qt_version)
+        if self.qt_version == "latest":
+            matching_packages = packages
+        elif requested_match:
+            requested_version = tuple(
+                int(component or 0) for component in requested_match.groups()
+            )
+            if requested_match.group(3) is None:
+                matching_packages = [
+                    (version, path)
+                    for version, path in packages
+                    if version[:2] == requested_version[:2]
+                ]
+            else:
+                matching_packages = [
+                    (version, path)
+                    for version, path in packages
+                    if version == requested_version
+                ]
+        else:
+            matching_packages = []
+
+        if matching_packages:
+            selected_version, selected_folder = max(
+                matching_packages, key=lambda package: package[0]
+            )
+            return (
+                ".".join(str(component) for component in selected_version),
+                str(selected_folder),
+            )
 
         raise EnvironmentError(
-            "Qt6_DIR is not set and Qt6 could not be auto-discovered for this platform. "
-            "Set Qt6_DIR (or QT6_DIR) to a directory containing Qt6Config.cmake."
+            f"No suitable Qt6 package found for version '{self.qt_version}' and "
+            f"architecture '{self.architecture}'."
         )
 
     def __resolve_qt_tool(self, tool_name: str) -> str:
         """
         Resolve Qt deployment tools (e.g. macdeployqt, windeployqt) to an executable path.
         """
-        tool_in_path = shutil.which(tool_name)
-        if tool_in_path:
-            return tool_in_path
-
         executable_name = tool_name
         if platform.system() == "Windows" and not tool_name.endswith(".exe"):
             executable_name = f"{tool_name}.exe"
 
         candidates: list[pathlib.Path] = []
+
+        selected_qt_folder = getattr(self, "qt_folder", None)
+        if selected_qt_folder:
+            qt_root_candidate = pathlib.Path(selected_qt_folder).parent.parent.parent
+            candidates.append(qt_root_candidate / "bin" / executable_name)
 
         qt6_dir = os.environ.get("Qt6_DIR") or os.environ.get("QT6_DIR")
         if qt6_dir:
@@ -420,6 +431,10 @@ class Build:
             # Qt6_DIR usually points to <qt-root>/lib/cmake/Qt6, so go to <qt-root>/bin.
             qt_root_candidate = qt6_path.parent.parent.parent
             candidates.append(qt_root_candidate / "bin" / executable_name)
+
+        tool_in_path = shutil.which(tool_name)
+        if tool_in_path:
+            candidates.append(pathlib.Path(tool_in_path))
 
         home_dir = os.environ.get("HOME", "")
         if platform.system() == "Darwin":
@@ -999,7 +1014,7 @@ class Build:
         """
         self.logger.info("Starting the CMake configuration.")
 
-        qt6_dir = self.__resolve_qt6_dir()
+        qt6_dir = self.qt_folder
         qt6_root = str(pathlib.Path(qt6_dir).parent.parent.parent)
 
         cmake_command = [
