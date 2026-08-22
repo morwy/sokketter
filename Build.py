@@ -635,7 +635,7 @@ class Build:
             desired_generator = "Ninja"
 
         elif iqta_tools:
-            ninja_filepath = os.path.join(iqta_tools, "Ninja", "ninja")
+            ninja_filepath = os.path.join(iqta_tools, "Ninja", "ninja.exe")
             if os.path.exists(ninja_filepath):
                 self.logger.info(
                     "Using Ninja generator because Ninja is available at: %s",
