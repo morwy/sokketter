@@ -402,8 +402,8 @@ class Build:
             )
             return (
                 ".".join(str(component) for component in selected_version),
-                str(selected_folder.parent.parent.parent),
-                str(selected_folder),
+                str(selected_folder.parent.parent.parent.parent.parent),
+                str(selected_folder.parent.parent.parent.parent),
             )
 
         raise EnvironmentError(
@@ -421,10 +421,9 @@ class Build:
 
         candidates: list[pathlib.Path] = []
 
-        selected_qt_folder = getattr(self, "qt_folder", None)
-        if selected_qt_folder:
-            qt_root_candidate = pathlib.Path(selected_qt_folder).parent.parent.parent
-            candidates.append(qt_root_candidate / "bin" / executable_name)
+        if hasattr(self, "qt_version_folder"):
+            version_folder = pathlib.Path(self.qt_version_folder)
+            candidates.extend(version_folder.glob(f"*/bin/{executable_name}"))
 
         qt6_dir = os.environ.get("Qt6_DIR") or os.environ.get("QT6_DIR")
         if qt6_dir:
