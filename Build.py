@@ -20,7 +20,6 @@ import glob
 import logging
 import os
 import pathlib
-import platform
 import re
 import shutil
 import subprocess
@@ -93,9 +92,12 @@ class Build:
         self.qt_version = qt_version
         self.logger.info("Target Qt version: %s", self.qt_version)
 
-        self.qt_version, self.qt_root_folder, self.qt_version_folder, self.qt_cmake_folder = (
-            self.__resolve_qt6_package()
-        )
+        (
+            self.qt_version,
+            self.qt_root_folder,
+            self.qt_version_folder,
+            self.qt_cmake_folder,
+        ) = self.__resolve_qt6_package()
         self.logger.info("Selected Qt version: %s", self.qt_version)
         self.logger.info("Selected Qt root folder: %s", self.qt_root_folder)
         self.logger.info("Selected Qt version folder: %s", self.qt_version_folder)
@@ -108,7 +110,7 @@ class Build:
         self.logger.info("Target C++ compiler: %s", self.compiler)
 
         self.windows_msvc_env_script: str | None = None
-        if platform.system() == "Windows":
+        if self.os_name == "windows":
             self.windows_msvc_env_script = self.__resolve_windows_msvc_env_script()
             if self.windows_msvc_env_script:
                 self.logger.info(
@@ -142,7 +144,7 @@ class Build:
         """
         Get the CMake executable from the environment variable.
         """
-        executable_name = "cmake.exe" if platform.system() == "Windows" else "cmake"
+        executable_name = "cmake.exe" if self.os_name == "windows" else "cmake"
         cmake_tool_names = (
             ["CMake_64", "CMake"]
             if self.architecture.lower() in ["x86_64", "amd64"]
@@ -266,7 +268,7 @@ class Build:
             return [prefix, prefix / "lib" / "cmake" / "Qt6"]
 
         def is_qt_dir_arch_compatible(path: pathlib.Path) -> bool:
-            if platform.system() != "Windows":
+            if self.os_name != "windows":
                 return True
 
             normalized = str(path).lower()
@@ -302,11 +304,18 @@ class Build:
 
         home_dir = os.environ.get("HOME", "")
 
-        if platform.system() == "Darwin":
+        if self.os_name == "macos":
             patterns = [
                 os.path.join(home_dir, "Qt", "*", "macos", "lib", "cmake", "Qt6"),
             ]
-        elif platform.system() == "Linux":
+        elif self.os_name == "windows":
+            patterns = [
+                os.path.join("C:\\Qt", "*", "msvc*", "lib", "cmake", "Qt6"),
+                os.path.join("C:\\Qt", "*", "mingw*", "lib", "cmake", "Qt6"),
+                os.path.join(user_profile, "Qt", "*", "msvc*", "lib", "cmake", "Qt6"),
+                os.path.join(user_profile, "Qt", "*", "mingw*", "lib", "cmake", "Qt6"),
+            ]
+        elif Environment.is_unix_based():
             patterns = [
                 os.path.join(home_dir, "Qt", "*", "gcc_64", "lib", "cmake", "Qt6"),
                 os.path.join(
@@ -316,13 +325,6 @@ class Build:
                 os.path.join("/usr", "lib", "*", "cmake", "Qt6"),
                 os.path.join("/usr", "lib", "cmake", "Qt6"),
                 os.path.join("/usr", "local", "lib", "cmake", "Qt6"),
-            ]
-        elif platform.system() == "Windows":
-            patterns = [
-                os.path.join("C:\\Qt", "*", "msvc*", "lib", "cmake", "Qt6"),
-                os.path.join("C:\\Qt", "*", "mingw*", "lib", "cmake", "Qt6"),
-                os.path.join(user_profile, "Qt", "*", "msvc*", "lib", "cmake", "Qt6"),
-                os.path.join(user_profile, "Qt", "*", "mingw*", "lib", "cmake", "Qt6"),
             ]
         else:
             patterns = []
@@ -386,7 +388,7 @@ class Build:
         Resolve Qt deployment tools (e.g. macdeployqt, windeployqt) to an executable path.
         """
         executable_name = tool_name
-        if platform.system() == "Windows" and not tool_name.endswith(".exe"):
+        if self.os_name == "windows" and not tool_name.endswith(".exe"):
             executable_name = f"{tool_name}.exe"
 
         candidates: list[pathlib.Path] = []
@@ -1113,7 +1115,7 @@ class Build:
 
         os.makedirs(sokketter_cli_zip_folder)
 
-        if platform.system() == "Windows":
+        if self.os_name == "windows":
             shutil.copy(
                 os.path.join(self.temp_binary_output_dir, "bin", "sokketter-cli.exe"),
                 sokketter_cli_zip_folder,
@@ -1558,7 +1560,7 @@ exit 0
 
         os.makedirs(sokketter_ui_zip_folder)
 
-        if platform.system() == "Windows":
+        if self.os_name == "windows":
             shutil.copy(
                 os.path.join(self.temp_binary_output_dir, "bin", "sokketter-ui.exe"),
                 sokketter_ui_zip_folder,
@@ -1581,7 +1583,7 @@ exit 0
                 dst=sokketter_ui_folder,
             )
 
-        elif platform.system() == "Darwin":
+        elif self.os_name == "macos":
             filename = "sokketter-ui.app"
             app_filepath = os.path.join(sokketter_ui_zip_folder, filename)
 
@@ -1637,7 +1639,7 @@ exit 0
 
             self.__create_dmg(app_path=app_filepath, output_path=dmg_filename)
 
-        elif platform.system() == "Linux":
+        elif Environment.is_unix_based():
             self.__package_linux_app_image(sokketter_ui_folder, sokketter_ui_zip_folder)
             self.__package_linux_ui_deb()
 
