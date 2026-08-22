@@ -148,17 +148,19 @@ class Build:
             return os.path.join(
                 workspace, "bin", f"windows_{self.architecture}", "Release"
             )
-        elif platform.system() == "Linux":
+
+        if platform.system() == "Linux":
             return os.path.join(
                 workspace, "bin", f"linux_{self.architecture}", "Release"
             )
-        elif platform.system() == "Darwin":
+
+        if platform.system() == "Darwin":
             return os.path.join(
                 workspace, "bin", f"macos_{self.architecture}", "Release"
             )
-        else:
-            self.logger.error("Unsupported platform: %s", platform.system())
-            raise EnvironmentError("Unsupported platform")
+
+        self.logger.error("Unsupported platform: %s", platform.system())
+        raise EnvironmentError("Unsupported platform")
 
     def __resolve_qt6_dir(self) -> str:
         """
