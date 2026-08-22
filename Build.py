@@ -75,15 +75,11 @@ class Build:
         """
         Initialize the build class.
         """
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s - %(levelname)s - %(message)s",
-        )
         self.logger = logging.getLogger(__name__)
         self.logger.info("Build class initialized.")
 
         self.stages = stages
-        self.logger.info("Build stages: %s", self.stages)
+        self.logger.info("Specified stages: %s", self.stages)
 
         self.os_name = Environment.get_os_name()
         self.logger.info("Operating system: %s", self.os_name)
@@ -97,9 +93,12 @@ class Build:
         self.qt_version = qt_version
         self.logger.info("Target Qt version: %s", self.qt_version)
 
-        self.qt_version, self.qt_folder = self.__resolve_qt6_package()
+        self.qt_version, self.qt_root_folder, self.qt_version_folder = (
+            self.__resolve_qt6_package()
+        )
         self.logger.info("Selected Qt version: %s", self.qt_version)
-        self.logger.info("Selected Qt folder: %s", self.qt_folder)
+        self.logger.info("Selected Qt root folder: %s", self.qt_root_folder)
+        self.logger.info("Selected Qt version folder: %s", self.qt_version_folder)
 
         self.cmake = self.__get_cmake()
         self.logger.info("Target CMake executable: %s", self.cmake)
@@ -254,7 +253,7 @@ class Build:
             f"Unsupported linuxdeployqt architecture: {self.architecture}"
         )
 
-    def __resolve_qt6_package(self) -> tuple[str, str]:
+    def __resolve_qt6_package(self) -> tuple[str, str, str]:
         """
         Find the Qt6 package matching the requested version and target architecture.
         """
@@ -279,6 +278,7 @@ class Build:
             config_version = path / "Qt6ConfigVersion.cmake"
             if not config_version.exists():
                 config_version = path / "qt6-config-version.cmake"
+
             if config_version.exists():
                 contents = config_version.read_text(encoding="utf-8", errors="ignore")
                 match = re.search(
@@ -402,6 +402,7 @@ class Build:
             )
             return (
                 ".".join(str(component) for component in selected_version),
+                str(selected_folder.parent.parent.parent),
                 str(selected_folder),
             )
 
@@ -1014,8 +1015,8 @@ class Build:
         """
         self.logger.info("Starting the CMake configuration.")
 
-        qt6_dir = self.qt_folder
-        qt6_root = str(pathlib.Path(qt6_dir).parent.parent.parent)
+        qt6_dir = self.qt_version_folder
+        qt6_root = self.qt_root_folder
 
         cmake_command = [
             self.cmake,
