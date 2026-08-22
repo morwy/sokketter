@@ -169,9 +169,11 @@ MainWindow::MainWindow(QWidget *parent)
     if (!cached_update_status.new_version.empty())
     {
         const QString latest_release_url = QString::fromStdString(sokketter::release_link());
+        const QString escaped_new_version =
+            QString::fromStdString(cached_update_status.new_version).toHtmlEscaped();
         m_ui->about_new_version_label->setText(
             QStringLiteral("<a href=\"%1\">(new version %2 is available)</a>")
-                .arg(latest_release_url, QString::fromStdString(cached_update_status.new_version)));
+                .arg(latest_release_url, escaped_new_version));
         m_ui->about_new_version_label->setOpenExternalLinks(true);
         m_ui->about_new_version_label->setTextInteractionFlags(Qt::TextBrowserInteraction);
         m_ui->about_new_version_label->setCursor(Qt::PointingHandCursor);
