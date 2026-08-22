@@ -1306,7 +1306,21 @@ exit 0
         ]
         self.__execute_command(packing_command)
 
+        self.__validate_deb_package(deb_output_path)
+
         self.logger.info("Linux UI Debian package packaged successfully.")
+
+    def __validate_deb_package(self, deb_path: str) -> None:
+        """
+        Validate the Debian package archive and its contents.
+        """
+        if not os.path.isfile(deb_path):
+            raise FileNotFoundError(f"Debian package was not created: {deb_path}")
+
+        self.logger.info("Validating Linux UI Debian package: %s", deb_path)
+        self.__execute_command(["dpkg-deb", "--info", deb_path])
+        self.__execute_command(["dpkg-deb", "--contents", deb_path])
+        self.logger.info("Linux UI Debian package validation completed successfully.")
 
     def __package_ui(self) -> None:
         """
