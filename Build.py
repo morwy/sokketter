@@ -156,12 +156,14 @@ class Build:
             for cmake_tool_name in cmake_tool_names
         ]
 
-        # Iterate and log all folders in the Qt Tools directory for debugging purposes
-        if qt_tools_dir.exists() and qt_tools_dir.is_dir():
-            self.logger.debug(
-                "Qt Tools directory contents: %s",
-                [str(item) for item in qt_tools_dir.iterdir()],
-            )
+        # Iterate and log all CMake folders under Tools recursively for debugging purposes
+        for cmake_tool_name in cmake_tool_names:
+            cmake_tool_dir = qt_tools_dir / cmake_tool_name
+            if cmake_tool_dir.exists():
+                for cmake_executable in cmake_tool_dir.rglob(executable_name):
+                    self.logger.info(
+                        "Found CMake executable: %s", cmake_executable.resolve()
+                    )
 
         for candidate in qt_cmake_candidates:
             if candidate.exists():
