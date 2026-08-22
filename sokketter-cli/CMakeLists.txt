@@ -58,13 +58,6 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY ${SOKKETTER_LIBRARY_OUTPUT_PATH}
 )
 
-if(PLATFORM_OS_WINDOWS AND DEFINED ENV{GITHUB_ACTIONS})
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND cmd.exe /C "move \"${SOKKETTER_LIBRARY_OUTPUT_PATH}\\*.exe\" \"${SOKKETTER_BINARY_OUTPUT_PATH}\""
-        COMMENT "Copying all executables to binary output directory"
-    )
-endif()
-
 #
 # Link with sokketter dependencies.
 #
