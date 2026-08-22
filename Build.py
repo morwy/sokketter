@@ -632,10 +632,9 @@ class Build:
             shutil.rmtree(cache_dir)
 
     def __get_cmake_generator(self, qt6_dir):
-        iqta_tools = os.environ.get("IQTA_TOOLS")
-        ninja_filepath = "C:\\Qt\\Tools\\Ninja\\ninja.exe"
-
-        desired_generator = "Visual Studio 17 2022"
+        ninja_executable = "ninja.exe" if self.os_name == "windows" else "ninja"
+        ninja_filepath = os.path.join(qt6_dir, "Tools", "Ninja", ninja_executable)
+        desired_generator = "Ninja"
 
         if os.path.exists(ninja_filepath):
             self.logger.info(
@@ -646,23 +645,14 @@ class Build:
                 [os.path.dirname(ninja_filepath), os.environ.get("PATH", "")]
             )
             desired_generator = "Ninja"
-
-        elif iqta_tools:
-            ninja_filepath = os.path.join(iqta_tools, "Ninja", "ninja.exe")
-            if os.path.exists(ninja_filepath):
-                self.logger.info(
-                    "Using Ninja generator because Ninja is available at: %s",
-                    ninja_filepath,
-                )
-
-                desired_generator = "Ninja"
-
         else:
-            qt6_dir_lower = qt6_dir.lower()
-            if "msvc2019" in qt6_dir_lower:
-                desired_generator = "Visual Studio 16 2019"
-            elif "msvc2022" in qt6_dir_lower:
-                desired_generator = "Visual Studio 17 2022"
+            self.logger.info(
+                "Ninja not found at: %s!",
+                ninja_filepath,
+            )
+            raise EnvironmentError(
+                "Ninja build system is required but not found. Please ensure Ninja is installed and available in the PATH."
+            )
 
         cached_generator = self.__get_cached_cmake_generator(self.temp_build_output_dir)
         if cached_generator and cached_generator != desired_generator:
@@ -671,7 +661,9 @@ class Build:
                 cached_generator,
                 desired_generator,
             )
+
             self.__reset_cmake_cache(self.temp_build_output_dir)
+
             deps_dir = os.path.join(self.temp_build_output_dir, "_deps")
             if os.path.exists(deps_dir):
                 shutil.rmtree(deps_dir)
