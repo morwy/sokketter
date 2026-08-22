@@ -107,18 +107,7 @@ elseif(PLATFORM_OS_WINDOWS)
     set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
 
-set_target_properties(${PROJECT_NAME} PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${SOKKETTER_BINARY_OUTPUT_PATH}
-    LIBRARY_OUTPUT_DIRECTORY ${SOKKETTER_LIBRARY_OUTPUT_PATH}
-    ARCHIVE_OUTPUT_DIRECTORY ${SOKKETTER_LIBRARY_OUTPUT_PATH}
-)
-
-if(PLATFORM_OS_WINDOWS AND DEFINED ENV{GITHUB_ACTIONS})
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND cmd.exe /C "move \"${SOKKETTER_LIBRARY_OUTPUT_PATH}\\*.exe\" \"${SOKKETTER_BINARY_OUTPUT_PATH}\""
-        COMMENT "Copying all executables to binary output directory"
-    )
-endif()
+sokketter_set_output_directories(${PROJECT_NAME})
 
 #
 # Link with sokketter dependencies.

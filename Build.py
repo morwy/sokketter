@@ -33,6 +33,7 @@ class BuildStage(str, Enum):
     """
 
     ALL = "ALL"
+    CLEAN = "CLEAN"
     CONFIGURE = "CONFIGURE"
     BUILD = "BUILD"
     VERIFY = "VERIFY"
@@ -79,6 +80,15 @@ class Build:
         self.architecture = Environment.get_architecture()
         self.logger.info("Architecture: %s", self.architecture)
 
+        self.windows_msvc_env_script: str | None = None
+        if platform.system() == "Windows":
+            self.windows_msvc_env_script = self.__resolve_windows_msvc_env_script()
+            if self.windows_msvc_env_script:
+                self.logger.info(
+                    "Using Visual Studio developer environment script: %s",
+                    self.windows_msvc_env_script,
+                )
+
         self.version = ProjectVersion().get()
         self.logger.info("Project version: %s", self.version)
 
@@ -104,13 +114,37 @@ class Build:
         Get the CMake executable from the environment variable.
         """
         cmake = "cmake"
-        if shutil.which(cmake):
-            return cmake
+        cmake_in_path = shutil.which(cmake)
+        if cmake_in_path:
+            if platform.system() == "Windows" and any(
+                marker in cmake_in_path.lower()
+                for marker in ["mingw", "msys", "cygwin"]
+            ):
+                self.logger.warning(
+                    "Detected MSYS/MinGW CMake on PATH (%s). Looking for native Windows CMake instead.",
+                    cmake_in_path,
+                )
+            else:
+                return cmake
 
-        self.logger.error("CMake executable not found at default location: %s", cmake)
+        self.logger.warning(
+            "Using a fallback CMake resolution path instead of the default PATH entry."
+        )
 
         if platform.system() == "Windows":
-            cmake = "C:\\Qt\\Tools\\CMake_64\\bin\\cmake.exe"
+            windows_cmake_candidates = [
+                "C:\\Qt\\Tools\\CMake_64\\bin\\cmake.exe",
+                "C:\\Program Files\\CMake\\bin\\cmake.exe",
+            ]
+
+            for candidate in windows_cmake_candidates:
+                if os.path.exists(candidate):
+                    return candidate
+
+            if cmake_in_path:
+                return cmake_in_path
+
+            cmake = windows_cmake_candidates[0]
         elif platform.system() in ["Linux", "Darwin"]:
             cmake = os.path.join(
                 os.environ.get("HOME", ""), "Qt", "Tools", "CMake", "bin", "cmake"
@@ -147,17 +181,19 @@ class Build:
             return os.path.join(
                 workspace, "bin", f"windows_{self.architecture}", "Release"
             )
-        elif platform.system() == "Linux":
+
+        if platform.system() == "Linux":
             return os.path.join(
                 workspace, "bin", f"linux_{self.architecture}", "Release"
             )
-        elif platform.system() == "Darwin":
+
+        if platform.system() == "Darwin":
             return os.path.join(
                 workspace, "bin", f"macos_{self.architecture}", "Release"
             )
-        else:
-            self.logger.error("Unsupported platform: %s", platform.system())
-            raise EnvironmentError("Unsupported platform")
+
+        self.logger.error("Unsupported platform: %s", platform.system())
+        raise EnvironmentError("Unsupported platform")
 
     def __resolve_qt6_dir(self) -> str:
         """
@@ -172,10 +208,79 @@ class Build:
         def qt6_dirs_from_prefix(prefix: pathlib.Path) -> list[pathlib.Path]:
             return [prefix, prefix / "lib" / "cmake" / "Qt6"]
 
+        def is_qt_dir_arch_compatible(path: pathlib.Path) -> bool:
+            if platform.system() != "Windows":
+                return True
+
+            normalized = str(path).lower()
+            arch = self.architecture.lower()
+
+            if arch in ["x86_64", "amd64"]:
+                return "arm64" not in normalized
+
+            if arch in ["arm64", "aarch64"]:
+                return "arm64" in normalized
+
+            return True
+
+        user_profile = os.environ.get("USERPROFILE", "")
+
+        def discover_windows_qt6_dir_for_arch() -> str | None:
+            if platform.system() != "Windows":
+                return None
+
+            arch = self.architecture.lower()
+            patterns: list[str]
+            if arch in ["x86_64", "amd64"]:
+                patterns = [
+                    os.path.join("C:\\Qt", "*", "msvc*_64", "lib", "cmake", "Qt6"),
+                    os.path.join("C:\\Qt", "*", "mingw*_64", "lib", "cmake", "Qt6"),
+                    os.path.join(
+                        user_profile, "Qt", "*", "msvc*_64", "lib", "cmake", "Qt6"
+                    ),
+                    os.path.join(
+                        user_profile, "Qt", "*", "mingw*_64", "lib", "cmake", "Qt6"
+                    ),
+                ]
+            elif arch in ["arm64", "aarch64"]:
+                patterns = [
+                    os.path.join("C:\\Qt", "*", "*arm64*", "lib", "cmake", "Qt6"),
+                    os.path.join(
+                        user_profile, "Qt", "*", "*arm64*", "lib", "cmake", "Qt6"
+                    ),
+                ]
+            else:
+                patterns = []
+
+            discovered: list[pathlib.Path] = []
+            for pattern in patterns:
+                for match in sorted(glob.glob(pattern), reverse=True):
+                    discovered.append(pathlib.Path(match).resolve())
+
+            for candidate in discovered:
+                if has_qt6_config(candidate):
+                    return str(candidate)
+
+            return None
+
         qt6_dir = os.environ.get("Qt6_DIR") or os.environ.get("QT6_DIR")
         if qt6_dir:
             qt6_path = pathlib.Path(qt6_dir).expanduser().resolve()
             if has_qt6_config(qt6_path):
+                if not is_qt_dir_arch_compatible(qt6_path):
+                    fallback_qt6_dir = discover_windows_qt6_dir_for_arch()
+                    if fallback_qt6_dir:
+                        self.logger.warning(
+                            "Qt6_DIR '%s' does not match build architecture '%s'. Using '%s' instead.",
+                            qt6_path,
+                            self.architecture,
+                            fallback_qt6_dir,
+                        )
+                        return fallback_qt6_dir
+                    raise EnvironmentError(
+                        f"Qt6_DIR '{qt6_path}' does not match build architecture "
+                        f"'{self.architecture}', and no compatible Qt installation was found."
+                    )
                 return str(qt6_path)
             raise EnvironmentError(
                 f"Qt6_DIR is set to '{qt6_path}' but Qt6Config.cmake was not found there."
@@ -196,7 +301,6 @@ class Build:
                 )
 
         home_dir = os.environ.get("HOME", "")
-        user_profile = os.environ.get("USERPROFILE", "")
 
         if platform.system() == "Darwin":
             patterns = [
@@ -228,8 +332,13 @@ class Build:
                 candidates.append(pathlib.Path(match).resolve())
 
         for candidate in candidates:
-            if has_qt6_config(candidate):
+            if has_qt6_config(candidate) and is_qt_dir_arch_compatible(candidate):
                 return str(candidate)
+
+        if platform.system() == "Windows":
+            fallback_qt6_dir = discover_windows_qt6_dir_for_arch()
+            if fallback_qt6_dir:
+                return fallback_qt6_dir
 
         raise EnvironmentError(
             "Qt6_DIR is not set and Qt6 could not be auto-discovered for this platform. "
@@ -282,23 +391,188 @@ class Build:
             f"Could not find '{tool_name}'. Add Qt's bin directory to PATH or set Qt6_DIR/QT6_DIR."
         )
 
+    def __msvc_arch_token(self) -> str:
+        """
+        Map the detected architecture to the token MSVC dev environment scripts expect.
+        """
+        if self.architecture.lower() in ["arm64", "aarch64"]:
+            return "arm64"
+
+        return "x64"
+
+    def __resolve_windows_msvc_env_script(self) -> str | None:
+        """
+        Resolve a Visual Studio developer environment batch script path.
+        """
+        if platform.system() != "Windows":
+            return None
+
+        arch_token = self.__msvc_arch_token()
+
+        vswhere = os.path.join(
+            os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)"),
+            "Microsoft Visual Studio",
+            "Installer",
+            "vswhere.exe",
+        )
+
+        if os.path.exists(vswhere):
+            script_patterns = [
+                "Common7\\Tools\\VsDevCmd.bat",
+                f"VC\\Auxiliary\\Build\\vcvars{arch_token}.bat",
+                "VC\\Auxiliary\\Build\\vcvarsall.bat",
+            ]
+
+            required_component = (
+                "Microsoft.VisualStudio.Component.VC.Tools.ARM64"
+                if arch_token == "arm64"
+                else "Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
+            )
+
+            for pattern in script_patterns:
+                result = subprocess.run(
+                    [
+                        vswhere,
+                        "-latest",
+                        "-products",
+                        "*",
+                        "-requires",
+                        required_component,
+                        "-find",
+                        pattern,
+                    ],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+
+                candidate = result.stdout.strip()
+                if candidate and os.path.exists(candidate):
+                    return candidate
+
+        fallback_roots = [
+            os.path.join(
+                "C:\\Program Files",
+                "Microsoft Visual Studio",
+                "2022",
+                "Community",
+            ),
+            os.path.join(
+                "C:\\Program Files",
+                "Microsoft Visual Studio",
+                "2022",
+                "BuildTools",
+            ),
+        ]
+
+        fallback_paths = [
+            os.path.join("Common7", "Tools", "VsDevCmd.bat"),
+            os.path.join("VC", "Auxiliary", "Build", f"vcvars{arch_token}.bat"),
+            os.path.join("VC", "Auxiliary", "Build", "vcvarsall.bat"),
+        ]
+
+        for root in fallback_roots:
+            for rel_path in fallback_paths:
+                candidate = os.path.join(root, rel_path)
+                if os.path.exists(candidate):
+                    return candidate
+
+        return None
+
+    def __get_windows_msvc_environment(self) -> dict[str, str]:
+        """
+        Capture the environment initialized by the Visual Studio developer command file.
+        """
+        if self.windows_msvc_env_script is None:
+            raise RuntimeError("Visual Studio environment script is not available.")
+
+        arch_token = self.__msvc_arch_token()
+
+        script_name = os.path.basename(self.windows_msvc_env_script).lower()
+        capture_environment = os.environ.copy()
+        capture_environment["SOKKETTER_MSVC_ENV_SCRIPT"] = self.windows_msvc_env_script
+        if script_name == "vsdevcmd.bat":
+            vcvars_call = (
+                'call "%SOKKETTER_MSVC_ENV_SCRIPT%" '
+                f"-arch={arch_token} -host_arch={arch_token} >nul"
+            )
+        elif script_name == "vcvarsall.bat":
+            vcvars_call = 'call "%SOKKETTER_MSVC_ENV_SCRIPT%" ' f"{arch_token} >nul"
+        else:
+            vcvars_call = 'call "%SOKKETTER_MSVC_ENV_SCRIPT%" >nul'
+
+        # Keep the original command out of the batch file. list2cmdline() quotes for
+        # CreateProcess, but does not escape metacharacters interpreted by cmd.exe.
+        wrapper_content = (
+            "@echo off\n"
+            f"{vcvars_call}\n"
+            "if errorlevel 1 exit /b %errorlevel%\n"
+            "set\n"
+        )
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".cmd", delete=False, encoding="utf-8"
+        ) as wrapper_file:
+            wrapper_file.write(wrapper_content)
+            wrapper_path = wrapper_file.name
+
+        try:
+            result = subprocess.run(
+                [
+                    "cmd.exe",
+                    "/d",
+                    "/c",
+                    "call",
+                    wrapper_path,
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+                env={
+                    **capture_environment,
+                },
+            )
+        finally:
+            if os.path.exists(wrapper_path):
+                os.remove(wrapper_path)
+
+        environment = os.environ.copy()
+        for line in result.stdout.splitlines():
+            name, separator, value = line.partition("=")
+            if separator:
+                environment[name] = value
+
+        return environment
+
     def __execute_command(self, cmake_command, cwd: str | None = None):
         try:
+            command_to_run = cmake_command
+            command_environment = None
+
+            if (
+                platform.system() == "Windows"
+                and isinstance(command_to_run, list)
+                and self.windows_msvc_env_script is not None
+            ):
+                command_environment = self.__get_windows_msvc_environment()
+
             self.logger.info(
                 "Executing command: %s",
                 (
-                    " ".join(cmake_command)
-                    if isinstance(cmake_command, list)
-                    else cmake_command
+                    " ".join(command_to_run)
+                    if isinstance(command_to_run, list)
+                    else command_to_run
                 ),
             )
 
             with subprocess.Popen(
-                cmake_command,
+                command_to_run,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
                 cwd=cwd,
+                env=command_environment,
+                shell=False,
             ) as process:
                 if process.stdout is not None:
                     for line in process.stdout:
@@ -307,7 +581,7 @@ class Build:
                 process.wait()
                 if process.returncode != 0:
                     raise subprocess.CalledProcessError(
-                        process.returncode, cmake_command
+                        process.returncode, command_to_run
                     )
 
         except FileNotFoundError as e:
@@ -318,34 +592,101 @@ class Build:
             self.logger.error("Command failed with error:\n%s", e.stderr)
             raise
 
-    def __configure(self) -> None:
+    def __get_cached_cmake_generator(self, build_dir: str) -> str | None:
         """
-        Configure the project using CMake.
+        Read the CMake generator recorded in CMakeCache.txt, if available.
         """
-        self.logger.info("Starting the CMake configuration.")
+        cache_file = os.path.join(build_dir, "CMakeCache.txt")
+        if not os.path.exists(cache_file):
+            return None
 
-        qt6_dir = self.__resolve_qt6_dir()
+        with open(cache_file, "r", encoding="utf-8", errors="ignore") as file:
+            for line in file:
+                if line.startswith("CMAKE_GENERATOR:INTERNAL="):
+                    return line.strip().split("=", maxsplit=1)[1]
 
-        cmake_command = [
-            self.cmake,
-            "-B",
-            self.temp_build_output_dir,
-            f"-DCMAKE_CXX_COMPILER={self.compiler}",
-            "-DIS_COMPILING_STATIC=true",
-            "-DIS_COMPILING_SHARED=false",
-            f"-DQt6_DIR={qt6_dir}",
-        ]
+        return None
 
-        cmake_prefix_path = os.environ.get("CMAKE_PREFIX_PATH")
-        if cmake_prefix_path:
-            cmake_command.append(f"-DCMAKE_PREFIX_PATH={cmake_prefix_path}")
+    def __reset_cmake_cache(self, build_dir: str) -> None:
+        """
+        Remove CMake cache artifacts to allow reconfiguring with a different generator.
+        """
+        cache_file = os.path.join(build_dir, "CMakeCache.txt")
+        cache_dir = os.path.join(build_dir, "CMakeFiles")
 
-        if BuildStage.TEST.value in self.stages and platform.system() != "Windows":
-            cmake_command.append("-DSOKKETTER_ENABLE_TESTING=true")
+        if os.path.exists(cache_file):
+            os.remove(cache_file)
 
-        self.__execute_command(cmake_command)
+        if os.path.exists(cache_dir):
+            shutil.rmtree(cache_dir)
 
-        self.logger.info("CMake configuration completed successfully.")
+    def __get_cmake_generator(self, qt6_dir):
+        iqta_tools = os.environ.get("IQTA_TOOLS")
+        ninja_filepath = "C:\\Qt\\Tools\\Ninja\\ninja.exe"
+
+        desired_generator = "Visual Studio 17 2022"
+
+        if os.path.exists(ninja_filepath):
+            self.logger.info(
+                "Using Ninja generator because Ninja is available at: %s",
+                ninja_filepath,
+            )
+            os.environ["PATH"] = os.pathsep.join(
+                [os.path.dirname(ninja_filepath), os.environ.get("PATH", "")]
+            )
+            desired_generator = "Ninja"
+
+        elif iqta_tools:
+            ninja_filepath = os.path.join(iqta_tools, "Ninja", "ninja.exe")
+            if os.path.exists(ninja_filepath):
+                self.logger.info(
+                    "Using Ninja generator because Ninja is available at: %s",
+                    ninja_filepath,
+                )
+
+                desired_generator = "Ninja"
+
+        else:
+            qt6_dir_lower = qt6_dir.lower()
+            if "msvc2019" in qt6_dir_lower:
+                desired_generator = "Visual Studio 16 2019"
+            elif "msvc2022" in qt6_dir_lower:
+                desired_generator = "Visual Studio 17 2022"
+
+        cached_generator = self.__get_cached_cmake_generator(self.temp_build_output_dir)
+        if cached_generator and cached_generator != desired_generator:
+            self.logger.info(
+                "Switching CMake generator from '%s' to '%s'. Clearing stale cache.",
+                cached_generator,
+                desired_generator,
+            )
+            self.__reset_cmake_cache(self.temp_build_output_dir)
+            deps_dir = os.path.join(self.temp_build_output_dir, "_deps")
+            if os.path.exists(deps_dir):
+                shutil.rmtree(deps_dir)
+
+        return desired_generator
+
+    def __remove_directory(self, directory: str) -> None:
+        """
+        Remove a directory, retrying transient Windows races with indexers.
+        """
+        retry_count = 5
+        retry_delay_seconds = 0.5
+
+        for attempt in range(retry_count):
+            try:
+                shutil.rmtree(directory)
+                return
+            except OSError:
+                if attempt == retry_count - 1:
+                    raise
+
+                self.logger.warning(
+                    "Directory removal was interrupted; retrying: %s",
+                    directory,
+                )
+                time.sleep(retry_delay_seconds)
 
     def __configure_finder(self, mount_point: pathlib.Path):
         script = f"""
@@ -570,6 +911,87 @@ class Build:
                     )
                 except subprocess.CalledProcessError:
                     pass
+
+    def __clean(self) -> None:
+        """
+        Clean the build and output directories.
+        """
+        self.logger.info("Cleaning build and output directories.")
+
+        if os.path.exists(self.temp_build_output_dir):
+            self.__remove_directory(self.temp_build_output_dir)
+            self.logger.info(
+                "Removed temporary build output directory: %s",
+                self.temp_build_output_dir,
+            )
+
+        if os.path.exists(self.temp_binary_output_dir):
+            self.__remove_directory(self.temp_binary_output_dir)
+            self.logger.info(
+                "Removed temporary binary output directory: %s",
+                self.temp_binary_output_dir,
+            )
+
+        if os.path.exists(self.results_output_dir):
+            self.__remove_directory(self.results_output_dir)
+            self.logger.info(
+                "Removed results output directory: %s", self.results_output_dir
+            )
+
+    def __configure(self) -> None:
+        """
+        Configure the project using CMake.
+        """
+        self.logger.info("Starting the CMake configuration.")
+
+        qt6_dir = self.__resolve_qt6_dir()
+        qt6_root = str(pathlib.Path(qt6_dir).parent.parent.parent)
+
+        cmake_command = [
+            self.cmake,
+            "-S",
+            self.workspace,
+            "-B",
+            self.temp_build_output_dir,
+            "-DCMAKE_BUILD_TYPE=Release",
+            "-DIS_COMPILING_STATIC=true",
+            "-DIS_COMPILING_SHARED=false",
+            f"-DQt6_DIR={qt6_dir}",
+        ]
+
+        if platform.system() == "Windows":
+            cmake_generator = os.environ.get("CMAKE_GENERATOR")
+            if not cmake_generator:
+                desired_generator = self.__get_cmake_generator(qt6_dir)
+
+                cmake_command.extend(["-G", desired_generator])
+
+                if "Visual Studio" in desired_generator:
+                    if self.architecture.lower() in ["x86_64", "amd64"]:
+                        cmake_command.extend(["-A", "x64"])
+                    elif self.architecture.lower() in ["arm64", "aarch64"]:
+                        cmake_command.extend(["-A", "ARM64"])
+
+            # Do not force CMAKE_CXX_COMPILER on Windows; Visual Studio generators
+            # resolve MSVC correctly even when cl.exe is not on PATH.
+            cmake_command.extend(["-U", "CMAKE_CXX_COMPILER"])
+        else:
+            cmake_command.append(f"-DCMAKE_CXX_COMPILER={self.compiler}")
+            cmake_command.append("-DCMAKE_GENERATOR:STRING=Ninja")
+
+        cmake_prefix_path = os.environ.get("CMAKE_PREFIX_PATH")
+        if cmake_prefix_path:
+            merged_prefix_path = os.pathsep.join([qt6_root, cmake_prefix_path])
+            cmake_command.append(f"-DCMAKE_PREFIX_PATH={merged_prefix_path}")
+        else:
+            cmake_command.append(f"-DCMAKE_PREFIX_PATH={qt6_root}")
+
+        if BuildStage.TEST.value in self.stages and platform.system() != "Windows":
+            cmake_command.append("-DSOKKETTER_ENABLE_TESTING=true")
+
+        self.__execute_command(cmake_command)
+
+        self.logger.info("CMake configuration completed successfully.")
 
     def __build(self) -> None:
         """
@@ -907,6 +1329,9 @@ class Build:
         Run the build process.
         """
         self.logger.info("Starting the build process.")
+
+        if BuildStage.CLEAN.value in self.stages or BuildStage.ALL.value in self.stages:
+            self.__clean()
 
         if (
             BuildStage.CONFIGURE.value in self.stages
