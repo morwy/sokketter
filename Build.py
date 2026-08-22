@@ -1470,6 +1470,7 @@ exit 0
             f"-executable={os.path.join(usr_bin_folder, 'sokketter-ui')}",
             "-verbose=2",
             "-unsupported-allow-new-glibc",
+            "-qmake=" + self.__resolve_qt_tool("qmake"),
         ]
         self.__execute_command(
             cmake_command=packing_command, cwd=sokketter_ui_zip_folder
