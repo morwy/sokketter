@@ -114,6 +114,8 @@ class Build:
                     "Visual Studio developer environment script: %s",
                     self.windows_msvc_env_script,
                 )
+            else:
+                raise RuntimeError("Visual Studio environment script is not available.")
 
         self.version = ProjectVersion().get()
         self.logger.info("Project version: %s", self.version)
@@ -439,9 +441,6 @@ class Build:
         """
         Resolve a Visual Studio developer environment batch script path.
         """
-        if platform.system() != "Windows":
-            return None
-
         arch_token = self.__msvc_arch_token()
 
         vswhere = os.path.join(
