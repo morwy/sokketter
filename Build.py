@@ -575,6 +575,15 @@ class Build:
             shutil.rmtree(cache_dir)
 
     def __get_cmake_generator(self, qt6_dir):
+        ninja_filepath = "C:\\Qt\\Tools\\Ninja\\ninja.exe"
+        if os.path.exists(ninja_filepath):
+            self.logger.info(
+                "Using Ninja generator because Ninja is available at: %s",
+                ninja_filepath,
+            )
+
+            return "Ninja"
+
         desired_generator = "Visual Studio 17 2022"
         qt6_dir_lower = qt6_dir.lower()
         if "msvc2019" in qt6_dir_lower:
@@ -595,6 +604,27 @@ class Build:
                 shutil.rmtree(deps_dir)
 
         return desired_generator
+
+    def __remove_directory(self, directory: str) -> None:
+        """
+        Remove a directory, retrying transient Windows races with indexers.
+        """
+        retry_count = 5
+        retry_delay_seconds = 0.5
+
+        for attempt in range(retry_count):
+            try:
+                shutil.rmtree(directory)
+                return
+            except OSError:
+                if attempt == retry_count - 1:
+                    raise
+
+                self.logger.warning(
+                    "Directory removal was interrupted; retrying: %s",
+                    directory,
+                )
+                time.sleep(retry_delay_seconds)
 
     def __clean(self) -> None:
         """
@@ -622,27 +652,6 @@ class Build:
                 "Removed results output directory: %s", self.results_output_dir
             )
 
-    def __remove_directory(self, directory: str) -> None:
-        """
-        Remove a directory, retrying transient Windows races with indexers.
-        """
-        retry_count = 5
-        retry_delay_seconds = 0.5
-
-        for attempt in range(retry_count):
-            try:
-                shutil.rmtree(directory)
-                return
-            except OSError:
-                if attempt == retry_count - 1:
-                    raise
-
-                self.logger.warning(
-                    "Directory removal was interrupted; retrying: %s",
-                    directory,
-                )
-                time.sleep(retry_delay_seconds)
-
     def __configure(self) -> None:
         """
         Configure the project using CMake.
@@ -669,16 +678,19 @@ class Build:
                 desired_generator = self.__get_cmake_generator(qt6_dir)
 
                 cmake_command.extend(["-G", desired_generator])
-                if self.architecture.lower() in ["x86_64", "amd64"]:
-                    cmake_command.extend(["-A", "x64"])
-                elif self.architecture.lower() in ["arm64", "aarch64"]:
-                    cmake_command.extend(["-A", "ARM64"])
+
+                if "Visual Studio" in desired_generator:
+                    if self.architecture.lower() in ["x86_64", "amd64"]:
+                        cmake_command.extend(["-A", "x64"])
+                    elif self.architecture.lower() in ["arm64", "aarch64"]:
+                        cmake_command.extend(["-A", "ARM64"])
 
             # Do not force CMAKE_CXX_COMPILER on Windows; Visual Studio generators
             # resolve MSVC correctly even when cl.exe is not on PATH.
             cmake_command.extend(["-U", "CMAKE_CXX_COMPILER"])
         else:
             cmake_command.append(f"-DCMAKE_CXX_COMPILER={self.compiler}")
+            cmake_command.append("-DCMAKE_GENERATOR:STRING=Ninja")
 
         cmake_prefix_path = os.environ.get("CMAKE_PREFIX_PATH")
         if cmake_prefix_path:
