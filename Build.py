@@ -621,17 +621,20 @@ class Build:
             shutil.rmtree(cache_dir)
 
     def __get_cmake_generator(self, qt6_dir):
+        iqta_tools = os.environ.get("IQTA_TOOLS")
         ninja_filepath = "C:\\Qt\\Tools\\Ninja\\ninja.exe"
+
+        desired_generator = "Visual Studio 17 2022"
+
         if os.path.exists(ninja_filepath):
             self.logger.info(
                 "Using Ninja generator because Ninja is available at: %s",
                 ninja_filepath,
             )
 
-            return "Ninja"
+            desired_generator = "Ninja"
 
-        iqta_tools = os.environ.get("IQTA_TOOLS")
-        if iqta_tools:
+        elif iqta_tools:
             ninja_filepath = os.path.join(iqta_tools, "Ninja", "ninja")
             if os.path.exists(ninja_filepath):
                 self.logger.info(
@@ -639,14 +642,14 @@ class Build:
                     ninja_filepath,
                 )
 
-                return "Ninja"
+                desired_generator = "Ninja"
 
-        desired_generator = "Visual Studio 17 2022"
-        qt6_dir_lower = qt6_dir.lower()
-        if "msvc2019" in qt6_dir_lower:
-            desired_generator = "Visual Studio 16 2019"
-        elif "msvc2022" in qt6_dir_lower:
-            desired_generator = "Visual Studio 17 2022"
+        else:
+            qt6_dir_lower = qt6_dir.lower()
+            if "msvc2019" in qt6_dir_lower:
+                desired_generator = "Visual Studio 16 2019"
+            elif "msvc2022" in qt6_dir_lower:
+                desired_generator = "Visual Studio 17 2022"
 
         cached_generator = self.__get_cached_cmake_generator(self.temp_build_output_dir)
         if cached_generator and cached_generator != desired_generator:
