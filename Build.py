@@ -195,6 +195,22 @@ class Build:
         self.logger.error("Unsupported platform: %s", platform.system())
         raise EnvironmentError("Unsupported platform")
 
+    def __get_debian_architecture(self) -> str:
+        """
+        Get the Debian package architecture name for the current platform.
+        """
+        architecture = self.architecture.lower()
+
+        if architecture in ["x86_64", "amd64"]:
+            return "amd64"
+
+        if architecture in ["arm64", "aarch64"]:
+            return "arm64"
+
+        raise EnvironmentError(
+            f"Unsupported Debian package architecture: {self.architecture}"
+        )
+
     def __resolve_qt6_dir(self) -> str:
         """
         Resolve Qt6_DIR to a path containing Qt6Config.cmake across supported platforms.
@@ -1131,6 +1147,163 @@ class Build:
 
         self.logger.info("CLI files packaged successfully.")
 
+    def __package_linux_ui_deb(self) -> None:
+        """
+        Package the Linux UI application as a Debian package.
+        """
+        self.logger.info("Starting the packaging of Linux UI Debian package.")
+
+        package_name = "sokketter-ui"
+        package_version = self.version
+        package_architecture = self.__get_debian_architecture()
+        deb_root_folder = os.path.join(
+            self.temp_binary_output_dir, f"{package_name}-deb-root"
+        )
+
+        if os.path.exists(deb_root_folder):
+            shutil.rmtree(deb_root_folder)
+
+        debian_folder = os.path.join(deb_root_folder, "DEBIAN")
+        usr_bin_folder = os.path.join(deb_root_folder, "usr", "bin")
+        applications_folder = os.path.join(
+            deb_root_folder, "usr", "share", "applications"
+        )
+        icons_folder = os.path.join(
+            deb_root_folder, "usr", "share", "icons", "hicolor", "256x256", "apps"
+        )
+        udev_rules_folder = os.path.join(deb_root_folder, "lib", "udev", "rules.d")
+
+        for folder in [
+            debian_folder,
+            usr_bin_folder,
+            applications_folder,
+            icons_folder,
+            udev_rules_folder,
+        ]:
+            os.makedirs(folder, exist_ok=True)
+            os.chmod(folder, 0o755)
+
+        shutil.copy(
+            os.path.join(self.temp_binary_output_dir, "bin", "sokketter-ui"),
+            os.path.join(usr_bin_folder, "sokketter-ui"),
+        )
+        os.chmod(os.path.join(usr_bin_folder, "sokketter-ui"), 0o755)
+
+        desktop_file_path = os.path.join(applications_folder, "sokketter-ui.desktop")
+        shutil.copy(
+            os.path.join(
+                self.workspace, "sokketter-ui", "resources", "sokketter-ui.desktop"
+            ),
+            desktop_file_path,
+        )
+        os.chmod(desktop_file_path, 0o644)
+        with open(file=desktop_file_path, mode="r", encoding="utf-8") as file:
+            desktop_file_lines = file.readlines()
+
+        with open(file=desktop_file_path, mode="w", encoding="utf-8") as file:
+            for line in desktop_file_lines:
+                if line.startswith("Exec="):
+                    file.write("Exec=/usr/bin/sokketter-ui %u\n")
+                elif line.startswith("X-AppImage-Version="):
+                    file.write(f"X-AppImage-Version={self.version}\n")
+                elif line.startswith("X-AppImage-Arch="):
+                    file.write(f"X-AppImage-Arch={self.architecture}\n")
+                else:
+                    file.write(line)
+
+        shutil.copy(
+            os.path.join(
+                self.workspace, "sokketter-ui", "resources", "sokketter-ui-icon.png"
+            ),
+            os.path.join(icons_folder, "sokketter-ui-icon.png"),
+        )
+        os.chmod(os.path.join(icons_folder, "sokketter-ui-icon.png"), 0o644)
+
+        shutil.copy(
+            os.path.join(self.workspace, "udev-rules", "101-sokketter.rules"),
+            os.path.join(udev_rules_folder, "101-sokketter.rules"),
+        )
+        os.chmod(os.path.join(udev_rules_folder, "101-sokketter.rules"), 0o644)
+
+        control_content = f"""Package: {package_name}
+Version: {package_version}
+Section: utils
+Priority: optional
+Architecture: {package_architecture}
+Maintainer: Paul Ergard
+Depends: libc6, libstdc++6, libudev1, libqt6widgets6, libqt6gui6, libqt6core6t64 | libqt6core6
+Description: UI application for controlling connected power strips and sockets.
+ sokketter-ui provides a Qt-based desktop interface for supported USB and Ethernet power strips.
+"""
+        with open(
+            file=os.path.join(debian_folder, "control"), mode="w", encoding="utf-8"
+        ) as file:
+            file.write(control_content)
+
+        postinst_content = """#!/bin/sh
+set -e
+
+if command -v udevadm >/dev/null 2>&1; then
+    udevadm control --reload-rules || true
+    udevadm trigger || true
+fi
+
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database /usr/share/applications || true
+fi
+
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -q /usr/share/icons/hicolor || true
+fi
+
+exit 0
+"""
+        postrm_content = """#!/bin/sh
+set -e
+
+if command -v udevadm >/dev/null 2>&1; then
+    udevadm control --reload-rules || true
+    udevadm trigger || true
+fi
+
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database /usr/share/applications || true
+fi
+
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -q /usr/share/icons/hicolor || true
+fi
+
+exit 0
+"""
+
+        for script_name, script_content in [
+            ("postinst", postinst_content),
+            ("postrm", postrm_content),
+        ]:
+            script_path = os.path.join(debian_folder, script_name)
+            with open(file=script_path, mode="w", encoding="utf-8") as file:
+                file.write(script_content)
+            os.chmod(script_path, 0o755)
+
+        deb_filename = (
+            f"{package_name}-{package_version}-{self.os_name}-{self.os_version}-"
+            f"{self.architecture}.deb"
+        )
+        deb_output_path = os.path.join(
+            self.results_output_dir, "sokketter-ui", deb_filename
+        )
+        packing_command = [
+            "dpkg-deb",
+            "--build",
+            "--root-owner-group",
+            deb_root_folder,
+            deb_output_path,
+        ]
+        self.__execute_command(packing_command)
+
+        self.logger.info("Linux UI Debian package packaged successfully.")
+
     def __package_ui(self) -> None:
         """
         Package the UI files.
@@ -1309,6 +1482,8 @@ class Build:
                 src=os.path.join(self.workspace, zip_name),
                 dst=sokketter_ui_folder,
             )
+
+            self.__package_linux_ui_deb()
 
         self.logger.info("UI files packaged successfully.")
 
