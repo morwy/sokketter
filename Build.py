@@ -28,7 +28,7 @@ import tempfile
 import time
 from enum import Enum
 
-from Environment import Architecture, Environment
+from Environment import Architecture, Environment, System
 from ProjectVersion import ProjectVersion
 
 
@@ -73,8 +73,8 @@ class Build:
         self.stages = stages
         self.logger.info("Specified stages: %s", self.stages)
 
-        self.os_name = Environment.get_os_name()
-        self.logger.info("Operating system: %s", self.os_name)
+        self.system = Environment.get_os()
+        self.logger.info("Operating system: %s", self.system.value)
 
         self.os_version = Environment.get_os_version()
         self.logger.info("Operating system version: %s", self.os_version)
@@ -103,7 +103,7 @@ class Build:
         self.logger.info("Target C++ compiler: %s", self.compiler)
 
         self.windows_msvc_env_script: str | None = None
-        if self.os_name == "windows":
+        if self.system == System.WINDOWS:
             self.windows_msvc_env_script = self.__resolve_windows_msvc_env_script()
             if self.windows_msvc_env_script:
                 self.logger.info(
@@ -137,7 +137,7 @@ class Build:
         """
         Get the CMake executable from the environment variable.
         """
-        executable_name = "cmake.exe" if self.os_name == "windows" else "cmake"
+        executable_name = "cmake.exe" if self.system == System.WINDOWS else "cmake"
 
         qt_tools_dir = pathlib.Path(self.qt_root_folder) / "Tools"
         qt_cmake_glob_pattern = os.path.join("CMake*", "**", "bin", executable_name)
@@ -156,14 +156,14 @@ class Build:
         """
         compiler = ""
 
-        if self.os_name == "windows":
+        if self.system == System.WINDOWS:
             compiler = "cl"
-        elif self.os_name == "macos":
+        elif self.system == System.MACOS:
             compiler = "clang++"
-        elif Environment.is_unix_based():
+        elif self.system == System.LINUX:
             compiler = "g++"
         else:
-            self.logger.error("Unsupported platform: %s", self.os_name)
+            self.logger.error("Unsupported platform: %s", self.system)
             raise EnvironmentError("Unsupported platform")
 
         return compiler
@@ -172,9 +172,8 @@ class Build:
         """
         Get the binary output directory based on the platform.
         """
-        os_name = self.os_name if not Environment.is_unix_based() else "linux"
         return os.path.join(
-            workspace, "bin", f"{os_name}_{self.architecture}", "Release"
+            workspace, "bin", f"{self.system.value}_{self.architecture}", "Release"
         )
 
     def __get_debian_architecture(self) -> str:
@@ -253,7 +252,7 @@ class Build:
             return [prefix, prefix / "lib" / "cmake" / "Qt6"]
 
         def is_qt_dir_arch_compatible(path: pathlib.Path) -> bool:
-            if self.os_name != "windows":
+            if self.system != System.WINDOWS:
                 return True
 
             normalized = str(path).lower()
@@ -289,18 +288,18 @@ class Build:
 
         home_dir = os.environ.get("HOME", "")
 
-        if self.os_name == "macos":
+        if self.system == System.MACOS:
             patterns = [
                 os.path.join(home_dir, "Qt", "*", "macos", "lib", "cmake", "Qt6"),
             ]
-        elif self.os_name == "windows":
+        elif self.system == System.WINDOWS:
             patterns = [
                 os.path.join("C:\\Qt", "*", "msvc*", "lib", "cmake", "Qt6"),
                 os.path.join("C:\\Qt", "*", "mingw*", "lib", "cmake", "Qt6"),
                 os.path.join(user_profile, "Qt", "*", "msvc*", "lib", "cmake", "Qt6"),
                 os.path.join(user_profile, "Qt", "*", "mingw*", "lib", "cmake", "Qt6"),
             ]
-        elif Environment.is_unix_based():
+        elif self.system == System.LINUX:
             patterns = [
                 os.path.join(home_dir, "Qt", "*", "gcc_64", "lib", "cmake", "Qt6"),
                 os.path.join(
@@ -373,7 +372,7 @@ class Build:
         Resolve Qt deployment tools (e.g. macdeployqt, windeployqt) to an executable path.
         """
         executable_name = tool_name
-        if self.os_name == "windows" and not tool_name.endswith(".exe"):
+        if self.system == System.WINDOWS and not tool_name.endswith(".exe"):
             executable_name = f"{tool_name}.exe"
 
         qt_root_path = pathlib.Path(self.qt_root_folder)
@@ -544,7 +543,7 @@ class Build:
             command_environment = None
 
             if (
-                self.os_name == "windows"
+                self.system == System.WINDOWS
                 and isinstance(command_to_run, list)
                 and self.windows_msvc_env_script is not None
             ):
@@ -615,7 +614,7 @@ class Build:
             shutil.rmtree(cache_dir)
 
     def __get_cmake_generator(self):
-        ninja_executable = "ninja.exe" if self.os_name == "windows" else "ninja"
+        ninja_executable = "ninja.exe" if self.system == System.WINDOWS else "ninja"
         ninja_filepath = os.path.join(
             self.qt_root_folder, "Tools", "Ninja", ninja_executable
         )
@@ -944,7 +943,7 @@ class Build:
             f"-DQt6_DIR={self.qt_cmake_folder}",
         ]
 
-        if self.os_name == "windows":
+        if self.system == System.WINDOWS:
             cmake_generator = os.environ.get("CMAKE_GENERATOR")
             if not cmake_generator:
                 desired_generator = self.__get_cmake_generator()
@@ -973,7 +972,7 @@ class Build:
         else:
             cmake_command.append(f"-DCMAKE_PREFIX_PATH={self.qt_root_folder}")
 
-        if BuildStage.TEST.value in self.stages and self.os_name != "windows":
+        if BuildStage.TEST.value in self.stages and self.system != System.WINDOWS:
             cmake_command.append("-DSOKKETTER_ENABLE_TESTING=true")
 
         self.__execute_command(cmake_command)
@@ -1094,7 +1093,7 @@ class Build:
 
         os.makedirs(sokketter_cli_zip_folder)
 
-        if self.os_name == "windows":
+        if self.system == System.WINDOWS:
             shutil.copy(
                 os.path.join(self.temp_binary_output_dir, "bin", "sokketter-cli.exe"),
                 sokketter_cli_zip_folder,
@@ -1106,7 +1105,7 @@ class Build:
             )
 
         zip_name = shutil.make_archive(
-            base_name=f"sokketter-cli-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}",
+            base_name=f"sokketter-cli-{self.version}-{self.system.value}-{self.os_version}-{self.architecture}",
             format="zip",
             root_dir=sokketter_cli_zip_folder,
         )
@@ -1392,7 +1391,7 @@ exit 0
             os.chmod(script_path, 0o755)
 
         deb_filename = (
-            f"{package_name}-{package_version}-{self.os_name}-{self.os_version}-"
+            f"{package_name}-{package_version}-{self.system.value}-{self.os_version}-"
             f"{self.architecture}.deb"
         )
         deb_output_path = os.path.join(
@@ -1509,7 +1508,7 @@ exit 0
             break
 
         zip_name = shutil.make_archive(
-            base_name=f"sokketter-ui-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}",
+            base_name=f"sokketter-ui-{self.version}-{self.system.value}-{self.os_version}-{self.architecture}",
             format="zip",
             root_dir=sokketter_ui_zip_folder,
         )
@@ -1539,7 +1538,7 @@ exit 0
 
         os.makedirs(sokketter_ui_zip_folder)
 
-        if self.os_name == "windows":
+        if self.system == System.WINDOWS:
             shutil.copy(
                 os.path.join(self.temp_binary_output_dir, "bin", "sokketter-ui.exe"),
                 sokketter_ui_zip_folder,
@@ -1552,7 +1551,7 @@ exit 0
             self.__execute_command(packing_command)
 
             zip_name = shutil.make_archive(
-                base_name=f"sokketter-ui-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}",
+                base_name=f"sokketter-ui-{self.version}-{self.system.value}-{self.os_version}-{self.architecture}",
                 format="zip",
                 root_dir=sokketter_ui_zip_folder,
             )
@@ -1562,7 +1561,7 @@ exit 0
                 dst=sokketter_ui_folder,
             )
 
-        elif self.os_name == "macos":
+        elif self.system == System.MACOS:
             filename = "sokketter-ui.app"
             app_filepath = os.path.join(sokketter_ui_zip_folder, filename)
 
@@ -1592,7 +1591,7 @@ exit 0
 
             zip_name = os.path.join(
                 self.workspace,
-                f"sokketter-ui-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}.zip",
+                f"sokketter-ui-{self.version}-{self.system.value}-{self.os_version}-{self.architecture}.zip",
             )
 
             packing_command = [
@@ -1613,12 +1612,12 @@ exit 0
 
             dmg_filename = os.path.join(
                 sokketter_ui_folder,
-                f"sokketter-ui-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}.dmg",
+                f"sokketter-ui-{self.version}-{self.system.value}-{self.os_version}-{self.architecture}.dmg",
             )
 
             self.__create_dmg(app_path=app_filepath, output_path=dmg_filename)
 
-        elif Environment.is_unix_based():
+        elif self.system == System.LINUX:
             self.__package_linux_app_image(sokketter_ui_folder, sokketter_ui_zip_folder)
             self.__package_linux_ui_deb()
 
