@@ -28,6 +28,25 @@ class Action(str, Enum):
     GET_ARCHITECTURE = "GET_ARCHITECTURE"
 
 
+class System(str, Enum):
+    """
+    Enum to define the target operating systems.
+    """
+
+    WINDOWS = "windows"
+    LINUX = "linux"
+    MACOS = "macos"
+
+
+class Architecture(str, Enum):
+    """
+    Enum to define the target architectures.
+    """
+
+    X86_64 = "x86_64"
+    ARM64 = "arm64"
+
+
 # --------------------------------------------------------------------------------------------------
 #
 # Class definition.
@@ -114,17 +133,17 @@ class Environment:
         raise EnvironmentError("Unsupported OS version")
 
     @staticmethod
-    def get_architecture() -> str:
+    def get_architecture() -> Architecture:
         """
         Get the architecture of the machine.
         """
         machine = platform.machine().lower()
 
         if machine in ["arm64", "aarch64"]:
-            return "arm64"
+            return Architecture.ARM64
 
         if machine in ["x86_64", "amd64"]:
-            return "x86_64"
+            return Architecture.X86_64
 
         raise EnvironmentError("Unsupported architecture")
 
