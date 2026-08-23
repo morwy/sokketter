@@ -175,6 +175,7 @@ class Build:
                     )
 
         for candidate in qt_cmake_candidates:
+            self.logger.info("Checking CMake candidate: %s", candidate.resolve())
             if candidate.exists():
                 return str(candidate)
 
