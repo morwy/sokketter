@@ -406,17 +406,10 @@ class Build:
         if self.os_name == "windows" and not tool_name.endswith(".exe"):
             executable_name = f"{tool_name}.exe"
 
-        candidates: list[pathlib.Path] = []
-
-        if hasattr(self, "qt_version_folder"):
-            version_folder = pathlib.Path(self.qt_version_folder)
-            candidates.extend(version_folder.glob(f"*/bin/{executable_name}"))
-
         qt_root_path = pathlib.Path(self.qt_root_folder)
-        candidates.extend(
+        candidates = list(
             (qt_root_path / self.qt_version).glob(f"*/bin/{executable_name}")
         )
-
         for candidate in candidates:
             if candidate.exists():
                 return str(candidate)
