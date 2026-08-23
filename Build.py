@@ -148,9 +148,7 @@ class Build:
 
         qt_tools_dir = pathlib.Path(self.qt_root_folder) / "Tools"
         qt_cmake_glob_pattern = os.path.join("CMake*", "**", "bin", executable_name)
-        qt_cmake_candidates = list(
-            qt_tools_dir.rglob(qt_cmake_glob_pattern, case_sensitive=False)
-        )
+        qt_cmake_candidates = list(qt_tools_dir.rglob(qt_cmake_glob_pattern))
 
         for candidate in qt_cmake_candidates:
             self.logger.info("Found CMake candidate: %s", candidate.resolve())
