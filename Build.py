@@ -164,7 +164,12 @@ class Build:
         for cmake_tool_name in cmake_tool_names:
             cmake_tool_dir = qt_tools_dir / cmake_tool_name
             if cmake_tool_dir.exists():
-                for cmake_executable in cmake_tool_dir.rglob(executable_name):
+                self.logger.info(
+                    "Searching for CMake executables in: %s", cmake_tool_dir.resolve()
+                )
+                for cmake_executable in cmake_tool_dir.rglob(
+                    os.path.join("bin", executable_name)
+                ):
                     self.logger.info(
                         "Found CMake executable: %s", cmake_executable.resolve()
                     )
