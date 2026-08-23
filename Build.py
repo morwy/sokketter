@@ -1171,6 +1171,10 @@ class Build:
     def __get_linux_qt_deb_depends(self) -> list[str]:
         """
         Return the external Qt runtime packages required by the UI application.
+
+        The runtime must provide at least the Qt minor version used for the build;
+        Qt does not support running applications linked to newer minor versions on
+        an older runtime.
         """
         qt_version = ".".join(self.qt_version.split(".")[:2])
         qt_packages = [
