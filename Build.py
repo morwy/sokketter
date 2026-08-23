@@ -938,6 +938,7 @@ class Build:
             "-DCMAKE_BUILD_TYPE=Release",
             "-DIS_COMPILING_STATIC=true",
             "-DIS_COMPILING_SHARED=false",
+            f"-DSOKKETTER_TARGET_ARCHITECTURE:STRING={self.architecture.value}",
             f"-DQt6_DIR={self.qt_cmake_folder}",
         ]
 
