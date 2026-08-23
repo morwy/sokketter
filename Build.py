@@ -1185,8 +1185,7 @@ class Build:
                 return "6.4"
             if distro_version.startswith("22.04"):
                 return "6.2"
-            if distro_version.startswith("20.04"):
-                return "5.15"
+
         elif distro_name == "debian":
             if distro_version.startswith("12"):
                 return "6.2"
