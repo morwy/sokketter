@@ -1710,12 +1710,18 @@ if __name__ == "__main__":
         help="Qt version to use (default: latest; format: major.minor[.patch]).",
     )
 
+    host_architecture = Environment.get_architecture()
+
     parser.add_argument(
         "--architecture",
         type=Architecture,
-        default=Environment.get_architecture(),
+        choices=list(Architecture),
+        default=host_architecture,
         metavar="ARCHITECTURE",
-        help=f"Target architecture for the build (default: current host architecture, which is currently {Environment.get_architecture()}).",
+        help=(
+            "Target architecture for the build "
+            f"(default: current host architecture, which is currently {host_architecture.value})."
+        ),
     )
 
     args = parser.parse_args()
@@ -1723,5 +1729,12 @@ if __name__ == "__main__":
     if not args.stages:
         print("No stages specified. Use --help to see available stages.")
         sys.exit(1)
+
+    if args.architecture != host_architecture:
+        parser.error(
+            "Cross-compilation is not supported yet. "
+            f"Requested --architecture={args.architecture.value}, "
+            f"but host architecture is {host_architecture.value}."
+        )
 
     Build(args.stages, args.qt_version, args.architecture).run()
