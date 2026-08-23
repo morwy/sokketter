@@ -4,7 +4,10 @@
 Build script for the project.
 
 Project is intended to be built using C++17, Qt6 and tools bundled with Qt6 (CMake, Ninja, etc.).
+It expects the Qt6 installation to be done either via the official Qt installer or via aqt package manager.
+
 This script is designed to be cross-platform and should work on Windows, Linux, and macOS.
+
 It handles the build process, including configuration, compilation, testing, and packaging of
 the application. The script is designed to be run from the command line and can be integrated
 into CI/CD pipelines.
