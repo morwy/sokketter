@@ -40,7 +40,7 @@ auto app_settings_storage::load() -> void
 
     m_settings = {};
 
-    QFileInfo fileInfo(path());
+    QFileInfo fileInfo(path().string().c_str());
     if (!fileInfo.exists())
     {
         SPDLOG_LOGGER_INFO(
