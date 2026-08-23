@@ -17,6 +17,18 @@ int main(int argc, char *argv[])
      * build look inconsistent with the AppImage, which never bundles that plugin.
      */
     qunsetenv("QT_QPA_PLATFORMTHEME");
+
+    /**
+     * Force the X11 (xcb) backend so window decorations are drawn by the window
+     * manager instead of Qt itself. GNOME/Mutter under native Wayland does not draw
+     * server-side decorations for Wayland clients, unlike the AppImage's bundled Qt,
+     * which only ships the xcb plugin and therefore always runs under XWayland with
+     * native decorations. Respect an explicit override if the user set one.
+     */
+    if (!qEnvironmentVariableIsSet("QT_QPA_PLATFORM"))
+    {
+        qputenv("QT_QPA_PLATFORM", "xcb");
+    }
 #endif
 
     /**
