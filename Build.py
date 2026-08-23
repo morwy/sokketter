@@ -146,36 +146,14 @@ class Build:
         """
         executable_name = "cmake.exe" if self.os_name == "windows" else "cmake"
 
-        cmake_tool_names = (
-            ["CMake_64", "CMake"]
-            if self.architecture.lower() in ["x86_64", "amd64"]
-            else ["CMake"]
-        )
-        if self.os_name == "macos":
-            cmake_tool_names = ["CMake.app/Contents"]
-
         qt_tools_dir = pathlib.Path(self.qt_root_folder) / "Tools"
-        qt_cmake_candidates = [
-            qt_tools_dir / cmake_tool_name / "bin" / executable_name
-            for cmake_tool_name in cmake_tool_names
-        ]
-
-        # Iterate and log all CMake folders under Tools recursively for debugging purposes
-        for cmake_tool_name in cmake_tool_names:
-            cmake_tool_dir = qt_tools_dir / cmake_tool_name
-            if cmake_tool_dir.exists():
-                self.logger.info(
-                    "Searching for CMake executables in: %s", cmake_tool_dir.resolve()
-                )
-                for cmake_executable in cmake_tool_dir.rglob(
-                    os.path.join("bin", executable_name)
-                ):
-                    self.logger.info(
-                        "Found CMake executable: %s", cmake_executable.resolve()
-                    )
+        qt_cmake_glob_pattern = os.path.join("CMake*", "bin", executable_name)
+        qt_cmake_candidates = list(
+            qt_tools_dir.rglob(qt_cmake_glob_pattern, case_sensitive=False)
+        )
 
         for candidate in qt_cmake_candidates:
-            self.logger.info("Checking CMake candidate: %s", candidate.resolve())
+            self.logger.info("Found CMake candidate: %s", candidate.resolve())
             if candidate.exists():
                 return str(candidate)
 
