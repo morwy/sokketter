@@ -1209,6 +1209,10 @@ class Build:
             "libqt6gui6",
             "libqt6network6",
             "libqt6widgets6",
+            # Ships the SVG icon engine/imageformat plugins used by the checkbox and
+            # radio button stylesheets; dpkg-shlibdeps cannot detect it since the
+            # plugins are loaded dynamically rather than linked directly.
+            "libqt6svg6",
         ]
         qt_depends = [
             f"{package} (>= {qt_version}) | {package}t64 (>= {qt_version})"
@@ -1311,6 +1315,7 @@ class Build:
                 "libqt6gui6",
                 "libqt6network6",
                 "libqt6widgets6",
+                "libqt6svg6",
             )
             package_dependencies.extend(
                 dependency
