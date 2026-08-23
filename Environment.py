@@ -196,4 +196,5 @@ if __name__ == "__main__":
     elif args.action == Action.GET_ARCHITECTURE:
         print(Environment.get_architecture().value)
 
-    raise ValueError(f"Unknown action: {args.action}")
+    else:
+        raise ValueError(f"Unknown action: {args.action}")
