@@ -1204,6 +1204,7 @@ class Build:
         qt_version = self.__get_linux_qt_runtime_version()
         qt_packages = [
             "libqt6core6",
+            "libqt6concurrent6",
             "libqt6dbus6",
             "libqt6gui6",
             "libqt6network6",
@@ -1305,6 +1306,7 @@ class Build:
         if package_depends:
             qt_dependency_prefixes = (
                 "libqt6core6",
+                "libqt6concurrent6",
                 "libqt6dbus6",
                 "libqt6gui6",
                 "libqt6network6",
