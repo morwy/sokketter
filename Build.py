@@ -373,13 +373,10 @@ class Build:
         if self.system == System.WINDOWS and not tool_name.endswith(".exe"):
             executable_name = f"{tool_name}.exe"
 
-        qt_root_path = pathlib.Path(self.qt_root_folder)
-        candidates = list(
-            (qt_root_path / self.qt_version).glob(f"*/bin/{executable_name}")
-        )
-        for candidate in candidates:
-            if candidate.exists():
-                return str(candidate)
+        qt_kit_folder = pathlib.Path(self.qt_cmake_folder).parent.parent.parent
+        candidate = qt_kit_folder / "bin" / executable_name
+        if candidate.exists():
+            return str(candidate)
 
         raise FileNotFoundError(
             f"Could not find '{tool_name}'. Add Qt's bin directory to PATH or set Qt6_DIR/QT6_DIR."
