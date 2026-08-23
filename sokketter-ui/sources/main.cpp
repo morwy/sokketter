@@ -1,7 +1,6 @@
 #include "mainwindow.h"
 
 #include <QApplication>
-#include <QStyleFactory>
 #include <QtGlobal>
 
 #ifdef Q_OS_MACOS
@@ -10,45 +9,7 @@
 
 int main(int argc, char *argv[])
 {
-#ifdef Q_OS_LINUX
-    /**
-     * Skip the system's platform theme plugin (gtk3/kde/etc.), which would otherwise
-     * inject native fonts/palette under the app's own stylesheet and make the .deb
-     * build look inconsistent with the AppImage, which never bundles that plugin.
-     */
-    qunsetenv("QT_QPA_PLATFORMTHEME");
-
-    /**
-     * Force the X11 (xcb) backend so window decorations are drawn by the window
-     * manager instead of Qt itself. GNOME/Mutter under native Wayland does not draw
-     * server-side decorations for Wayland clients, unlike the AppImage's bundled Qt,
-     * which only ships the xcb plugin and therefore always runs under XWayland with
-     * native decorations. Respect an explicit override if the user set one.
-     */
-    if (!qEnvironmentVariableIsSet("QT_QPA_PLATFORM"))
-    {
-        qputenv("QT_QPA_PLATFORM", "xcb");
-    }
-#endif
-
-    /**
-     * Use the exact fractional scale factor reported by the compositor instead of
-     * Qt's default nearest-integer rounding, which can otherwise flip inconsistently
-     * between windows of the same process depending on display-scale query timing.
-     */
-    QApplication::setHighDpiScaleFactorRoundingPolicy(
-        Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
-
     QApplication app(argc, argv);
-
-#ifdef Q_OS_LINUX
-    /**
-     * Force a consistent Qt style so the UI looks identical regardless of the host's
-     * platform theme plugin availability, which differs between the self-contained
-     * AppImage and the .deb package linked against the system's Qt installation.
-     */
-    QApplication::setStyle(QStyleFactory::create("Fusion"));
-#endif
 
 #ifdef Q_OS_MACOS
     registerForMacThemeChanges();
