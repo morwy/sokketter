@@ -190,4 +190,4 @@ if __name__ == "__main__":
         print(Environment.get_os_version())
 
     elif args.action == Action.GET_ARCHITECTURE:
-        print(Environment.get_architecture())
+        print(Environment.get_architecture().value)
