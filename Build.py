@@ -1216,6 +1216,8 @@ class Build:
         private_lib_folder = os.path.join(deployed_lib_folder, "sokketter-ui")
         shutil.move(staging_folder, private_lib_folder)
 
+        private_bin_folder = os.path.join(private_lib_folder, "bin")
+
         if os.path.exists(deployed_plugins_folder):
             shutil.move(
                 deployed_plugins_folder, os.path.join(private_lib_folder, "plugins")
@@ -1227,15 +1229,18 @@ class Build:
             for filename in files:
                 os.chmod(os.path.join(root, filename), 0o644)
 
+        os.makedirs(private_bin_folder)
+        binary_path = os.path.join(private_bin_folder, "sokketter-ui")
+        shutil.move(os.path.join(usr_bin_folder, "sokketter-ui"), binary_path)
+        os.chmod(binary_path, 0o755)
+
         # Only the executable's RPATH needs adjusting; libraries reference each other
         # via $ORIGIN, which is unaffected by the extra sokketter-ui path segment.
-        self.__execute_command(
-            ["patchelf", "--set-rpath", "$ORIGIN/../lib/sokketter-ui", binary_path]
-        )
+        self.__execute_command(["patchelf", "--set-rpath", "$ORIGIN/..", binary_path])
 
-        qt_conf_path = os.path.join(usr_bin_folder, "qt.conf")
+        qt_conf_path = os.path.join(private_bin_folder, "qt.conf")
         with open(file=qt_conf_path, mode="w", encoding="utf-8") as file:
-            file.write("[Paths]\nPrefix = ../lib/sokketter-ui\nPlugins = plugins\n")
+            file.write("[Paths]\nPrefix = ..\nPlugins = plugins\n")
         os.chmod(qt_conf_path, 0o644)
 
         self.logger.info("Private Qt runtime bundled successfully.")
@@ -1324,8 +1329,15 @@ class Build:
 
         self.__bundle_qt_runtime_for_deb(usr_bin_folder, deb_root_folder)
 
+        launcher_path = os.path.join(usr_bin_folder, "sokketter-ui")
+        with open(file=launcher_path, mode="w", encoding="utf-8") as file:
+            file.write('#!/bin/sh\nexec /usr/lib/sokketter-ui/bin/sokketter-ui "$@"\n')
+        os.chmod(launcher_path, 0o755)
+
         package_depends = self.__compute_linux_deb_depends(
-            os.path.join(usr_bin_folder, "sokketter-ui")
+            os.path.join(
+                deb_root_folder, "usr", "lib", package_name, "bin", "sokketter-ui"
+            )
         )
 
         depends_line = f"Depends: {package_depends}\n" if package_depends else ""
