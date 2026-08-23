@@ -23,6 +23,7 @@ class Action(str, Enum):
     """
 
     NONE = "NONE"
+    GET_OS = "GET_OS"
     GET_OS_NAME = "GET_OS_NAME"
     GET_OS_VERSION = "GET_OS_VERSION"
     GET_ARCHITECTURE = "GET_ARCHITECTURE"
@@ -183,8 +184,8 @@ if __name__ == "__main__":
         print("No action specified. Use --help to see available actions.")
         sys.exit(1)
 
-    elif args.action == Action.GET_OS_NAME:
-        print(Environment.get_os_name())
+    elif args.action == Action.GET_OS:
+        print(Environment.get_os().value)
 
     elif args.action == Action.GET_OS_VERSION:
         print(Environment.get_os_version())
