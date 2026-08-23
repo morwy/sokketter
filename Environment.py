@@ -187,8 +187,13 @@ if __name__ == "__main__":
     elif args.action == Action.GET_OS:
         print(Environment.get_os().value)
 
+    elif args.action == Action.GET_OS_NAME:
+        print(Environment.get_os_name())
+
     elif args.action == Action.GET_OS_VERSION:
         print(Environment.get_os_version())
 
     elif args.action == Action.GET_ARCHITECTURE:
         print(Environment.get_architecture().value)
+
+    raise ValueError(f"Unknown action: {args.action}")
