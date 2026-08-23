@@ -19,6 +19,14 @@ int main(int argc, char *argv[])
     qunsetenv("QT_QPA_PLATFORMTHEME");
 #endif
 
+    /**
+     * Use the exact fractional scale factor reported by the compositor instead of
+     * Qt's default nearest-integer rounding, which can otherwise flip inconsistently
+     * between windows of the same process depending on display-scale query timing.
+     */
+    QApplication::setHighDpiScaleFactorRoundingPolicy(
+        Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
+
     QApplication app(argc, argv);
 
 #ifdef Q_OS_LINUX
