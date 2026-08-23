@@ -43,7 +43,7 @@ jobs:
     - name: Install Qt6 dependencies
       uses: jurplel/install-qt-action@v4
       with:
-        version: '6.8.*'
+        version: '6.2.*'
         tools: 'tools_ninja tools_cmake'
 
     - name: Run Python build script
