@@ -65,4 +65,13 @@ else()
     message("  - Platform: ${PLATFORM_TYPE}.")
 endif()
 
+set(SOKKETTER_TARGET_ARCHITECTURE "" CACHE STRING "Expected target architecture")
+set_property(CACHE SOKKETTER_TARGET_ARCHITECTURE PROPERTY STRINGS "x86_64" "arm64")
+
+if(SOKKETTER_TARGET_ARCHITECTURE AND NOT SOKKETTER_TARGET_ARCHITECTURE STREQUAL PLATFORM_TYPE)
+    message(FATAL_ERROR
+        "Requested target architecture '${SOKKETTER_TARGET_ARCHITECTURE}' does not match "
+        "the CMake toolchain target '${PLATFORM_TYPE}'.")
+endif()
+
 message("")
