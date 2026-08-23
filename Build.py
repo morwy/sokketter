@@ -1168,15 +1168,41 @@ class Build:
 
         return shlibs_depends
 
+    def __get_linux_qt_runtime_version(self) -> str:
+        """
+        Resolve the Qt runtime version shipped by the target Linux distro.
+
+        Debian package metadata must be aligned to the distro runtime rather than the
+        SDK used during the build. Using a newer SDK version here creates impossible
+        dependency constraints when the workstation only has the distro's older Qt
+        packages available.
+        """
+        distro_name = Environment.get_os_name()
+        distro_version = Environment.get_os_version()
+
+        if distro_name == "ubuntu":
+            if distro_version.startswith("24.04"):
+                return "6.4"
+            if distro_version.startswith("22.04"):
+                return "6.2"
+            if distro_version.startswith("20.04"):
+                return "5.15"
+        elif distro_name == "debian":
+            if distro_version.startswith("12"):
+                return "6.2"
+            if distro_version.startswith("13"):
+                return "6.4"
+
+        return ".".join(self.qt_version.split(".")[:2])
+
     def __get_linux_qt_deb_depends(self) -> list[str]:
         """
         Return the external Qt runtime packages required by the UI application.
 
-        The runtime must provide at least the Qt minor version used for the build;
-        Qt does not support running applications linked to newer minor versions on
-        an older runtime.
+        Debian package dependencies are pinned to the runtime version provided by the
+        target distro rather than the Qt SDK used to compile the binary.
         """
-        qt_version = ".".join(self.qt_version.split(".")[:2])
+        qt_version = self.__get_linux_qt_runtime_version()
         qt_packages = [
             "libqt6core6",
             "libqt6dbus6",
