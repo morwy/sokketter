@@ -79,8 +79,8 @@ class Build:
         self.os_version = Environment.get_os_version()
         self.logger.info("Operating system version: %s", self.os_version)
 
-        self.architecture = architecture.value
-        self.logger.info("Target architecture: %s", self.architecture)
+        self.architecture = architecture
+        self.logger.info("Target architecture: %s", self.architecture.value)
 
         self.qt_version = qt_version
         self.logger.info("Target Qt version: %s", self.qt_version)
@@ -173,39 +173,38 @@ class Build:
         Get the binary output directory based on the platform.
         """
         return os.path.join(
-            workspace, "bin", f"{self.system.value}_{self.architecture}", "Release"
+            workspace,
+            "bin",
+            f"{self.system.value}_{self.architecture.value}",
+            "Release",
         )
 
     def __get_debian_architecture(self) -> str:
         """
         Get the Debian package architecture name for the current platform.
         """
-        architecture = self.architecture.lower()
-
-        if architecture in ["x86_64", "amd64"]:
+        if self.architecture == Architecture.X86_64:
             return "amd64"
 
-        if architecture in ["arm64", "aarch64"]:
+        if self.architecture == Architecture.ARM64:
             return "arm64"
 
         raise EnvironmentError(
-            f"Unsupported Debian package architecture: {self.architecture}"
+            f"Unsupported Debian package architecture: {self.architecture.value}"
         )
 
     def __get_linuxdeployqt_architecture(self) -> str:
         """
         Get the linuxdeployqt continuous release architecture token for the current platform.
         """
-        architecture = self.architecture.lower()
-
-        if architecture in ["x86_64", "amd64"]:
+        if self.architecture == Architecture.X86_64:
             return "x86_64"
 
-        if architecture in ["arm64", "aarch64"]:
+        if self.architecture == Architecture.ARM64:
             return "aarch64"
 
         raise EnvironmentError(
-            f"Unsupported linuxdeployqt architecture: {self.architecture}"
+            f"Unsupported linuxdeployqt architecture: {self.architecture.value}"
         )
 
     def __resolve_qt6_package(self) -> tuple[str, str, str, str]:
@@ -256,12 +255,11 @@ class Build:
                 return True
 
             normalized = str(path).lower()
-            arch = self.architecture.lower()
 
-            if arch in ["x86_64", "amd64"]:
+            if self.architecture == Architecture.X86_64:
                 return "arm64" not in normalized
 
-            if arch in ["arm64", "aarch64"]:
+            if self.architecture == Architecture.ARM64:
                 return "arm64" in normalized
 
             return True
@@ -364,7 +362,7 @@ class Build:
 
         raise EnvironmentError(
             f"No suitable Qt6 package found for version '{self.qt_version}' and "
-            f"architecture '{self.architecture}'."
+            f"architecture '{self.architecture.value}'."
         )
 
     def __resolve_qt_tool(self, tool_name: str) -> str:
@@ -391,7 +389,7 @@ class Build:
         """
         Map the detected architecture to the token MSVC dev environment scripts expect.
         """
-        if self.architecture.lower() in ["arm64", "aarch64"]:
+        if self.architecture == Architecture.ARM64:
             return "arm64"
 
         return "x64"
@@ -951,9 +949,9 @@ class Build:
                 cmake_command.extend(["-G", desired_generator])
 
                 if "Visual Studio" in desired_generator:
-                    if self.architecture.lower() in ["x86_64", "amd64"]:
+                    if self.architecture == Architecture.X86_64:
                         cmake_command.extend(["-A", "x64"])
-                    elif self.architecture.lower() in ["arm64", "aarch64"]:
+                    elif self.architecture == Architecture.ARM64:
                         cmake_command.extend(["-A", "ARM64"])
 
             # Do not force CMAKE_CXX_COMPILER on Windows; Visual Studio generators
@@ -1105,7 +1103,7 @@ class Build:
             )
 
         zip_name = shutil.make_archive(
-            base_name=f"sokketter-cli-{self.version}-{self.system.value}-{self.os_version}-{self.architecture}",
+            base_name=f"sokketter-cli-{self.version}-{self.system.value}-{self.os_version}-{self.architecture.value}",
             format="zip",
             root_dir=sokketter_cli_zip_folder,
         )
@@ -1301,7 +1299,7 @@ class Build:
                 elif line.startswith("X-AppImage-Version="):
                     file.write(f"X-AppImage-Version={self.version}\n")
                 elif line.startswith("X-AppImage-Arch="):
-                    file.write(f"X-AppImage-Arch={self.architecture}\n")
+                    file.write(f"X-AppImage-Arch={self.architecture.value}\n")
                 else:
                     file.write(line)
 
@@ -1392,7 +1390,7 @@ exit 0
 
         deb_filename = (
             f"{package_name}-{package_version}-{self.system.value}-{self.os_version}-"
-            f"{self.architecture}.deb"
+            f"{self.architecture.value}.deb"
         )
         deb_output_path = os.path.join(
             self.results_output_dir, "sokketter-ui", deb_filename
@@ -1508,7 +1506,7 @@ exit 0
             break
 
         zip_name = shutil.make_archive(
-            base_name=f"sokketter-ui-{self.version}-{self.system.value}-{self.os_version}-{self.architecture}",
+            base_name=f"sokketter-ui-{self.version}-{self.system.value}-{self.os_version}-{self.architecture.value}",
             format="zip",
             root_dir=sokketter_ui_zip_folder,
         )
@@ -1551,7 +1549,7 @@ exit 0
             self.__execute_command(packing_command)
 
             zip_name = shutil.make_archive(
-                base_name=f"sokketter-ui-{self.version}-{self.system.value}-{self.os_version}-{self.architecture}",
+                base_name=f"sokketter-ui-{self.version}-{self.system.value}-{self.os_version}-{self.architecture.value}",
                 format="zip",
                 root_dir=sokketter_ui_zip_folder,
             )
@@ -1591,7 +1589,7 @@ exit 0
 
             zip_name = os.path.join(
                 self.workspace,
-                f"sokketter-ui-{self.version}-{self.system.value}-{self.os_version}-{self.architecture}.zip",
+                f"sokketter-ui-{self.version}-{self.system.value}-{self.os_version}-{self.architecture.value}.zip",
             )
 
             packing_command = [
@@ -1612,7 +1610,7 @@ exit 0
 
             dmg_filename = os.path.join(
                 sokketter_ui_folder,
-                f"sokketter-ui-{self.version}-{self.system.value}-{self.os_version}-{self.architecture}.dmg",
+                f"sokketter-ui-{self.version}-{self.system.value}-{self.os_version}-{self.architecture.value}.dmg",
             )
 
             self.__create_dmg(app_path=app_filepath, output_path=dmg_filename)
