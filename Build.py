@@ -1121,11 +1121,10 @@ class Build:
         """
         Derive a versioned Depends field from the built binary.
 
-        dpkg-shlibdeps resolves minimum versions for shared libraries owned by apt
-        packages (e.g. libc6, libstdc++6, libudev1). Qt6 libraries are bundled
-        privately with the package (see __bundle_qt_runtime_for_deb), so they are not
-        owned by any distro package; --ignore-missing-info makes dpkg-shlibdeps skip
-        them instead of failing or guessing at a package name.
+        dpkg-shlibdeps resolves minimum versions for linked libraries owned by installed
+        distribution packages. Qt is supplied by an external package at install time,
+        but the build may use a Qt SDK outside the package database, so Qt dependencies
+        are declared explicitly by __get_linux_qt_deb_depends.
         """
         scratch_dir = os.path.join(
             self.temp_binary_output_dir, "sokketter-ui-shlibdeps"
@@ -1169,82 +1168,24 @@ class Build:
 
         return shlibs_depends
 
-    def __bundle_qt_runtime_for_deb(
-        self, usr_bin_folder: str, deb_root_folder: str
-    ) -> None:
+    def __get_linux_qt_deb_depends(self) -> list[str]:
         """
-        Deploy a private copy of the linked Qt runtime under usr/lib/sokketter-ui so the
-        Debian package does not depend on the target distro's Qt6 packages, whose names
-        and available versions vary across supported releases.
+        Return the external Qt runtime packages required by the UI application.
         """
-        self.logger.info("Bundling a private Qt runtime for the Debian package.")
-
-        # linuxdeployqt looks for this file due to a known upstream glibc-version check bug.
-        linuxdeployqt_idiot_fix_folder_path = os.path.join(
-            deb_root_folder, "usr", "share", "doc", "libc6"
-        )
-        os.makedirs(linuxdeployqt_idiot_fix_folder_path, exist_ok=True)
-        pathlib.Path(
-            os.path.join(linuxdeployqt_idiot_fix_folder_path, "copyright")
-        ).touch()
-
-        linuxdeployqt_path = os.path.join(
-            self.workspace,
-            f"linuxdeployqt-continuous-{self.__get_linuxdeployqt_architecture()}.AppImage",
-        )
-
-        binary_path = os.path.join(usr_bin_folder, "sokketter-ui")
-        deploy_command = [
-            linuxdeployqt_path,
-            binary_path,
-            "-verbose=2",
-            "-unsupported-allow-new-glibc",
-            "-qmake=" + self.__resolve_qt_tool("qmake"),
+        qt_version = ".".join(self.qt_version.split(".")[:2])
+        qt_packages = [
+            "libqt6core6",
+            "libqt6dbus6",
+            "libqt6gui6",
+            "libqt6network6",
+            "libqt6widgets6",
         ]
-        self.__execute_command(cmake_command=deploy_command, cwd=deb_root_folder)
-
-        # The workaround file is owned by the real libc6 package; strip it before packaging.
-        shutil.rmtree(os.path.join(deb_root_folder, "usr", "share", "doc", "libc6"))
-
-        # linuxdeployqt deploys Qt into usr/lib and usr/plugins (RPATH: $ORIGIN/../lib).
-        # Relocate that into a private subfolder so it cannot collide with system Qt.
-        deployed_lib_folder = os.path.join(deb_root_folder, "usr", "lib")
-        deployed_plugins_folder = os.path.join(deb_root_folder, "usr", "plugins")
-
-        staging_folder = os.path.join(deb_root_folder, "usr", "lib-staging")
-        shutil.move(deployed_lib_folder, staging_folder)
-        os.makedirs(deployed_lib_folder)
-        private_lib_folder = os.path.join(deployed_lib_folder, "sokketter-ui")
-        shutil.move(staging_folder, private_lib_folder)
-
-        private_bin_folder = os.path.join(private_lib_folder, "bin")
-
-        if os.path.exists(deployed_plugins_folder):
-            shutil.move(
-                deployed_plugins_folder, os.path.join(private_lib_folder, "plugins")
-            )
-
-        for root, dirs, files in os.walk(private_lib_folder):
-            for directory in dirs:
-                os.chmod(os.path.join(root, directory), 0o755)
-            for filename in files:
-                os.chmod(os.path.join(root, filename), 0o644)
-
-        os.makedirs(private_bin_folder)
-        binary_path = os.path.join(private_bin_folder, "sokketter-ui")
-        shutil.move(os.path.join(usr_bin_folder, "sokketter-ui"), binary_path)
-        os.chmod(binary_path, 0o755)
-
-        # Only the executable's RPATH needs adjusting; libraries reference each other
-        # via $ORIGIN, which is unaffected by the extra sokketter-ui path segment.
-        self.__execute_command(["patchelf", "--set-rpath", "$ORIGIN/..", binary_path])
-
-        qt_conf_path = os.path.join(private_bin_folder, "qt.conf")
-        with open(file=qt_conf_path, mode="w", encoding="utf-8") as file:
-            file.write("[Paths]\nPrefix = ..\nPlugins = plugins\n")
-        os.chmod(qt_conf_path, 0o644)
-
-        self.logger.info("Private Qt runtime bundled successfully.")
+        qt_depends = [
+            f"{package} (>= {qt_version}) | {package}t64 (>= {qt_version})"
+            for package in qt_packages
+        ]
+        qt_depends.append(f"qt6-qpa-plugins (>= {qt_version})")
+        return qt_depends
 
     def __package_linux_ui_deb(self) -> None:
         """
@@ -1328,20 +1269,25 @@ class Build:
         )
         os.chmod(os.path.join(udev_rules_folder, "101-sokketter.rules"), 0o644)
 
-        self.__bundle_qt_runtime_for_deb(usr_bin_folder, deb_root_folder)
-
-        launcher_path = os.path.join(usr_bin_folder, "sokketter-ui")
-        with open(file=launcher_path, mode="w", encoding="utf-8") as file:
-            file.write('#!/bin/sh\nexec /usr/lib/sokketter-ui/bin/sokketter-ui "$@"\n')
-        os.chmod(launcher_path, 0o755)
-
         package_depends = self.__compute_linux_deb_depends(
-            os.path.join(
-                deb_root_folder, "usr", "lib", package_name, "bin", "sokketter-ui"
-            )
+            os.path.join(usr_bin_folder, "sokketter-ui")
         )
+        package_dependencies = self.__get_linux_qt_deb_depends()
+        if package_depends:
+            qt_dependency_prefixes = (
+                "libqt6core6",
+                "libqt6dbus6",
+                "libqt6gui6",
+                "libqt6network6",
+                "libqt6widgets6",
+            )
+            package_dependencies.extend(
+                dependency
+                for dependency in package_depends.split(", ")
+                if not dependency.startswith(qt_dependency_prefixes)
+            )
 
-        depends_line = f"Depends: {package_depends}\n" if package_depends else ""
+        depends_line = f"Depends: {', '.join(package_dependencies)}\n"
         control_content = f"""Package: {package_name}
 Version: {package_version}
 Section: utils
