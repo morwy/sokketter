@@ -10,6 +10,15 @@
 
 int main(int argc, char *argv[])
 {
+#ifdef Q_OS_LINUX
+    /**
+     * Skip the system's platform theme plugin (gtk3/kde/etc.), which would otherwise
+     * inject native fonts/palette under the app's own stylesheet and make the .deb
+     * build look inconsistent with the AppImage, which never bundles that plugin.
+     */
+    qunsetenv("QT_QPA_PLATFORMTHEME");
+#endif
+
     QApplication app(argc, argv);
 
 #ifdef Q_OS_LINUX
