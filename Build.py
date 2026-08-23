@@ -28,7 +28,7 @@ import tempfile
 import time
 from enum import Enum
 
-from Environment import Environment
+from Environment import Architecture, Environment
 from ProjectVersion import ProjectVersion
 
 
@@ -51,15 +51,6 @@ class BuildStage(str, Enum):
     TEST = "TEST"
 
 
-class TargetArchitecture(str, Enum):
-    """
-    Enum to define the target architectures.
-    """
-
-    X86_64 = "x86_64"
-    ARM64 = "arm64"
-
-
 # --------------------------------------------------------------------------------------------------
 #
 # Class definition.
@@ -70,7 +61,9 @@ class Build:
     Class to handle the build process.
     """
 
-    def __init__(self, stages: list[str], qt_version: str, architecture: str) -> None:
+    def __init__(
+        self, stages: list[str], qt_version: str, architecture: Architecture
+    ) -> None:
         """
         Initialize the build class.
         """
@@ -86,7 +79,7 @@ class Build:
         self.os_version = Environment.get_os_version()
         self.logger.info("Operating system version: %s", self.os_version)
 
-        self.architecture = architecture
+        self.architecture = architecture.value
         self.logger.info("Target architecture: %s", self.architecture)
 
         self.qt_version = qt_version
@@ -1722,7 +1715,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--architecture",
-        type=str,
+        type=Architecture,
         default=Environment.get_architecture(),
         metavar="ARCHITECTURE",
         help=f"Target architecture for the build (default: current host architecture, which is currently {Environment.get_architecture()}).",
