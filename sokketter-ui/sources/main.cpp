@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <QFont>
+#include <QFontInfo>
 #include <QtGlobal>
 
 #ifdef Q_OS_MACOS
@@ -31,13 +32,15 @@ int main(int argc, char *argv[])
 
 #ifdef Q_OS_LINUX
     /**
-     * Hardcode the default font. The AppImage's bundled Qt fails to resolve the
-     * system's generic "sans-serif" alias (falls back to a bare "Sans Serif" 9pt),
-     * while the .deb build's system Qt resolves it to "Ubuntu Sans" 11pt, so the
-     * two packages render the same UI with different fonts. Requesting the
-     * concrete family directly avoids depending on that alias resolution.
+     * Normalize the default font. The AppImage's bundled Qt does not resolve the
+     * generic "sans-serif" alias through the platform theme (falls back to a bare
+     * "Sans Serif" 9pt), while the .deb build's system Qt resolves it (e.g. to
+     * "Ubuntu Sans" 11pt), so the two packages render the same UI with different
+     * fonts. Resolve the alias explicitly via font matching (fontconfig), which
+     * yields the distribution's actual default sans-serif family on any system.
      */
-    app.setFont(QFont("Ubuntu Sans", 11));
+    const QString sans_family = QFontInfo(QFont(QStringLiteral("sans-serif"))).family();
+    app.setFont(QFont(sans_family, 11));
 #endif
 
 #ifdef Q_OS_MACOS
