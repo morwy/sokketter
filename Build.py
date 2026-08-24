@@ -92,12 +92,12 @@ class Build:
         (
             self.qt_version,
             self.qt_root_folder,
-            self.qt_version_folder,
+            self.qt_kit_folder,
             self.qt_cmake_folder,
         ) = self.__resolve_qt6_package()
         self.logger.info("Selected Qt version: %s", self.qt_version)
         self.logger.info("Selected Qt root folder: %s", self.qt_root_folder)
-        self.logger.info("Selected Qt version folder: %s", self.qt_version_folder)
+        self.logger.info("Selected Qt kit folder: %s", self.qt_kit_folder)
         self.logger.info("Selected Qt CMake folder: %s", self.qt_cmake_folder)
 
         self.cmake = self.__get_cmake()
@@ -324,9 +324,11 @@ class Build:
         for candidate in candidates:
             if candidate in seen or not has_qt6_config(candidate):
                 continue
+            
             seen.add(candidate)
             if not is_qt_dir_arch_compatible(candidate):
                 continue
+
             version = get_qt_version(candidate)
             if version is not None:
                 packages.append((version, candidate))
@@ -360,7 +362,7 @@ class Build:
             return (
                 ".".join(str(component) for component in selected_version),
                 str(selected_folder.parent.parent.parent.parent.parent),
-                str(selected_folder.parent.parent.parent.parent),
+                str(selected_folder.parent.parent.parent),
                 str(selected_folder),
             )
 
@@ -377,8 +379,7 @@ class Build:
         if self.system == System.WINDOWS and not tool_name.endswith(".exe"):
             executable_name = f"{tool_name}.exe"
 
-        qt_kit_folder = pathlib.Path(self.qt_cmake_folder).parent.parent.parent
-        candidate = qt_kit_folder / "bin" / executable_name
+        candidate = pathlib.Path(self.qt_kit_folder) / "bin" / executable_name
         if candidate.exists():
             return str(candidate)
 
@@ -966,11 +967,11 @@ class Build:
         cmake_prefix_path = os.environ.get("CMAKE_PREFIX_PATH")
         if cmake_prefix_path:
             merged_prefix_path = os.pathsep.join(
-                [self.qt_root_folder, cmake_prefix_path]
+                [str(self.qt_kit_folder), cmake_prefix_path]
             )
             cmake_command.append(f"-DCMAKE_PREFIX_PATH={merged_prefix_path}")
         else:
-            cmake_command.append(f"-DCMAKE_PREFIX_PATH={self.qt_root_folder}")
+            cmake_command.append(f"-DCMAKE_PREFIX_PATH={self.qt_kit_folder}")
 
         if BuildStage.TEST.value in self.stages and self.system != System.WINDOWS:
             cmake_command.append("-DSOKKETTER_ENABLE_TESTING=true")
