@@ -8,7 +8,7 @@
 
 * Windows 10 & 11
 * MacOS 10.15 and later
-* Ubuntu 20.04 and later
+* Ubuntu 22.04 and later
 
 ## Supported devices
 

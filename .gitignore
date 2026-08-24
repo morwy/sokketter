@@ -5,8 +5,12 @@ CMakeLists.txt.user
 build-coverage
 version.rc
 sokketter-ui/resources/Info.plist
+build.log
 *.dmg
 *.zip
+*.AppImage
+*.deb
+results/
 
 # Testing temp files.
 Testing/

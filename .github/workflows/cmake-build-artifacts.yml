@@ -23,14 +23,14 @@ jobs:
       id: strings
       shell: bash
       run: |
-        OS_NAME=$(python -m Environment GET_OS_NAME)
+        OS=$(python -m Environment GET_OS)
         OS_VERSION=$(python -m Environment GET_OS_VERSION)
         OS_ARCHITECTURE=$(python -m Environment GET_ARCHITECTURE)
         CURRENT_VERSION=$(python -m ProjectVersion GET_VERSION)
         echo "results-output-dir=${{ github.workspace }}${{ env.path-separator }}results" >> "$GITHUB_OUTPUT"
-        echo "archive-name=libsokketter-$CURRENT_VERSION-$OS_NAME-$OS_VERSION-$OS_ARCHITECTURE" >> "$GITHUB_OUTPUT"
-        echo "sokketter-cli-name=sokketter-cli-$CURRENT_VERSION-$OS_NAME-$OS_VERSION-$OS_ARCHITECTURE" >> "$GITHUB_OUTPUT"
-        echo "sokketter-ui-name=sokketter-ui-$CURRENT_VERSION-$OS_NAME-$OS_VERSION-$OS_ARCHITECTURE" >> "$GITHUB_OUTPUT"
+        echo "archive-name=libsokketter-$CURRENT_VERSION-$OS-$OS_VERSION-$OS_ARCHITECTURE" >> "$GITHUB_OUTPUT"
+        echo "sokketter-cli-name=sokketter-cli-$CURRENT_VERSION-$OS-$OS_VERSION-$OS_ARCHITECTURE" >> "$GITHUB_OUTPUT"
+        echo "sokketter-ui-name=sokketter-ui-$CURRENT_VERSION-$OS-$OS_VERSION-$OS_ARCHITECTURE" >> "$GITHUB_OUTPUT"
 
     - name: Install dependencies (Ubuntu-only)
       if: ${{ startsWith(matrix.os, 'ubuntu') }}
@@ -43,8 +43,8 @@ jobs:
     - name: Install Qt6 dependencies
       uses: jurplel/install-qt-action@v4
       with:
-        version: '6.8.*'
-        tools: 'tools_ninja'
+        version: ${{ startsWith(matrix.os, 'ubuntu') && '6.2.*' || '6.8.*' }}
+        tools: 'tools_ninja tools_cmake'
 
     - name: Run Python build script
       run: python -m Build

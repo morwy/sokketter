@@ -1,5 +1,19 @@
 #!/usr/bin/env python
 
+"""
+Build script for the project.
+
+Project is intended to be built using C++17, Qt6 and tools bundled with Qt6 (CMake, Ninja, etc.).
+It expects the Qt6 installation to be done either via the official Qt installer or via aqt package
+manager.
+
+This script is designed to be cross-platform and should work on Windows, Linux, and macOS.
+
+It handles the build process, including configuration, compilation, testing, and packaging of
+the application. The script is designed to be run from the command line and can be integrated
+into CI/CD pipelines.
+"""
+
 # --------------------------------------------------------------------------------------------------
 #
 # Imports.
@@ -10,7 +24,7 @@ import glob
 import logging
 import os
 import pathlib
-import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -18,7 +32,7 @@ import tempfile
 import time
 from enum import Enum
 
-from Environment import Environment
+from Environment import Architecture, Environment, System
 from ProjectVersion import ProjectVersion
 
 
@@ -51,43 +65,57 @@ class Build:
     Class to handle the build process.
     """
 
-    def __init__(self, stages: list[str]) -> None:
+    def __init__(
+        self, stages: list[str], qt_version: str, architecture: Architecture
+    ) -> None:
         """
         Initialize the build class.
         """
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s - %(levelname)s - %(message)s",
-        )
         self.logger = logging.getLogger(__name__)
         self.logger.info("Build class initialized.")
 
         self.stages = stages
-        self.logger.info("Build stages: %s", self.stages)
+        self.logger.info("Specified stages: %s", self.stages)
 
-        self.cmake = self.__get_cmake()
-        self.logger.info("CMake executable: %s", self.cmake)
-
-        self.compiler = self.__get_cpp_compiler()
-        self.logger.info("C++ compiler: %s", self.compiler)
-
-        self.os_name = Environment.get_os_name()
-        self.logger.info("Operating system: %s", self.os_name)
+        self.system = Environment.get_os()
+        self.logger.info("Operating system: %s", self.system.value)
 
         self.os_version = Environment.get_os_version()
         self.logger.info("Operating system version: %s", self.os_version)
 
-        self.architecture = Environment.get_architecture()
-        self.logger.info("Architecture: %s", self.architecture)
+        self.architecture = architecture
+        self.logger.info("Target architecture: %s", self.architecture.value)
+
+        self.qt_version = qt_version
+        self.logger.info("Target Qt version: %s", self.qt_version)
+
+        (
+            self.qt_version,
+            self.qt_root_folder,
+            self.qt_kit_folder,
+            self.qt_cmake_folder,
+        ) = self.__resolve_qt6_package()
+        self.logger.info("Selected Qt version: %s", self.qt_version)
+        self.logger.info("Selected Qt root folder: %s", self.qt_root_folder)
+        self.logger.info("Selected Qt kit folder: %s", self.qt_kit_folder)
+        self.logger.info("Selected Qt CMake folder: %s", self.qt_cmake_folder)
+
+        self.cmake = self.__get_cmake()
+        self.logger.info("Target CMake executable: %s", self.cmake)
+
+        self.compiler = self.__get_cpp_compiler()
+        self.logger.info("Target C++ compiler: %s", self.compiler)
 
         self.windows_msvc_env_script: str | None = None
-        if platform.system() == "Windows":
+        if self.system == System.WINDOWS:
             self.windows_msvc_env_script = self.__resolve_windows_msvc_env_script()
             if self.windows_msvc_env_script:
                 self.logger.info(
-                    "Using Visual Studio developer environment script: %s",
+                    "Visual Studio developer environment script: %s",
                     self.windows_msvc_env_script,
                 )
+            else:
+                raise RuntimeError("Visual Studio environment script is not available.")
 
         self.version = ProjectVersion().get()
         self.logger.info("Project version: %s", self.version)
@@ -113,47 +141,18 @@ class Build:
         """
         Get the CMake executable from the environment variable.
         """
-        cmake = "cmake"
-        cmake_in_path = shutil.which(cmake)
-        if cmake_in_path:
-            if platform.system() == "Windows" and any(
-                marker in cmake_in_path.lower()
-                for marker in ["mingw", "msys", "cygwin"]
-            ):
-                self.logger.warning(
-                    "Detected MSYS/MinGW CMake on PATH (%s). Looking for native Windows CMake instead.",
-                    cmake_in_path,
-                )
-            else:
-                return cmake
+        executable_name = "cmake.exe" if self.system == System.WINDOWS else "cmake"
 
-        self.logger.warning(
-            "Using a fallback CMake resolution path instead of the default PATH entry."
-        )
+        qt_tools_dir = pathlib.Path(self.qt_root_folder) / "Tools"
+        qt_cmake_glob_pattern = os.path.join("CMake*", "**", "bin", executable_name)
+        qt_cmake_candidates = list(qt_tools_dir.rglob(qt_cmake_glob_pattern))
 
-        if platform.system() == "Windows":
-            windows_cmake_candidates = [
-                "C:\\Qt\\Tools\\CMake_64\\bin\\cmake.exe",
-                "C:\\Program Files\\CMake\\bin\\cmake.exe",
-            ]
+        for candidate in qt_cmake_candidates:
+            self.logger.info("Found CMake candidate: %s", candidate.resolve())
+            if candidate.exists():
+                return str(candidate)
 
-            for candidate in windows_cmake_candidates:
-                if os.path.exists(candidate):
-                    return candidate
-
-            if cmake_in_path:
-                return cmake_in_path
-
-            cmake = windows_cmake_candidates[0]
-        elif platform.system() in ["Linux", "Darwin"]:
-            cmake = os.path.join(
-                os.environ.get("HOME", ""), "Qt", "Tools", "CMake", "bin", "cmake"
-            )
-
-        if not os.path.exists(cmake):
-            raise EnvironmentError("CMake executable not found")
-
-        return cmake
+        raise EnvironmentError("CMake executable not found")
 
     def __get_cpp_compiler(self) -> str:
         """
@@ -161,14 +160,14 @@ class Build:
         """
         compiler = ""
 
-        if platform.system() == "Windows":
+        if self.system == System.WINDOWS:
             compiler = "cl"
-        elif platform.system() == "Linux":
-            compiler = "g++"
-        elif platform.system() == "Darwin":
+        elif self.system == System.MACOS:
             compiler = "clang++"
+        elif self.system == System.LINUX:
+            compiler = "g++"
         else:
-            self.logger.error("Unsupported platform: %s", platform.system())
+            self.logger.error("Unsupported platform: %s", self.system)
             raise EnvironmentError("Unsupported platform")
 
         return compiler
@@ -177,116 +176,105 @@ class Build:
         """
         Get the binary output directory based on the platform.
         """
-        if platform.system() == "Windows":
-            return os.path.join(
-                workspace, "bin", f"windows_{self.architecture}", "Release"
-            )
+        return os.path.join(
+            workspace,
+            "bin",
+            f"{self.system.value}_{self.architecture.value}",
+            "Release",
+        )
 
-        if platform.system() == "Linux":
-            return os.path.join(
-                workspace, "bin", f"linux_{self.architecture}", "Release"
-            )
-
-        if platform.system() == "Darwin":
-            return os.path.join(
-                workspace, "bin", f"macos_{self.architecture}", "Release"
-            )
-
-        self.logger.error("Unsupported platform: %s", platform.system())
-        raise EnvironmentError("Unsupported platform")
-
-    def __resolve_qt6_dir(self) -> str:
+    def __get_debian_architecture(self) -> str:
         """
-        Resolve Qt6_DIR to a path containing Qt6Config.cmake across supported platforms.
+        Get the Debian package architecture name for the current platform.
         """
+        if self.architecture == Architecture.X86_64:
+            return "amd64"
+
+        if self.architecture == Architecture.ARM64:
+            return "arm64"
+
+        raise EnvironmentError(
+            f"Unsupported Debian package architecture: {self.architecture.value}"
+        )
+
+    def __get_linuxdeployqt_architecture(self) -> str:
+        """
+        Get the linuxdeployqt continuous release architecture token for the current platform.
+        """
+        if self.architecture == Architecture.X86_64:
+            return "x86_64"
+
+        if self.architecture == Architecture.ARM64:
+            return "aarch64"
+
+        raise EnvironmentError(
+            f"Unsupported linuxdeployqt architecture: {self.architecture.value}"
+        )
+
+    def __resolve_qt6_package(self) -> tuple[str, str, str, str]:
+        """
+        Find the Qt6 package matching the requested version and target architecture.
+        """
+
+        version_pattern = re.compile(r"^(\d+)\.(\d+)(?:\.(\d+))?$")
 
         def has_qt6_config(path: pathlib.Path) -> bool:
             return (path / "Qt6Config.cmake").exists() or (
                 path / "qt6-config.cmake"
             ).exists()
 
+        def get_qt_version(path: pathlib.Path) -> tuple[int, int, int] | None:
+            for parent in [path, *path.parents]:
+                match = version_pattern.fullmatch(parent.name)
+                if match:
+                    return (
+                        int(match.group(1)),
+                        int(match.group(2)),
+                        int(match.group(3) or 0),
+                    )
+
+            config_version = path / "Qt6ConfigVersion.cmake"
+            if not config_version.exists():
+                config_version = path / "qt6-config-version.cmake"
+
+            if config_version.exists():
+                contents = config_version.read_text(encoding="utf-8", errors="ignore")
+                match = re.search(
+                    r"PACKAGE_VERSION\s+\"(\d+)\.(\d+)(?:\.(\d+))?\"", contents
+                )
+                if match:
+                    return (
+                        int(match.group(1)),
+                        int(match.group(2)),
+                        int(match.group(3) or 0),
+                    )
+
+            return None
+
         def qt6_dirs_from_prefix(prefix: pathlib.Path) -> list[pathlib.Path]:
             return [prefix, prefix / "lib" / "cmake" / "Qt6"]
 
         def is_qt_dir_arch_compatible(path: pathlib.Path) -> bool:
-            if platform.system() != "Windows":
+            if self.system != System.WINDOWS:
                 return True
 
             normalized = str(path).lower()
-            arch = self.architecture.lower()
 
-            if arch in ["x86_64", "amd64"]:
+            if self.architecture == Architecture.X86_64:
                 return "arm64" not in normalized
 
-            if arch in ["arm64", "aarch64"]:
+            if self.architecture == Architecture.ARM64:
                 return "arm64" in normalized
 
             return True
 
         user_profile = os.environ.get("USERPROFILE", "")
 
-        def discover_windows_qt6_dir_for_arch() -> str | None:
-            if platform.system() != "Windows":
-                return None
-
-            arch = self.architecture.lower()
-            patterns: list[str]
-            if arch in ["x86_64", "amd64"]:
-                patterns = [
-                    os.path.join("C:\\Qt", "*", "msvc*_64", "lib", "cmake", "Qt6"),
-                    os.path.join("C:\\Qt", "*", "mingw*_64", "lib", "cmake", "Qt6"),
-                    os.path.join(
-                        user_profile, "Qt", "*", "msvc*_64", "lib", "cmake", "Qt6"
-                    ),
-                    os.path.join(
-                        user_profile, "Qt", "*", "mingw*_64", "lib", "cmake", "Qt6"
-                    ),
-                ]
-            elif arch in ["arm64", "aarch64"]:
-                patterns = [
-                    os.path.join("C:\\Qt", "*", "*arm64*", "lib", "cmake", "Qt6"),
-                    os.path.join(
-                        user_profile, "Qt", "*", "*arm64*", "lib", "cmake", "Qt6"
-                    ),
-                ]
-            else:
-                patterns = []
-
-            discovered: list[pathlib.Path] = []
-            for pattern in patterns:
-                for match in sorted(glob.glob(pattern), reverse=True):
-                    discovered.append(pathlib.Path(match).resolve())
-
-            for candidate in discovered:
-                if has_qt6_config(candidate):
-                    return str(candidate)
-
-            return None
-
+        candidates: list[pathlib.Path] = []
         qt6_dir = os.environ.get("Qt6_DIR") or os.environ.get("QT6_DIR")
         if qt6_dir:
-            qt6_path = pathlib.Path(qt6_dir).expanduser().resolve()
-            if has_qt6_config(qt6_path):
-                if not is_qt_dir_arch_compatible(qt6_path):
-                    fallback_qt6_dir = discover_windows_qt6_dir_for_arch()
-                    if fallback_qt6_dir:
-                        self.logger.warning(
-                            "Qt6_DIR '%s' does not match build architecture '%s'. Using '%s' instead.",
-                            qt6_path,
-                            self.architecture,
-                            fallback_qt6_dir,
-                        )
-                        return fallback_qt6_dir
-                    raise EnvironmentError(
-                        f"Qt6_DIR '{qt6_path}' does not match build architecture "
-                        f"'{self.architecture}', and no compatible Qt installation was found."
-                    )
-                return str(qt6_path)
-            raise EnvironmentError(
-                f"Qt6_DIR is set to '{qt6_path}' but Qt6Config.cmake was not found there."
-            )
+            candidates.append(pathlib.Path(qt6_dir).expanduser().resolve())
 
-        candidates: list[pathlib.Path] = []
         qt_root_dir = os.environ.get("QT_ROOT_DIR")
         if qt_root_dir:
             candidates.extend(
@@ -302,11 +290,18 @@ class Build:
 
         home_dir = os.environ.get("HOME", "")
 
-        if platform.system() == "Darwin":
+        if self.system == System.MACOS:
             patterns = [
                 os.path.join(home_dir, "Qt", "*", "macos", "lib", "cmake", "Qt6"),
             ]
-        elif platform.system() == "Linux":
+        elif self.system == System.WINDOWS:
+            patterns = [
+                os.path.join("C:\\Qt", "*", "msvc*", "lib", "cmake", "Qt6"),
+                os.path.join("C:\\Qt", "*", "mingw*", "lib", "cmake", "Qt6"),
+                os.path.join(user_profile, "Qt", "*", "msvc*", "lib", "cmake", "Qt6"),
+                os.path.join(user_profile, "Qt", "*", "mingw*", "lib", "cmake", "Qt6"),
+            ]
+        elif self.system == System.LINUX:
             patterns = [
                 os.path.join(home_dir, "Qt", "*", "gcc_64", "lib", "cmake", "Qt6"),
                 os.path.join(
@@ -317,13 +312,6 @@ class Build:
                 os.path.join("/usr", "lib", "cmake", "Qt6"),
                 os.path.join("/usr", "local", "lib", "cmake", "Qt6"),
             ]
-        elif platform.system() == "Windows":
-            patterns = [
-                os.path.join("C:\\Qt", "*", "msvc*", "lib", "cmake", "Qt6"),
-                os.path.join("C:\\Qt", "*", "mingw*", "lib", "cmake", "Qt6"),
-                os.path.join(user_profile, "Qt", "*", "msvc*", "lib", "cmake", "Qt6"),
-                os.path.join(user_profile, "Qt", "*", "mingw*", "lib", "cmake", "Qt6"),
-            ]
         else:
             patterns = []
 
@@ -331,61 +319,69 @@ class Build:
             for match in sorted(glob.glob(pattern), reverse=True):
                 candidates.append(pathlib.Path(match).resolve())
 
+        packages: list[tuple[tuple[int, int, int], pathlib.Path]] = []
+        seen: set[pathlib.Path] = set()
         for candidate in candidates:
-            if has_qt6_config(candidate) and is_qt_dir_arch_compatible(candidate):
-                return str(candidate)
+            if candidate in seen or not has_qt6_config(candidate):
+                continue
+            
+            seen.add(candidate)
+            if not is_qt_dir_arch_compatible(candidate):
+                continue
 
-        if platform.system() == "Windows":
-            fallback_qt6_dir = discover_windows_qt6_dir_for_arch()
-            if fallback_qt6_dir:
-                return fallback_qt6_dir
+            version = get_qt_version(candidate)
+            if version is not None:
+                packages.append((version, candidate))
+
+        requested_match = version_pattern.fullmatch(self.qt_version)
+        if self.qt_version == "latest":
+            matching_packages = packages
+        elif requested_match:
+            requested_version = tuple(
+                int(component or 0) for component in requested_match.groups()
+            )
+            if requested_match.group(3) is None:
+                matching_packages = [
+                    (version, path)
+                    for version, path in packages
+                    if version[:2] == requested_version[:2]
+                ]
+            else:
+                matching_packages = [
+                    (version, path)
+                    for version, path in packages
+                    if version == requested_version
+                ]
+        else:
+            matching_packages = []
+
+        if matching_packages:
+            selected_version, selected_folder = max(
+                matching_packages, key=lambda package: package[0]
+            )
+            return (
+                ".".join(str(component) for component in selected_version),
+                str(selected_folder.parent.parent.parent.parent.parent),
+                str(selected_folder.parent.parent.parent),
+                str(selected_folder),
+            )
 
         raise EnvironmentError(
-            "Qt6_DIR is not set and Qt6 could not be auto-discovered for this platform. "
-            "Set Qt6_DIR (or QT6_DIR) to a directory containing Qt6Config.cmake."
+            f"No suitable Qt6 package found for version '{self.qt_version}' and "
+            f"architecture '{self.architecture.value}'."
         )
 
     def __resolve_qt_tool(self, tool_name: str) -> str:
         """
         Resolve Qt deployment tools (e.g. macdeployqt, windeployqt) to an executable path.
         """
-        tool_in_path = shutil.which(tool_name)
-        if tool_in_path:
-            return tool_in_path
-
         executable_name = tool_name
-        if platform.system() == "Windows" and not tool_name.endswith(".exe"):
+        if self.system == System.WINDOWS and not tool_name.endswith(".exe"):
             executable_name = f"{tool_name}.exe"
 
-        candidates: list[pathlib.Path] = []
-
-        qt6_dir = os.environ.get("Qt6_DIR") or os.environ.get("QT6_DIR")
-        if qt6_dir:
-            qt6_path = pathlib.Path(qt6_dir).expanduser().resolve()
-            # Qt6_DIR usually points to <qt-root>/lib/cmake/Qt6, so go to <qt-root>/bin.
-            qt_root_candidate = qt6_path.parent.parent.parent
-            candidates.append(qt_root_candidate / "bin" / executable_name)
-
-        home_dir = os.environ.get("HOME", "")
-        if platform.system() == "Darwin":
-            for path in glob.glob(
-                os.path.join(home_dir, "Qt", "*", "macos", "bin", executable_name)
-            ):
-                candidates.append(pathlib.Path(path))
-        elif platform.system() == "Linux":
-            for path in glob.glob(
-                os.path.join(home_dir, "Qt", "*", "gcc_64", "bin", executable_name)
-            ):
-                candidates.append(pathlib.Path(path))
-        elif platform.system() == "Windows":
-            for path in glob.glob(
-                os.path.join("C:\\Qt", "*", "*", "bin", executable_name)
-            ):
-                candidates.append(pathlib.Path(path))
-
-        for candidate in candidates:
-            if candidate.exists():
-                return str(candidate)
+        candidate = pathlib.Path(self.qt_kit_folder) / "bin" / executable_name
+        if candidate.exists():
+            return str(candidate)
 
         raise FileNotFoundError(
             f"Could not find '{tool_name}'. Add Qt's bin directory to PATH or set Qt6_DIR/QT6_DIR."
@@ -395,7 +391,7 @@ class Build:
         """
         Map the detected architecture to the token MSVC dev environment scripts expect.
         """
-        if self.architecture.lower() in ["arm64", "aarch64"]:
+        if self.architecture == Architecture.ARM64:
             return "arm64"
 
         return "x64"
@@ -404,9 +400,6 @@ class Build:
         """
         Resolve a Visual Studio developer environment batch script path.
         """
-        if platform.system() != "Windows":
-            return None
-
         arch_token = self.__msvc_arch_token()
 
         vswhere = os.path.join(
@@ -550,7 +543,7 @@ class Build:
             command_environment = None
 
             if (
-                platform.system() == "Windows"
+                self.system == System.WINDOWS
                 and isinstance(command_to_run, list)
                 and self.windows_msvc_env_script is not None
             ):
@@ -600,7 +593,7 @@ class Build:
         if not os.path.exists(cache_file):
             return None
 
-        with open(cache_file, "r", encoding="utf-8", errors="ignore") as file:
+        with open(cache_file, mode="r", encoding="utf-8", errors="ignore") as file:
             for line in file:
                 if line.startswith("CMAKE_GENERATOR:INTERNAL="):
                     return line.strip().split("=", maxsplit=1)[1]
@@ -620,11 +613,12 @@ class Build:
         if os.path.exists(cache_dir):
             shutil.rmtree(cache_dir)
 
-    def __get_cmake_generator(self, qt6_dir):
-        iqta_tools = os.environ.get("IQTA_TOOLS")
-        ninja_filepath = "C:\\Qt\\Tools\\Ninja\\ninja.exe"
-
-        desired_generator = "Visual Studio 17 2022"
+    def __get_cmake_generator(self):
+        ninja_executable = "ninja.exe" if self.system == System.WINDOWS else "ninja"
+        ninja_filepath = os.path.join(
+            self.qt_root_folder, "Tools", "Ninja", ninja_executable
+        )
+        desired_generator = "Ninja"
 
         if os.path.exists(ninja_filepath):
             self.logger.info(
@@ -635,23 +629,14 @@ class Build:
                 [os.path.dirname(ninja_filepath), os.environ.get("PATH", "")]
             )
             desired_generator = "Ninja"
-
-        elif iqta_tools:
-            ninja_filepath = os.path.join(iqta_tools, "Ninja", "ninja.exe")
-            if os.path.exists(ninja_filepath):
-                self.logger.info(
-                    "Using Ninja generator because Ninja is available at: %s",
-                    ninja_filepath,
-                )
-
-                desired_generator = "Ninja"
-
         else:
-            qt6_dir_lower = qt6_dir.lower()
-            if "msvc2019" in qt6_dir_lower:
-                desired_generator = "Visual Studio 16 2019"
-            elif "msvc2022" in qt6_dir_lower:
-                desired_generator = "Visual Studio 17 2022"
+            self.logger.info(
+                "Ninja not found at: %s!",
+                ninja_filepath,
+            )
+            raise EnvironmentError(
+                "Ninja build system is required but not found. Please ensure Ninja is installed and available in the PATH."
+            )
 
         cached_generator = self.__get_cached_cmake_generator(self.temp_build_output_dir)
         if cached_generator and cached_generator != desired_generator:
@@ -660,7 +645,9 @@ class Build:
                 cached_generator,
                 desired_generator,
             )
+
             self.__reset_cmake_cache(self.temp_build_output_dir)
+
             deps_dir = os.path.join(self.temp_build_output_dir, "_deps")
             if os.path.exists(deps_dir):
                 shutil.rmtree(deps_dir)
@@ -944,9 +931,6 @@ class Build:
         """
         self.logger.info("Starting the CMake configuration.")
 
-        qt6_dir = self.__resolve_qt6_dir()
-        qt6_root = str(pathlib.Path(qt6_dir).parent.parent.parent)
-
         cmake_command = [
             self.cmake,
             "-S",
@@ -956,20 +940,21 @@ class Build:
             "-DCMAKE_BUILD_TYPE=Release",
             "-DIS_COMPILING_STATIC=true",
             "-DIS_COMPILING_SHARED=false",
-            f"-DQt6_DIR={qt6_dir}",
+            f"-DSOKKETTER_TARGET_ARCHITECTURE:STRING={self.architecture.value}",
+            f"-DQt6_DIR={self.qt_cmake_folder}",
         ]
 
-        if platform.system() == "Windows":
+        if self.system == System.WINDOWS:
             cmake_generator = os.environ.get("CMAKE_GENERATOR")
             if not cmake_generator:
-                desired_generator = self.__get_cmake_generator(qt6_dir)
+                desired_generator = self.__get_cmake_generator()
 
                 cmake_command.extend(["-G", desired_generator])
 
                 if "Visual Studio" in desired_generator:
-                    if self.architecture.lower() in ["x86_64", "amd64"]:
+                    if self.architecture == Architecture.X86_64:
                         cmake_command.extend(["-A", "x64"])
-                    elif self.architecture.lower() in ["arm64", "aarch64"]:
+                    elif self.architecture == Architecture.ARM64:
                         cmake_command.extend(["-A", "ARM64"])
 
             # Do not force CMAKE_CXX_COMPILER on Windows; Visual Studio generators
@@ -981,12 +966,14 @@ class Build:
 
         cmake_prefix_path = os.environ.get("CMAKE_PREFIX_PATH")
         if cmake_prefix_path:
-            merged_prefix_path = os.pathsep.join([qt6_root, cmake_prefix_path])
+            merged_prefix_path = os.pathsep.join(
+                [str(self.qt_kit_folder), cmake_prefix_path]
+            )
             cmake_command.append(f"-DCMAKE_PREFIX_PATH={merged_prefix_path}")
         else:
-            cmake_command.append(f"-DCMAKE_PREFIX_PATH={qt6_root}")
+            cmake_command.append(f"-DCMAKE_PREFIX_PATH={self.qt_kit_folder}")
 
-        if BuildStage.TEST.value in self.stages and platform.system() != "Windows":
+        if BuildStage.TEST.value in self.stages and self.system != System.WINDOWS:
             cmake_command.append("-DSOKKETTER_ENABLE_TESTING=true")
 
         self.__execute_command(cmake_command)
@@ -1107,7 +1094,7 @@ class Build:
 
         os.makedirs(sokketter_cli_zip_folder)
 
-        if platform.system() == "Windows":
+        if self.system == System.WINDOWS:
             shutil.copy(
                 os.path.join(self.temp_binary_output_dir, "bin", "sokketter-cli.exe"),
                 sokketter_cli_zip_folder,
@@ -1119,7 +1106,7 @@ class Build:
             )
 
         zip_name = shutil.make_archive(
-            base_name=f"sokketter-cli-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}",
+            base_name=f"sokketter-cli-{self.version}-{self.system.value}-{self.os_version}-{self.architecture.value}",
             format="zip",
             root_dir=sokketter_cli_zip_folder,
         )
@@ -1130,6 +1117,401 @@ class Build:
         )
 
         self.logger.info("CLI files packaged successfully.")
+
+    def __compute_linux_deb_depends(self, binary_path: str) -> str:
+        """
+        Derive a versioned Depends field from the built binary.
+
+        dpkg-shlibdeps resolves minimum versions for linked libraries owned by installed
+        distribution packages. Qt is supplied by an external package at install time,
+        but the build may use a Qt SDK outside the package database, so Qt dependencies
+        are declared explicitly by __get_linux_qt_deb_depends.
+        """
+        scratch_dir = os.path.join(
+            self.temp_binary_output_dir, "sokketter-ui-shlibdeps"
+        )
+        if os.path.exists(scratch_dir):
+            shutil.rmtree(scratch_dir)
+
+        debian_dir = os.path.join(scratch_dir, "debian")
+        os.makedirs(debian_dir)
+
+        with open(
+            file=os.path.join(debian_dir, "control"), mode="w", encoding="utf-8"
+        ) as file:
+            file.write(
+                "Source: sokketter-ui\n"
+                "Priority: optional\n"
+                "Maintainer: Paul Ergard <64430090+morwy@users.noreply.github.com>\n"
+                "\n"
+                "Package: sokketter-ui\n"
+                "Architecture: any\n"
+                "Depends: ${shlibs:Depends}\n"
+                "Description: UI application for controlling connected power strips and sockets.\n"
+            )
+
+        try:
+            result = subprocess.run(
+                ["dpkg-shlibdeps", "-O", "--ignore-missing-info", "-e", binary_path],
+                check=True,
+                capture_output=True,
+                text=True,
+                cwd=scratch_dir,
+            )
+        finally:
+            shutil.rmtree(scratch_dir)
+
+        shlibs_depends = ""
+        for line in result.stdout.splitlines():
+            if line.startswith("shlibs:Depends="):
+                shlibs_depends = line.split("=", maxsplit=1)[1].strip()
+                break
+
+        return shlibs_depends
+
+    def __get_linux_qt_runtime_version(self) -> str:
+        """
+        Resolve the Qt runtime version shipped by the target Linux distro.
+
+        Debian package metadata must be aligned to the distro runtime rather than the
+        SDK used during the build. Using a newer SDK version here creates impossible
+        dependency constraints when the workstation only has the distro's older Qt
+        packages available.
+        """
+        distro_name = Environment.get_os_name()
+        distro_version = Environment.get_os_version()
+
+        if distro_name == "ubuntu":
+            if distro_version.startswith("24.04"):
+                return "6.4"
+            if distro_version.startswith("22.04"):
+                return "6.2"
+
+        elif distro_name == "debian":
+            if distro_version.startswith("12"):
+                return "6.2"
+            if distro_version.startswith("13"):
+                return "6.4"
+
+        return ".".join(self.qt_version.split(".")[:2])
+
+    def __get_linux_qt_deb_depends(self) -> list[str]:
+        """
+        Return the external Qt runtime packages required by the UI application.
+
+        Debian package dependencies are pinned to the runtime version provided by the
+        target distro rather than the Qt SDK used to compile the binary.
+        """
+        qt_version = self.__get_linux_qt_runtime_version()
+        qt_packages = [
+            "libqt6core6",
+            "libqt6concurrent6",
+            "libqt6dbus6",
+            "libqt6gui6",
+            "libqt6network6",
+            "libqt6widgets6",
+            # Ships the SVG icon engine/imageformat plugins used by the checkbox and
+            # radio button stylesheets; dpkg-shlibdeps cannot detect it since the
+            # plugins are loaded dynamically rather than linked directly.
+            "libqt6svg6",
+        ]
+        qt_depends = [
+            f"{package} (>= {qt_version}) | {package}t64 (>= {qt_version})"
+            for package in qt_packages
+        ]
+        qt_depends.append(f"qt6-qpa-plugins (>= {qt_version})")
+        return qt_depends
+
+    def __package_linux_ui_deb(self) -> None:
+        """
+        Package the Linux UI application as a Debian package.
+        """
+        self.logger.info("Starting the packaging of Linux UI Debian package.")
+
+        package_name = "sokketter-ui"
+        package_version = self.version
+        package_architecture = self.__get_debian_architecture()
+        deb_root_folder = os.path.join(
+            self.temp_binary_output_dir, f"{package_name}-deb-root"
+        )
+
+        if os.path.exists(deb_root_folder):
+            shutil.rmtree(deb_root_folder)
+
+        debian_folder = os.path.join(deb_root_folder, "DEBIAN")
+        usr_bin_folder = os.path.join(deb_root_folder, "usr", "bin")
+        applications_folder = os.path.join(
+            deb_root_folder, "usr", "share", "applications"
+        )
+        icons_folder = os.path.join(
+            deb_root_folder, "usr", "share", "icons", "hicolor", "256x256", "apps"
+        )
+        udev_rules_folder = os.path.join(deb_root_folder, "lib", "udev", "rules.d")
+
+        for folder in [
+            debian_folder,
+            usr_bin_folder,
+            applications_folder,
+            icons_folder,
+            udev_rules_folder,
+        ]:
+            os.makedirs(folder, exist_ok=True)
+            os.chmod(folder, 0o755)
+
+        shutil.copy(
+            os.path.join(self.temp_binary_output_dir, "bin", "sokketter-ui"),
+            os.path.join(usr_bin_folder, "sokketter-ui"),
+        )
+        os.chmod(os.path.join(usr_bin_folder, "sokketter-ui"), 0o755)
+
+        desktop_file_path = os.path.join(applications_folder, "sokketter-ui.desktop")
+        shutil.copy(
+            os.path.join(
+                self.workspace, "sokketter-ui", "resources", "sokketter-ui.desktop"
+            ),
+            desktop_file_path,
+        )
+        os.chmod(desktop_file_path, 0o644)
+        with open(file=desktop_file_path, mode="r", encoding="utf-8") as file:
+            desktop_file_lines = file.readlines()
+
+        with open(file=desktop_file_path, mode="w", encoding="utf-8") as file:
+            for line in desktop_file_lines:
+                if line.startswith("Exec="):
+                    file.write("Exec=/usr/bin/sokketter-ui %u\n")
+                elif line.startswith("X-AppImage-Version="):
+                    file.write(f"X-AppImage-Version={self.version}\n")
+                elif line.startswith("X-AppImage-Arch="):
+                    file.write(f"X-AppImage-Arch={self.architecture.value}\n")
+                else:
+                    file.write(line)
+
+        shutil.copy(
+            os.path.join(
+                self.workspace,
+                "sokketter-ui",
+                "resources",
+                "icons",
+                "socket-icon-256x256.png",
+            ),
+            os.path.join(icons_folder, "sokketter-ui-icon.png"),
+        )
+        os.chmod(os.path.join(icons_folder, "sokketter-ui-icon.png"), 0o644)
+
+        shutil.copy(
+            os.path.join(self.workspace, "udev-rules", "101-sokketter.rules"),
+            os.path.join(udev_rules_folder, "101-sokketter.rules"),
+        )
+        os.chmod(os.path.join(udev_rules_folder, "101-sokketter.rules"), 0o644)
+
+        package_depends = self.__compute_linux_deb_depends(
+            os.path.join(usr_bin_folder, "sokketter-ui")
+        )
+        package_dependencies = self.__get_linux_qt_deb_depends()
+        if package_depends:
+            qt_dependency_prefixes = (
+                "libqt6core6",
+                "libqt6concurrent6",
+                "libqt6dbus6",
+                "libqt6gui6",
+                "libqt6network6",
+                "libqt6widgets6",
+                "libqt6svg6",
+            )
+            package_dependencies.extend(
+                dependency
+                for dependency in package_depends.split(", ")
+                if not dependency.startswith(qt_dependency_prefixes)
+            )
+
+        depends_line = f"Depends: {', '.join(package_dependencies)}\n"
+        control_content = f"""Package: {package_name}
+Version: {package_version}
+Section: utils
+Priority: optional
+Architecture: {package_architecture}
+Maintainer: Paul Ergard <64430090+morwy@users.noreply.github.com>
+{depends_line}Description: UI application for controlling connected power strips and sockets.
+ sokketter-ui provides a Qt-based desktop interface for supported USB and Ethernet power strips.
+"""
+        with open(
+            file=os.path.join(debian_folder, "control"), mode="w", encoding="utf-8"
+        ) as file:
+            file.write(control_content)
+
+        postinst_content = """#!/bin/sh
+set -e
+
+if command -v udevadm >/dev/null 2>&1; then
+    udevadm control --reload-rules || true
+    udevadm trigger || true
+fi
+
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database /usr/share/applications || true
+fi
+
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -q /usr/share/icons/hicolor || true
+fi
+
+exit 0
+"""
+        postrm_content = """#!/bin/sh
+set -e
+
+if command -v udevadm >/dev/null 2>&1; then
+    udevadm control --reload-rules || true
+    udevadm trigger || true
+fi
+
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database /usr/share/applications || true
+fi
+
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -q /usr/share/icons/hicolor || true
+fi
+
+exit 0
+"""
+
+        for script_name, script_content in [
+            ("postinst", postinst_content),
+            ("postrm", postrm_content),
+        ]:
+            script_path = os.path.join(debian_folder, script_name)
+            with open(file=script_path, mode="w", encoding="utf-8") as file:
+                file.write(script_content)
+            os.chmod(script_path, 0o755)
+
+        deb_filename = (
+            f"{package_name}-{package_version}-{self.system.value}-{self.os_version}-"
+            f"{self.architecture.value}.deb"
+        )
+        deb_output_path = os.path.join(
+            self.results_output_dir, "sokketter-ui", deb_filename
+        )
+        packing_command = [
+            "dpkg-deb",
+            "--build",
+            "--root-owner-group",
+            deb_root_folder,
+            deb_output_path,
+        ]
+        self.__execute_command(packing_command)
+
+        self.__validate_deb_package(deb_output_path)
+
+        self.logger.info("Linux UI Debian package packaged successfully.")
+
+    def __validate_deb_package(self, deb_path: str) -> None:
+        """
+        Validate the Debian package archive and its contents.
+        """
+        if not os.path.isfile(deb_path):
+            raise FileNotFoundError(f"Debian package was not created: {deb_path}")
+
+        self.logger.info("Validating Linux UI Debian package: %s", deb_path)
+        self.__execute_command(["dpkg-deb", "--info", deb_path])
+        self.__execute_command(["dpkg-deb", "--contents", deb_path])
+        self.logger.info("Linux UI Debian package validation completed successfully.")
+
+    def __package_linux_app_image(self, sokketter_ui_folder, sokketter_ui_zip_folder):
+        sokketter_app_image_folder = os.path.join(
+            self.temp_binary_output_dir, "sokketter-ui.AppImage"
+        )
+        os.makedirs(sokketter_app_image_folder, exist_ok=True)
+
+        usr_bin_folder = os.path.join(sokketter_app_image_folder, "usr", "bin")
+        os.makedirs(usr_bin_folder, exist_ok=True)
+
+        shutil.copy(
+            os.path.join(self.temp_binary_output_dir, "bin", "sokketter-ui"),
+            usr_bin_folder,
+        )
+
+        shutil.copy(
+            os.path.join(
+                self.workspace, "sokketter-ui", "resources", "sokketter-ui.desktop"
+            ),
+            sokketter_app_image_folder,
+        )
+
+        shutil.copy(
+            os.path.join(
+                self.workspace,
+                "sokketter-ui",
+                "resources",
+                "icons",
+                "socket-icon-256x256.png",
+            ),
+            os.path.join(sokketter_app_image_folder, "sokketter-ui-icon.png"),
+        )
+
+        desktop_file_path = os.path.join(
+            sokketter_app_image_folder, "sokketter-ui.desktop"
+        )
+        with open(file=desktop_file_path, mode="r", encoding="utf-8") as file:
+            desktop_file_lines = file.readlines()
+
+        with open(file=desktop_file_path, mode="w", encoding="utf-8") as file:
+            for line in desktop_file_lines:
+                if line.startswith("X-AppImage-Version="):
+                    file.write(f"X-AppImage-Version={self.version}\n")
+                else:
+                    file.write(line)
+
+        linuxdeployqt_idiot_fix_folder_path = os.path.join(
+            sokketter_app_image_folder, "usr", "share", "doc", "libc6"
+        )
+        os.makedirs(linuxdeployqt_idiot_fix_folder_path, exist_ok=True)
+        linuxdeployqt_idiot_fix_path = os.path.join(
+            linuxdeployqt_idiot_fix_folder_path, "copyright"
+        )
+        pathlib.Path(linuxdeployqt_idiot_fix_path).touch()
+
+        linuxdeployqt_path = os.path.join(
+            self.workspace,
+            f"linuxdeployqt-continuous-{self.__get_linuxdeployqt_architecture()}.AppImage",
+        )
+
+        packing_command = [
+            linuxdeployqt_path,
+            os.path.join(usr_bin_folder, "sokketter-ui"),
+            "-appimage",
+            f"-executable={os.path.join(usr_bin_folder, 'sokketter-ui')}",
+            "-verbose=2",
+            "-unsupported-allow-new-glibc",
+            "-qmake=" + self.__resolve_qt_tool("qmake"),
+        ]
+        self.__execute_command(
+            cmake_command=packing_command, cwd=sokketter_ui_zip_folder
+        )
+
+        appimage_pattern = os.path.join(
+            sokketter_ui_zip_folder, "sokketter-ui-*.AppImage"
+        )
+        appimage_files = glob.glob(appimage_pattern)
+
+        for appimage_file in appimage_files:
+            new_appimage_path = os.path.join(
+                sokketter_ui_zip_folder, "sokketter-ui.AppImage"
+            )
+            os.rename(appimage_file, new_appimage_path)
+            self.logger.info("Renamed %s to %s", appimage_file, new_appimage_path)
+            break
+
+        zip_name = shutil.make_archive(
+            base_name=f"sokketter-ui-{self.version}-{self.system.value}-{self.os_version}-{self.architecture.value}",
+            format="zip",
+            root_dir=sokketter_ui_zip_folder,
+        )
+
+        shutil.move(
+            src=os.path.join(self.workspace, zip_name),
+            dst=sokketter_ui_folder,
+        )
 
     def __package_ui(self) -> None:
         """
@@ -1151,7 +1533,7 @@ class Build:
 
         os.makedirs(sokketter_ui_zip_folder)
 
-        if platform.system() == "Windows":
+        if self.system == System.WINDOWS:
             shutil.copy(
                 os.path.join(self.temp_binary_output_dir, "bin", "sokketter-ui.exe"),
                 sokketter_ui_zip_folder,
@@ -1164,7 +1546,7 @@ class Build:
             self.__execute_command(packing_command)
 
             zip_name = shutil.make_archive(
-                base_name=f"sokketter-ui-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}",
+                base_name=f"sokketter-ui-{self.version}-{self.system.value}-{self.os_version}-{self.architecture.value}",
                 format="zip",
                 root_dir=sokketter_ui_zip_folder,
             )
@@ -1174,7 +1556,7 @@ class Build:
                 dst=sokketter_ui_folder,
             )
 
-        elif platform.system() == "Darwin":
+        elif self.system == System.MACOS:
             filename = "sokketter-ui.app"
             app_filepath = os.path.join(sokketter_ui_zip_folder, filename)
 
@@ -1204,7 +1586,7 @@ class Build:
 
             zip_name = os.path.join(
                 self.workspace,
-                f"sokketter-ui-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}.zip",
+                f"sokketter-ui-{self.version}-{self.system.value}-{self.os_version}-{self.architecture.value}.zip",
             )
 
             packing_command = [
@@ -1225,90 +1607,14 @@ class Build:
 
             dmg_filename = os.path.join(
                 sokketter_ui_folder,
-                f"sokketter-ui-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}.dmg",
+                f"sokketter-ui-{self.version}-{self.system.value}-{self.os_version}-{self.architecture.value}.dmg",
             )
 
             self.__create_dmg(app_path=app_filepath, output_path=dmg_filename)
 
-        elif platform.system() == "Linux":
-            sokketter_app_image_folder = os.path.join(
-                self.temp_binary_output_dir, "sokketter-ui.AppImage"
-            )
-            os.makedirs(sokketter_app_image_folder, exist_ok=True)
-
-            usr_bin_folder = os.path.join(sokketter_app_image_folder, "usr", "bin")
-            os.makedirs(usr_bin_folder, exist_ok=True)
-
-            shutil.copy(
-                os.path.join(self.temp_binary_output_dir, "bin", "sokketter-ui"),
-                usr_bin_folder,
-            )
-
-            shutil.copy(
-                os.path.join(
-                    self.workspace, "sokketter-ui", "resources", "sokketter-ui.desktop"
-                ),
-                sokketter_app_image_folder,
-            )
-
-            shutil.copy(
-                os.path.join(
-                    self.workspace, "sokketter-ui", "resources", "sokketter-ui-icon.png"
-                ),
-                sokketter_app_image_folder,
-            )
-
-            desktop_file_path = os.path.join(
-                sokketter_app_image_folder, "sokketter-ui.desktop"
-            )
-            with open(file=desktop_file_path, mode="r", encoding="utf-8") as file:
-                desktop_file_lines = file.readlines()
-
-            with open(file=desktop_file_path, mode="w", encoding="utf-8") as file:
-                for line in desktop_file_lines:
-                    if line.startswith("X-AppImage-Version="):
-                        file.write(f"X-AppImage-Version={self.version}\n")
-                    else:
-                        file.write(line)
-
-            linuxdeployqt_path = os.path.join(
-                self.workspace, "linuxdeployqt-continuous-x86_64.AppImage"
-            )
-
-            packing_command = [
-                linuxdeployqt_path,
-                os.path.join(usr_bin_folder, "sokketter-ui"),
-                "-appimage",
-                f"-executable={os.path.join(usr_bin_folder, 'sokketter-ui')}",
-                "-verbose=2",
-            ]
-            self.__execute_command(
-                cmake_command=packing_command, cwd=sokketter_ui_zip_folder
-            )
-
-            appimage_pattern = os.path.join(
-                sokketter_ui_zip_folder, "sokketter-ui-*.AppImage"
-            )
-            appimage_files = glob.glob(appimage_pattern)
-
-            for appimage_file in appimage_files:
-                new_appimage_path = os.path.join(
-                    sokketter_ui_zip_folder, "sokketter-ui.AppImage"
-                )
-                os.rename(appimage_file, new_appimage_path)
-                self.logger.info("Renamed %s to %s", appimage_file, new_appimage_path)
-                break
-
-            zip_name = shutil.make_archive(
-                base_name=f"sokketter-ui-{self.version}-{self.os_name}-{self.os_version}-{self.architecture}",
-                format="zip",
-                root_dir=sokketter_ui_zip_folder,
-            )
-
-            shutil.move(
-                src=os.path.join(self.workspace, zip_name),
-                dst=sokketter_ui_folder,
-            )
+        elif self.system == System.LINUX:
+            self.__package_linux_app_image(sokketter_ui_folder, sokketter_ui_zip_folder)
+            self.__package_linux_ui_deb()
 
         self.logger.info("UI files packaged successfully.")
 
@@ -1363,6 +1669,16 @@ class Build:
 #
 # --------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+            logging.FileHandler("build.log", mode="w"),
+        ],
+    )
+
     parser = argparse.ArgumentParser(
         description="Build script for the sokketter project."
     )
@@ -1377,10 +1693,45 @@ if __name__ == "__main__":
         help=f"Stages to run (default: {BuildStage.ALL.name}). Available stages: {', '.join(stage.value for stage in BuildStage)}.",
     )
 
+    parser.add_argument(
+        "--qt-version",
+        type=lambda value: (
+            value
+            if value == "latest" or re.fullmatch(r"\d+\.\d+(?:\.\d+)?", value)
+            else parser.error(
+                "argument --qt-version: must be 'latest' or a two-/three-component version"
+            )
+        ),
+        default="latest",
+        metavar="QT_VERSION",
+        help="Qt version to use (default: latest; format: major.minor[.patch]).",
+    )
+
+    host_architecture = Environment.get_architecture()
+
+    parser.add_argument(
+        "--architecture",
+        type=Architecture,
+        choices=list(Architecture),
+        default=host_architecture,
+        metavar="ARCHITECTURE",
+        help=(
+            "Target architecture for the build "
+            f"(default: current host architecture, which is currently {host_architecture.value})."
+        ),
+    )
+
     args = parser.parse_args()
 
     if not args.stages:
         print("No stages specified. Use --help to see available stages.")
         sys.exit(1)
 
-    Build(args.stages).run()
+    if args.architecture != host_architecture:
+        parser.error(
+            "Cross-compilation is not supported yet. "
+            f"Requested --architecture={args.architecture.value}, "
+            f"but host architecture is {host_architecture.value}."
+        )
+
+    Build(args.stages, args.qt_version, args.architecture).run()

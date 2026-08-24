@@ -23,9 +23,29 @@ class Action(str, Enum):
     """
 
     NONE = "NONE"
+    GET_OS = "GET_OS"
     GET_OS_NAME = "GET_OS_NAME"
     GET_OS_VERSION = "GET_OS_VERSION"
     GET_ARCHITECTURE = "GET_ARCHITECTURE"
+
+
+class System(str, Enum):
+    """
+    Enum to define the target operating systems.
+    """
+
+    WINDOWS = "windows"
+    LINUX = "linux"
+    MACOS = "macos"
+
+
+class Architecture(str, Enum):
+    """
+    Enum to define the target architectures.
+    """
+
+    X86_64 = "x86_64"
+    ARM64 = "arm64"
 
 
 # --------------------------------------------------------------------------------------------------
@@ -37,6 +57,24 @@ class Environment:
     """
     Class to manage the environment variables.
     """
+
+    @staticmethod
+    def get_os() -> System:
+        """
+        Get the name of the operating system.
+        """
+        os_name = platform.system().lower()
+
+        if os_name == "windows":
+            return System.WINDOWS
+
+        if os_name == "linux":
+            return System.LINUX
+
+        if os_name == "darwin":
+            return System.MACOS
+
+        raise EnvironmentError("Unsupported operating system")
 
     @staticmethod
     def get_os_name() -> str:
@@ -106,17 +144,17 @@ class Environment:
         raise EnvironmentError("Unsupported OS version")
 
     @staticmethod
-    def get_architecture() -> str:
+    def get_architecture() -> Architecture:
         """
         Get the architecture of the machine.
         """
         machine = platform.machine().lower()
 
         if machine in ["arm64", "aarch64"]:
-            return "arm64"
+            return Architecture.ARM64
 
         if machine in ["x86_64", "amd64"]:
-            return "x86_64"
+            return Architecture.X86_64
 
         raise EnvironmentError("Unsupported architecture")
 
@@ -131,26 +169,32 @@ if __name__ == "__main__":
 
     parser.add_argument(
         dest="action",
-        type=str,
+        type=Action,
         nargs="?",
         metavar="ACTION",
         choices=[action.value for action in Action],
-        default=Action.NONE.value,
-        const=Action.NONE.value,
+        default=Action.NONE,
+        const=Action.NONE,
         help=f"Action to perform (default: {Action.NONE.name}). Available actions: {', '.join(action.value for action in Action)}.",
     )
 
     args = parser.parse_args()
 
-    if args.action == Action.NONE.value:
+    if args.action == Action.NONE:
         print("No action specified. Use --help to see available actions.")
         sys.exit(1)
 
-    elif args.action == Action.GET_OS_NAME.value:
+    elif args.action == Action.GET_OS:
+        print(Environment.get_os().value)
+
+    elif args.action == Action.GET_OS_NAME:
         print(Environment.get_os_name())
 
-    elif args.action == Action.GET_OS_VERSION.value:
+    elif args.action == Action.GET_OS_VERSION:
         print(Environment.get_os_version())
 
-    elif args.action == Action.GET_ARCHITECTURE.value:
-        print(Environment.get_architecture())
+    elif args.action == Action.GET_ARCHITECTURE:
+        print(Environment.get_architecture().value)
+
+    else:
+        raise ValueError(f"Unknown action: {args.action}")
