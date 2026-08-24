@@ -12,13 +12,16 @@ int main(int argc, char *argv[])
 {
 #ifdef Q_OS_LINUX
     /**
-     * Force the X11 (xcb) backend so window decorations are drawn by the window
+     * Prefer the X11 (xcb) backend so window decorations are drawn by the window
      * manager instead of Qt itself. GNOME/Mutter under native Wayland does not draw
      * server-side decorations for Wayland clients, unlike the AppImage's bundled Qt,
      * which only ships the xcb plugin and therefore always runs under XWayland with
-     * native decorations. Respect an explicit override if the user set one.
+     * native decorations. Only do this when an X display is actually reachable
+     * (DISPLAY is set by X11 sessions and by XWayland); in Wayland-only sessions
+     * without XWayland let Qt pick the native platform so the app can still start.
+     * Respect an explicit override if the user set one.
      */
-    if (!qEnvironmentVariableIsSet("QT_QPA_PLATFORM"))
+    if (!qEnvironmentVariableIsSet("QT_QPA_PLATFORM") && qEnvironmentVariableIsSet("DISPLAY"))
     {
         qputenv("QT_QPA_PLATFORM", "xcb");
     }
