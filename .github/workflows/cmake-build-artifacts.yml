@@ -40,6 +40,11 @@ jobs:
         wget -c https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage
         chmod +x linuxdeployqt-continuous-x86_64.AppImage
 
+    - name: Install Inno Setup (Windows-only)
+      if: ${{ startsWith(matrix.os, 'windows') }}
+      shell: pwsh
+      run: choco install innosetup --yes --no-progress
+
     - name: Install Qt6 dependencies
       uses: jurplel/install-qt-action@v4
       with:
