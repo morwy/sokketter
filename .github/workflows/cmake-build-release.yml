@@ -143,7 +143,7 @@ jobs:
     - name: Install Inno Setup (Windows-only)
       if: ${{ startsWith(matrix.os, 'windows') }}
       shell: pwsh
-      run: winget install --id JRSoftware.InnoSetup --exact --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
+      run: choco install innosetup --yes --no-progress
 
     - name: Install Qt6 dependencies
       uses: jurplel/install-qt-action@v4
