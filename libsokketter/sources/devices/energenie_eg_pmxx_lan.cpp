@@ -1,7 +1,6 @@
 #include "energenie_eg_pmxx_lan.h"
 
-#include <curl/curl.h>
-
+#include <array>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -45,10 +44,10 @@ auto energenie_eg_pmxx_lan::initialize(std::shared_ptr<kommpot::device_communica
 {
     const auto &identification_variant = communication->identification();
     const auto *identification =
-        std::get_if<kommpot::ethernet_device_identification>(&identification_variant);
+        std::get_if<kommpot::http_device_identification>(&identification_variant);
     if (identification == nullptr)
     {
-        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "Provided identification is not Ethernet.");
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "Provided identification is not HTTP.");
         return false;
     }
 
@@ -57,10 +56,14 @@ auto energenie_eg_pmxx_lan::initialize(std::shared_ptr<kommpot::device_communica
         return false;
     }
 
+    kommpot::http_device_configuration configuration;
+    configuration.timeout_ms = HTTP_TIMEOUT_MSECS;
+    communication->set_configuration(configuration);
+
     m_serial_number = identification->mac;
 
     m_configuration.id = identification->mac;
-    m_configuration.address = identification->ip;
+    m_configuration.address = identification->address;
 
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: initialization.", this->to_string());
 
@@ -71,46 +74,40 @@ auto energenie_eg_pmxx_lan::try_authenticate() -> bool
 {
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: trying to authenticate.", this->to_string());
 
-    const std::string &address = this->configuration().address;
+    if (m_communication == nullptr)
+    {
+        return false;
+    }
 
-    CURL *curl = create_session();
-    if (curl == nullptr)
+    const std::lock_guard<std::mutex> lock(m_communication_mutex);
+
+    if (!m_communication->open())
     {
         SPDLOG_LOGGER_ERROR(
-            SOKKETTER_LOGGER, "{}: failed to initialize the HTTP session.", this->to_string());
+            SOKKETTER_LOGGER, "{}: failed to open the HTTP session.", this->to_string());
         return false;
     }
 
     std::string response = "";
-    const bool is_logged_in =
-        login(curl, address, m_configuration.authentication.password, response);
+    const bool is_logged_in = login(m_configuration.authentication.password, response);
 
-    SPDLOG_LOGGER_DEBUG(
-        SOKKETTER_LOGGER, "{}: received response: {}.", this->to_string(), response);
+    logout();
 
-    logout(curl, address);
-
-    curl_easy_cleanup(curl);
+    m_communication->close();
 
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: authentication: {}.", this->to_string(),
         is_logged_in ? "success" : "failure");
 
-    if (!is_logged_in)
-    {
-        return false;
-    }
-
     return is_logged_in;
 }
 
-auto energenie_eg_pmxx_lan::identification() -> const kommpot::ethernet_device_identification
+auto energenie_eg_pmxx_lan::identification() -> const kommpot::http_device_identification
 {
-    kommpot::ethernet_device_identification identification;
+    kommpot::http_device_identification identification;
 
-    identification.ip = "*";
+    identification.address = "*";
     identification.port = 80;
     identification.mac = "88:B6:27:*";
-    identification.protocol = kommpot::ethernet_protocol_type::TCP;
 
     return identification;
 }
@@ -134,27 +131,26 @@ auto energenie_eg_pmxx_lan::power_socket(size_t index, bool is_toggled) -> bool
         return false;
     }
 
-    const std::string &address = this->configuration().address;
+    const std::lock_guard<std::mutex> lock(m_communication_mutex);
 
-    CURL *curl = create_session();
-    if (curl == nullptr)
+    if (!m_communication->open())
     {
         SPDLOG_LOGGER_ERROR(
-            SOKKETTER_LOGGER, "{}: failed to initialize the HTTP session.", this->to_string());
+            SOKKETTER_LOGGER, "{}: failed to open the HTTP session.", this->to_string());
         return false;
     }
 
     std::string response = "";
-    bool result = login(curl, address, m_configuration.authentication.password, response);
+    bool result = login(m_configuration.authentication.password, response);
     if (result)
     {
-        const std::string fields = "cte" + std::to_string(index) + "=" + (is_toggled ? "1" : "0");
-        result = http_post(curl, "http://" + address + "/", fields, response);
+        const std::string body = "cte" + std::to_string(index) + "=" + (is_toggled ? "1" : "0");
+        result = request(kommpot::http_transfer_type::POST, "/", body, response);
     }
 
-    logout(curl, address);
+    logout();
 
-    curl_easy_cleanup(curl);
+    m_communication->close();
 
     if (!result)
     {
@@ -222,23 +218,21 @@ auto energenie_eg_pmxx_lan::refresh_socket_states() -> bool
         return false;
     }
 
-    const std::string &address = this->configuration().address;
+    const std::lock_guard<std::mutex> lock(m_communication_mutex);
 
-    CURL *curl = create_session();
-    if (curl == nullptr)
+    if (!m_communication->open())
     {
         SPDLOG_LOGGER_ERROR(
-            SOKKETTER_LOGGER, "{}: failed to initialize the HTTP session.", this->to_string());
+            SOKKETTER_LOGGER, "{}: failed to open the HTTP session.", this->to_string());
         return false;
     }
 
     std::string response = "";
-    const bool is_logged_in =
-        login(curl, address, m_configuration.authentication.password, response);
+    const bool is_logged_in = login(m_configuration.authentication.password, response);
 
-    logout(curl, address);
+    logout();
 
-    curl_easy_cleanup(curl);
+    m_communication->close();
 
     if (!is_logged_in)
     {
@@ -263,70 +257,47 @@ auto energenie_eg_pmxx_lan::update_states_from_response(const std::string &body)
     return true;
 }
 
-auto energenie_eg_pmxx_lan::write_callback(char *data, size_t size, size_t count, void *user_data)
-    -> size_t
-{
-    const size_t length = size * count;
-    auto *buffer = static_cast<std::string *>(user_data);
-    buffer->append(data, length);
-    return length;
-}
-
-auto energenie_eg_pmxx_lan::http_post(
-    CURL *curl, const std::string &url, const std::string &fields, std::string &response) -> bool
+auto energenie_eg_pmxx_lan::request(const kommpot::http_transfer_type &type,
+    const std::string &resource_path, const std::string &body, std::string &response) -> bool
 {
     response.clear();
 
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, fields.c_str());
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+    kommpot::http_transfer_configuration http_configuration;
+    http_configuration.type = type;
+    http_configuration.resource_path = resource_path;
+    http_configuration.body = body;
 
-    const auto result = curl_easy_perform(curl);
-    if (result != CURLE_OK)
+    if (!body.empty())
     {
-        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "{}: HTTP POST request failed: {}.",
-            this->to_string(), curl_easy_strerror(result));
+        http_configuration.content_type = "application/x-www-form-urlencoded";
+    }
+
+    kommpot::transfer_configuration configuration = http_configuration;
+
+    if (!m_communication->write(configuration, nullptr, 0))
+    {
         return false;
+    }
+
+    const auto *performed_configuration =
+        std::get_if<kommpot::http_transfer_configuration>(&configuration);
+    if (performed_configuration == nullptr)
+    {
+        return false;
+    }
+
+    std::array<char, RESPONSE_CHUNK_SIZE_BYTES> chunk = {};
+    while (m_communication->read(configuration, chunk.data(), chunk.size()))
+    {
+        response.append(chunk.data(), performed_configuration->bytes_read);
     }
 
     return true;
 }
 
-auto energenie_eg_pmxx_lan::http_get(CURL *curl, const std::string &url, std::string &response)
-    -> bool
+auto energenie_eg_pmxx_lan::login(const std::string &password, std::string &response) -> bool
 {
-    response.clear();
-
-    curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-
-    return curl_easy_perform(curl) == CURLE_OK;
-}
-
-auto energenie_eg_pmxx_lan::create_session() -> CURL *
-{
-    CURL *curl = curl_easy_init();
-    if (curl == nullptr)
-    {
-        return nullptr;
-    }
-
-    curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "");
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, HTTP_TIMEOUT_SECONDS);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, HTTP_TIMEOUT_SECONDS);
-
-    return curl;
-}
-
-auto energenie_eg_pmxx_lan::login(CURL *curl, const std::string &address,
-    const std::string &password, std::string &response) -> bool
-{
-    const bool response_received =
-        http_post(curl, "http://" + address + "/login.html", "pw=" + password, response);
-    if (!response_received)
+    if (!request(kommpot::http_transfer_type::POST, "/login.html", "pw=" + password, response))
     {
         return false;
     }
@@ -344,10 +315,10 @@ auto energenie_eg_pmxx_lan::login(CURL *curl, const std::string &address,
     return true;
 }
 
-auto energenie_eg_pmxx_lan::logout(CURL *curl, const std::string &address) -> void
+auto energenie_eg_pmxx_lan::logout() -> void
 {
     std::string response = "";
-    http_get(curl, "http://" + address + "/login.html", response);
+    request(kommpot::http_transfer_type::GET, "/login.html", "", response);
 }
 
 auto energenie_eg_pmxx_lan::parse_socket_states(const std::string &body) -> std::vector<bool>
