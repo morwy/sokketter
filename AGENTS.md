@@ -9,7 +9,7 @@ Cross-platform C++17 project. Three first-party components plus vendored depende
 - [libsokketter/](libsokketter) — core library. Public API is [libsokketter/include/libsokketter.h](libsokketter/include/libsokketter.h); implementation lives in `sources/` (internal headers are **not** shipped).
 - [sokketter-cli/](sokketter-cli) — command-line front end built on CLI11 ([cli_parser.cpp](sokketter-cli/sources/cli_parser.cpp)).
 - [sokketter-ui/](sokketter-ui) — Qt6 Widgets GUI (AUTOMOC/AUTORCC/AUTOUIC, `.ui` files).
-- [third-party/](third-party) — **vendored, do not edit**. `kommpot` is the USB/Ethernet communication layer sokketter is built on; `curl` and `googletest` are fetched by CMake ([ThirdPartyFetch.cmake](ThirdPartyFetch.cmake)).
+- [third-party/](third-party) — **vendored, do not edit**. `kommpot` is the USB/Ethernet/HTTP communication layer sokketter is built on (it owns the `curl` dependency); `googletest` is fetched by CMake ([ThirdPartyFetch.cmake](ThirdPartyFetch.cmake)).
 
 ## Build & test
 
