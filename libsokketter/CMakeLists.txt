@@ -82,12 +82,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 #
-# Link with libcurl, built from source via FetchContent.
-#
-target_link_libraries(${PROJECT_NAME} PRIVATE CURL::libcurl)
-set(SOKKETTER_LIBRARIES ${SOKKETTER_LIBRARIES} CURL::libcurl)
-
-#
 # Link with kommpot dependencies.
 #
 set(KOMMPOT_INCLUDE_OUTPUT_PATH ${SOKKETTER_INCLUDE_OUTPUT_PATH})
@@ -96,7 +90,7 @@ set(KOMMPOT_BINARY_OUTPUT_PATH ${SOKKETTER_LIBRARY_OUTPUT_PATH})
 #
 # Clear the recursively-globbed source list so it does not leak into kommpot's
 # own file(GLOB ${PROJECT_FOLDER_FILES} ...) calls and pull sokketter sources
-# (e.g. curl-dependent device files) into the kommpot target.
+# into the kommpot target.
 #
 set(PROJECT_FOLDER_FILES "")
 
