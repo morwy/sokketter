@@ -60,6 +60,8 @@ private:
 
     /**
      * @brief performs a single status query and refreshes the cached socket states.
+     *
+     * Caller must hold @ref m_communication_mutex.
      */
     auto refresh_socket_states() -> bool;
 

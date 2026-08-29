@@ -42,6 +42,13 @@ energenie_eg_pmxx_lan::~energenie_eg_pmxx_lan()
 auto energenie_eg_pmxx_lan::initialize(std::shared_ptr<kommpot::device_communication> communication)
     -> bool
 {
+    if (communication == nullptr)
+    {
+        return false;
+    }
+
+    const std::lock_guard<std::mutex> lock(m_communication_mutex);
+
     const auto &identification_variant = communication->identification();
     const auto *identification =
         std::get_if<kommpot::http_device_identification>(&identification_variant);
@@ -74,12 +81,12 @@ auto energenie_eg_pmxx_lan::try_authenticate() -> bool
 {
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: trying to authenticate.", this->to_string());
 
+    const std::lock_guard<std::mutex> lock(m_communication_mutex);
+
     if (m_communication == nullptr)
     {
         return false;
     }
-
-    const std::lock_guard<std::mutex> lock(m_communication_mutex);
 
     if (!m_communication->open())
     {
@@ -114,6 +121,8 @@ auto energenie_eg_pmxx_lan::identification() -> const kommpot::http_device_ident
 
 auto energenie_eg_pmxx_lan::power_socket(size_t index, bool is_toggled) -> bool
 {
+    const std::lock_guard<std::mutex> lock(m_communication_mutex);
+
     if (m_communication == nullptr)
     {
         SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
@@ -130,8 +139,6 @@ auto energenie_eg_pmxx_lan::power_socket(size_t index, bool is_toggled) -> bool
             this->to_string(), index);
         return false;
     }
-
-    const std::lock_guard<std::mutex> lock(m_communication_mutex);
 
     if (!m_communication->open())
     {
@@ -174,6 +181,8 @@ auto energenie_eg_pmxx_lan::power_socket(size_t index, bool is_toggled) -> bool
 
 auto energenie_eg_pmxx_lan::socket_status(size_t index) -> bool
 {
+    const std::lock_guard<std::mutex> lock(m_communication_mutex);
+
     if (m_communication == nullptr)
     {
         SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
@@ -217,8 +226,6 @@ auto energenie_eg_pmxx_lan::refresh_socket_states() -> bool
             this->to_string());
         return false;
     }
-
-    const std::lock_guard<std::mutex> lock(m_communication_mutex);
 
     if (!m_communication->open())
     {
