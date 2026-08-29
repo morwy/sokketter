@@ -55,8 +55,15 @@ public:
 private:
     inline static constexpr auto RELEASE_LINK =
         "https://github.com/morwy/sokketter/releases/latest";
-    inline static constexpr auto RELEASE_API_LINK =
-        "https://api.github.com/repos/morwy/sokketter/releases/latest";
+    inline static constexpr auto RELEASE_API_HOST = "api.github.com";
+    inline static constexpr auto RELEASE_API_PATH = "/repos/morwy/sokketter/releases/latest";
+
+    inline static constexpr uint32_t UPDATE_CHECK_TIMEOUT_MSECS = 10000;
+
+    /**
+     * @brief size of the buffer used for draining a response out of the communication.
+     */
+    inline static constexpr size_t RESPONSE_CHUNK_SIZE_BYTES = 4096;
 
     sokketter::settings_structure m_settings;
     std::shared_ptr<spdlog::logger> m_logger = nullptr;
@@ -77,12 +84,6 @@ private:
     auto initialize_logger() -> void;
     auto deinitialize_logger() -> void;
 
-    struct curl_string_buffer
-    {
-        std::string data;
-    };
-
-    static auto write_response_data(char *ptr, size_t size, size_t nmemb, void *userdata) -> size_t;
     static auto normalize_version_string(std::string version) -> std::string;
     static auto parse_version_parts(const std::string &version) -> std::vector<uint32_t>;
 
