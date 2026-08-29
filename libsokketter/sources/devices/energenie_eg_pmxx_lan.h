@@ -6,10 +6,10 @@
 #include <devices/energenie_eg_base.h>
 #include <sokketter_core.h>
 
-#include <curl/curl.h>
 #include <spdlog/spdlog.h>
 
 #include <chrono>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -23,13 +23,19 @@ public:
 
     [[nodiscard]] auto try_authenticate() -> bool override;
 
-    static auto identification() -> const kommpot::ethernet_device_identification;
+    static auto identification() -> const kommpot::http_device_identification;
 
 private:
     /**
-     * @brief maximum time in seconds allowed for connecting to and communicating with the device.
+     * @brief maximum time in milliseconds allowed for connecting to and communicating with the
+     * device.
      */
-    static constexpr long HTTP_TIMEOUT_SECONDS = 5;
+    static constexpr uint32_t HTTP_TIMEOUT_MSECS = 5000;
+
+    /**
+     * @brief size of the buffer used for draining a response out of the communication.
+     */
+    static constexpr size_t RESPONSE_CHUNK_SIZE_BYTES = 4096;
 
     /**
      * @brief how long cached socket states stay valid before another status query is issued.
@@ -43,13 +49,14 @@ private:
     std::chrono::steady_clock::time_point m_socket_states_time{};
     bool m_socket_states_valid = false;
 
+    /**
+     * @brief serializes the session, the device keeps a single authenticated session at a time and
+     * both the UI and the enumeration thread reach the device.
+     */
+    std::mutex m_communication_mutex;
+
     auto power_socket(size_t index, bool is_toggled) -> bool override;
     auto socket_status(size_t index) -> bool override;
-
-    static auto write_callback(char *data, size_t size, size_t count, void *user_data) -> size_t;
-    auto http_post(CURL *curl, const std::string &url, const std::string &fields,
-        std::string &response) -> bool;
-    auto http_get(CURL *curl, const std::string &url, std::string &response) -> bool;
 
     /**
      * @brief performs a single status query and refreshes the cached socket states.
@@ -63,16 +70,13 @@ private:
     auto update_states_from_response(const std::string &body) -> bool;
 
     /**
-     * @brief creates a new session handle with an in-memory cookie engine enabled.
-     *
-     * The device keeps the authenticated session in a cookie, so login, switching and logout must
-     * all share the same handle.
+     * @brief performs a request and drains its response body.
      */
-    auto create_session() -> CURL *;
+    auto request(const kommpot::http_transfer_type &type, const std::string &resource_path,
+        const std::string &body, std::string &response) -> bool;
 
-    auto login(CURL *curl, const std::string &address, const std::string &password,
-        std::string &response) -> bool;
-    auto logout(CURL *curl, const std::string &address) -> void;
+    auto login(const std::string &password, std::string &response) -> bool;
+    auto logout() -> void;
 
     /**
      * @brief extracts the socket states from the "sockstates = [x,x,x,x]" declaration of the status
