@@ -18,7 +18,8 @@ auto power_strip_factory::supported_devices(const sokketter::device_filter &filt
 
     const auto is_allowed = [&filter](const sokketter::power_strip_type &type) -> bool {
         using underlying = std::underlying_type_t<sokketter::power_strip_type>;
-        return (static_cast<underlying>(filter.included_types) & static_cast<underlying>(type)) != 0;
+        return (static_cast<underlying>(filter.included_types) & static_cast<underlying>(type)) !=
+               0;
     };
 
     if (is_allowed(sokketter::power_strip_type::GEMBIRD_MSIS_PM))
@@ -121,6 +122,14 @@ auto power_strip_factory::create(std::shared_ptr<kommpot::device_communication> 
     if (const auto *identification =
             std::get_if<kommpot::ethernet_device_identification>(&identification_variant))
     {
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+            "Provided Ethernet communication is not supported: {}, at port {}!",
+            identification->name, identification->port);
+    }
+
+    if (const auto *identification =
+            std::get_if<kommpot::http_device_identification>(&identification_variant))
+    {
         /**
          * Energenie EG-PMXX-LAN.
          */
@@ -131,8 +140,8 @@ auto power_strip_factory::create(std::shared_ptr<kommpot::device_communication> 
         }
 
         SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
-            "Provided Ethernet communication is not supported: {}, at port {}!",
-            identification->name, identification->port);
+            "Provided HTTP communication is not supported: {}, at port {}!", identification->name,
+            identification->port);
     }
 
     SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "Provided communication is not supported!");

@@ -6,11 +6,11 @@
 #include <libsokketter.h>
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <chrono>
 #include <cstdlib>
 #include <ctime>
-#include <curl/curl.h>
 #include <iomanip>
 #include <json/json.hpp>
 #include <spdlog/sinks/callback_sink.h>
@@ -259,20 +259,6 @@ auto sokketter_core::device(const std::string &serial_number)
     return nullptr;
 }
 
-auto sokketter_core::write_response_data(char *ptr, size_t size, size_t nmemb, void *userdata)
-    -> size_t
-{
-    auto *buffer = static_cast<curl_string_buffer *>(userdata);
-    if (buffer == nullptr)
-    {
-        return 0;
-    }
-
-    const auto total_size = size * nmemb;
-    buffer->data.append(ptr, total_size);
-    return total_size;
-}
-
 auto sokketter_core::normalize_version_string(std::string version) -> std::string
 {
     while (!version.empty() && (version.front() == 'v' || version.front() == 'V'))
@@ -448,44 +434,66 @@ auto sokketter_core::is_new_release_available(std::string &latest_version) -> bo
 {
     latest_version.clear();
     const auto current_version = sokketter::version().to_string();
-    const std::string url = RELEASE_API_LINK;
 
-    CURL *curl = curl_easy_init();
-    if (curl == nullptr)
-    {
-        SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER, "Failed to initialize curl for update check.");
-        return false;
-    }
+    kommpot::http_device_identification identification;
+    identification.address = RELEASE_API_HOST;
+    identification.port = 443;
+    identification.use_tls = true;
 
-    curl_string_buffer response = {};
-    struct curl_slist *headers = curl_slist_append(nullptr, "Accept: application/vnd.github+json");
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_USERAGENT, "sokketter");
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
-    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_response_data);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-
-    const auto result = curl_easy_perform(curl);
-    curl_easy_cleanup(curl);
-    curl_slist_free_all(headers);
-
-    if (result != CURLE_OK)
+    auto communication = kommpot::device(identification);
+    if (communication == nullptr)
     {
         SPDLOG_LOGGER_WARN(
-            SOKKETTER_LOGGER, "Failed checking GitHub releases: {}.", curl_easy_strerror(result));
+            SOKKETTER_LOGGER, "Failed to create the HTTP communication for update check.");
         return false;
     }
 
-    if (response.data.empty())
+    kommpot::http_device_configuration communication_configuration;
+    communication_configuration.timeout_ms = UPDATE_CHECK_TIMEOUT_MSECS;
+    communication_configuration.user_agent = "sokketter";
+    communication->set_configuration(communication_configuration);
+
+    if (!communication->open())
+    {
+        SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER, "Failed to open the HTTP session for update check.");
+        return false;
+    }
+
+    kommpot::http_transfer_configuration http_configuration;
+    http_configuration.type = kommpot::http_transfer_type::GET;
+    http_configuration.resource_path = RELEASE_API_PATH;
+    http_configuration.headers = {{"Accept", "application/vnd.github+json"}};
+
+    kommpot::transfer_configuration configuration = http_configuration;
+
+    std::string response = "";
+    if (communication->write(configuration, nullptr, 0))
+    {
+        const auto *performed_configuration =
+            std::get_if<kommpot::http_transfer_configuration>(&configuration);
+
+        std::array<char, RESPONSE_CHUNK_SIZE_BYTES> chunk = {};
+        while (performed_configuration != nullptr &&
+               communication->read(configuration, chunk.data(), chunk.size()))
+        {
+            response.append(chunk.data(), performed_configuration->bytes_read);
+        }
+    }
+    else
+    {
+        SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER, "Failed checking GitHub releases.");
+    }
+
+    communication->close();
+
+    if (response.empty())
     {
         return false;
     }
 
     try
     {
-        const auto json_response = nlohmann::json::parse(response.data);
+        const auto json_response = nlohmann::json::parse(response);
         if (!json_response.contains("tag_name") || !json_response["tag_name"].is_string())
         {
             return false;
