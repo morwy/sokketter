@@ -512,6 +512,21 @@ namespace sokketter {
      */
     auto EXPORTED forget_device(std::shared_ptr<sokketter::power_strip> &device) -> void;
 
+    /**
+     * @brief returns template configurations of the power strips that can be added manually.
+     * @return vector of configurations carrying the type and its authentication type.
+     * @attention only devices reachable by an address can be added manually.
+     */
+    auto EXPORTED addable_power_strips() -> std::vector<power_strip_configuration>;
+
+    /**
+     * @brief adds a power strip to the storage by its address instead of discovering it.
+     * @param configuration of the power strip, requires a valid type and a non-empty address.
+     * @return shared pointer to the added power strip or nullptr in case of any failure.
+     */
+    auto EXPORTED add_device(const power_strip_configuration &configuration)
+        -> std::shared_ptr<sokketter::power_strip>;
+
 } // namespace sokketter
 
 #endif // LIBSOKKETTER_H
