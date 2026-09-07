@@ -461,3 +461,14 @@ auto sokketter::forget_device(std::shared_ptr<power_strip> &device) -> void
     sokketter_core::instance().database().remove(device);
     sokketter_core::instance().database().save();
 }
+
+auto sokketter::addable_power_strips() -> std::vector<power_strip_configuration>
+{
+    return sokketter_core::instance().addable_power_strips();
+}
+
+auto sokketter::add_device(const power_strip_configuration &configuration)
+    -> std::shared_ptr<sokketter::power_strip>
+{
+    return sokketter_core::instance().add_device(configuration);
+}
