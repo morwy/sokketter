@@ -50,6 +50,12 @@ private:
     std::shared_ptr<sokketter::power_strip> m_device = nullptr;
 
     /**
+     * @brief template configurations of the power strips that can be added manually, kept in the
+     * same order as the entries of the type combo box.
+     */
+    std::vector<sokketter::power_strip_configuration> m_addable_power_strips;
+
+    /**
      * @brief serializes blocking device I/O onto a single worker thread so the UI stays responsive.
      */
     QThreadPool m_device_pool;
@@ -83,6 +89,19 @@ private:
     auto populate_authentication_page(PowerStripListItem *item) -> void;
     auto initialize_settings_page() -> void;
     auto initialize_about_page() -> void;
+
+    auto initialize_add_device_page() -> void;
+    auto reset_add_device_page() -> void;
+    auto update_add_device_authentication_fields() -> void;
+
+    /**
+     * @brief validates the add device page and builds the configuration out of it.
+     * @return true when every field is valid, false with a filled error message otherwise.
+     */
+    auto validate_add_device_page(
+        sokketter::power_strip_configuration &configuration, QString &error_message) const -> bool;
+
+    auto save_new_device() -> void;
 
     auto connect_socket_list_on_click() -> void;
 

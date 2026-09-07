@@ -20,6 +20,7 @@
 #include <ClickableLabel.h>
 #include <QApplication>
 #include <QButtonGroup>
+#include <QComboBox>
 #include <QDesktopServices>
 #include <QEvent>
 #include <QFileInfo>
@@ -29,6 +30,7 @@
 #include <QListWidgetItem>
 #include <QMessageBox>
 #include <QPointer>
+#include <QRegularExpression>
 #include <QScrollBar>
 #include <QTimer>
 #include <QUrl>
@@ -83,6 +85,13 @@ MainWindow::MainWindow(QWidget *parent)
 
     QObject::connect(m_ui->power_strip_about_label, &ClickableLabel::clicked, [this]() {
         const int &index = m_ui->stackedWidget->indexOf(m_ui->about_page);
+        m_ui->stackedWidget->setCurrentIndex(index);
+    });
+
+    QObject::connect(m_ui->power_strip_add_label, &ClickableLabel::clicked, [this]() {
+        reset_add_device_page();
+
+        const int &index = m_ui->stackedWidget->indexOf(m_ui->device_add_page);
         m_ui->stackedWidget->setCurrentIndex(index);
     });
 
@@ -156,6 +165,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     initialize_settings_page();
     initialize_about_page();
+    initialize_add_device_page();
 
     m_ui->about_new_version_label->hide();
     QObject::connect(m_ui->about_new_version_label, &QLabel::linkActivated, this,
@@ -984,6 +994,197 @@ auto MainWindow::initialize_about_page() -> void
 
     licenseInfoText.replace("%QT_VERSION%", qtVersion);
     m_ui->used_components_text->setMarkdown(licenseInfoText);
+}
+
+namespace {
+    constexpr int DEVICE_NAME_MAX_LENGTH = 64;
+    constexpr int DEVICE_DESCRIPTION_MAX_LENGTH = 256;
+    constexpr int DEVICE_ADDRESS_MAX_LENGTH = 253;
+    constexpr int DEVICE_PASSWORD_MAX_LENGTH = 64;
+    constexpr int DEVICE_PORT_MAX_VALUE = 65535;
+} // namespace
+
+auto MainWindow::initialize_add_device_page() -> void
+{
+    m_addable_power_strips = sokketter::addable_power_strips();
+
+    m_ui->add_device_type_combo_box->clear();
+    for (const auto &configuration : m_addable_power_strips)
+    {
+        m_ui->add_device_type_combo_box->addItem(
+            QString::fromStdString(sokketter::power_strip_type_to_string(configuration.type)));
+    }
+
+    m_ui->add_device_name_line_edit->setMaxLength(DEVICE_NAME_MAX_LENGTH);
+    m_ui->add_device_description_line_edit->setMaxLength(DEVICE_DESCRIPTION_MAX_LENGTH);
+    m_ui->add_device_address_line_edit->setMaxLength(DEVICE_ADDRESS_MAX_LENGTH);
+    m_ui->add_device_password_line_edit->setMaxLength(DEVICE_PASSWORD_MAX_LENGTH);
+
+    auto size_policy = m_ui->add_device_status_label->sizePolicy();
+    size_policy.setRetainSizeWhenHidden(true);
+    m_ui->add_device_status_label->setSizePolicy(size_policy);
+
+    QObject::connect(m_ui->add_device_type_combo_box, &QComboBox::currentIndexChanged,
+        [this](int) { update_add_device_authentication_fields(); });
+
+    QObject::connect(m_ui->add_device_back_label, &ClickableLabel::clicked, [this]() {
+        const int &index = m_ui->stackedWidget->indexOf(m_ui->power_strip_list_page);
+        m_ui->stackedWidget->setCurrentIndex(index);
+
+        redraw_device_list();
+    });
+
+    QObject::connect(
+        m_ui->add_device_save_label, &ClickableLabel::clicked, [this]() { save_new_device(); });
+
+    reset_add_device_page();
+}
+
+auto MainWindow::reset_add_device_page() -> void
+{
+    m_ui->add_device_name_line_edit->clear();
+    m_ui->add_device_description_line_edit->clear();
+    m_ui->add_device_address_line_edit->clear();
+    m_ui->add_device_password_line_edit->clear();
+
+    m_ui->add_device_status_label->clear();
+    m_ui->add_device_status_label->hide();
+
+    if (m_ui->add_device_type_combo_box->count() > 0)
+    {
+        m_ui->add_device_type_combo_box->setCurrentIndex(0);
+    }
+
+    update_add_device_authentication_fields();
+}
+
+auto MainWindow::update_add_device_authentication_fields() -> void
+{
+    const int type_index = m_ui->add_device_type_combo_box->currentIndex();
+
+    auto authentication_type = sokketter::power_strip_authentication_type::UNKNOWN;
+    if (type_index >= 0 && type_index < static_cast<int>(m_addable_power_strips.size()))
+    {
+        authentication_type = m_addable_power_strips[type_index].authentication.type;
+    }
+
+    m_ui->add_device_authentication_type_label->setText(QString::fromStdString(
+        sokketter::power_strip_authentication_type_to_string(authentication_type)));
+
+    const bool is_password_required =
+        authentication_type == sokketter::power_strip_authentication_type::PASSWORD_ONLY;
+
+    m_ui->add_device_password_title_label->setVisible(is_password_required);
+    m_ui->add_device_password_line_edit->setVisible(is_password_required);
+
+    if (!is_password_required)
+    {
+        m_ui->add_device_password_line_edit->clear();
+    }
+}
+
+auto MainWindow::validate_add_device_page(
+    sokketter::power_strip_configuration &configuration, QString &error_message) const -> bool
+{
+    const QString name = m_ui->add_device_name_line_edit->text().trimmed();
+    if (name.isEmpty())
+    {
+        error_message = tr("Please provide a device name.");
+        return false;
+    }
+
+    const int type_index = m_ui->add_device_type_combo_box->currentIndex();
+    if (type_index < 0 || type_index >= static_cast<int>(m_addable_power_strips.size()))
+    {
+        error_message = tr("Please select a device type.");
+        return false;
+    }
+
+    const QString address = m_ui->add_device_address_line_edit->text().trimmed();
+    if (address.isEmpty())
+    {
+        error_message = tr("Please provide a device address.");
+        return false;
+    }
+
+    /**
+     * @brief accepts an IP address, a hostname or an URL with an optional scheme, port and path.
+     */
+    static const QRegularExpression address_expression(
+        QStringLiteral("^(?:https?://)?[A-Za-z0-9](?:[A-Za-z0-9\\-]{0,61}[A-Za-z0-9])?"
+                       "(?:\\.[A-Za-z0-9](?:[A-Za-z0-9\\-]{0,61}[A-Za-z0-9])?)*"
+                       "(?::(\\d{1,5}))?(?:/[^\\s]*)?$"));
+
+    const auto address_match = address_expression.match(address);
+    if (!address_match.hasMatch())
+    {
+        error_message = tr("Please provide a valid IP address, hostname or URL.");
+        return false;
+    }
+
+    const QString port = address_match.captured(1);
+    if (!port.isEmpty() && (port.toUInt() == 0 || port.toUInt() > DEVICE_PORT_MAX_VALUE))
+    {
+        error_message =
+            tr("Please provide a port number between 1 and %1.").arg(DEVICE_PORT_MAX_VALUE);
+        return false;
+    }
+
+    const auto &template_configuration = m_addable_power_strips[type_index];
+
+    configuration = sokketter::power_strip_configuration();
+    configuration.type = template_configuration.type;
+    configuration.name = name.toStdString();
+    configuration.description =
+        m_ui->add_device_description_line_edit->text().trimmed().toStdString();
+    configuration.address = address.toStdString();
+
+    if (template_configuration.authentication.type ==
+        sokketter::power_strip_authentication_type::PASSWORD_ONLY)
+    {
+        const QString password = m_ui->add_device_password_line_edit->text();
+        if (password.isEmpty())
+        {
+            error_message = tr("Please provide the device password.");
+            return false;
+        }
+
+        configuration.authentication.password = password.toStdString();
+    }
+
+    return true;
+}
+
+auto MainWindow::save_new_device() -> void
+{
+    sokketter::power_strip_configuration configuration;
+    QString error_message;
+
+    if (!validate_add_device_page(configuration, error_message))
+    {
+        m_ui->add_device_status_label->setText(error_message);
+        m_ui->add_device_status_label->show();
+        return;
+    }
+
+    const auto device = sokketter::add_device(configuration);
+    if (device == nullptr)
+    {
+        SPDLOG_LOGGER_ERROR(
+            APP_LOGGER, "Failed adding the device at address '{}'.", configuration.address);
+
+        m_ui->add_device_status_label->setText(
+            tr("Failed adding the device, it might be already present in the list."));
+        m_ui->add_device_status_label->show();
+        return;
+    }
+
+    SPDLOG_LOGGER_INFO(APP_LOGGER, "{}: device was added manually.", device->to_string());
+
+    const int &index = m_ui->stackedWidget->indexOf(m_ui->power_strip_list_page);
+    m_ui->stackedWidget->setCurrentIndex(index);
+
+    repopulate_device_list();
 }
 
 auto MainWindow::connect_socket_list_on_click() -> void
