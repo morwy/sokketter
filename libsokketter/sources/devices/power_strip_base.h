@@ -16,6 +16,12 @@ public:
 
     virtual bool initialize(std::shared_ptr<kommpot::device_communication> communication);
 
+    /**
+     * @brief establishes communication with a manually added device from its configured address.
+     * @return true in case of success, false if the device cannot be reached.
+     */
+    virtual auto reconnect() -> bool;
+
     bool copyFrom(const sokketter::power_strip &other);
 
     [[nodiscard]] auto socket(const size_t &index)

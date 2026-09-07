@@ -15,6 +15,13 @@ bool power_strip_base::initialize(std::shared_ptr<kommpot::device_communication>
     return true;
 }
 
+auto power_strip_base::reconnect() -> bool
+{
+    SPDLOG_LOGGER_ERROR(
+        SOKKETTER_LOGGER, "{}: device does not support manual connection!", this->to_string());
+    return false;
+}
+
 bool power_strip_base::copyFrom(const power_strip &other)
 {
     /**
