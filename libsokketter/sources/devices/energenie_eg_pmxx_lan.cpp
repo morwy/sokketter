@@ -77,6 +77,34 @@ auto energenie_eg_pmxx_lan::initialize(std::shared_ptr<kommpot::device_communica
     return true;
 }
 
+auto energenie_eg_pmxx_lan::reconnect() -> bool
+{
+    const auto &address = m_configuration.address;
+    if (address.empty())
+    {
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "{}: no address configured!", this->to_string());
+        return false;
+    }
+
+    auto device_identification = identification();
+    device_identification.address = address;
+
+    if (address.find("://") != std::string::npos)
+    {
+        device_identification.port = 0;
+    }
+
+    auto communication = kommpot::device(device_identification);
+    if (communication == nullptr)
+    {
+        SPDLOG_LOGGER_ERROR(
+            SOKKETTER_LOGGER, "{}: failed creating the HTTP communication!", this->to_string());
+        return false;
+    }
+
+    return initialize(communication);
+}
+
 auto energenie_eg_pmxx_lan::try_authenticate() -> bool
 {
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: trying to authenticate.", this->to_string());

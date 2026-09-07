@@ -21,6 +21,8 @@ public:
 
     auto initialize(std::shared_ptr<kommpot::device_communication> communication) -> bool override;
 
+    auto reconnect() -> bool override;
+
     [[nodiscard]] auto try_authenticate() -> bool override;
 
     static auto identification() -> const kommpot::http_device_identification;
