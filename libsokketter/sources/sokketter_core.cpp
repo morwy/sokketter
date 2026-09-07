@@ -259,6 +259,108 @@ auto sokketter_core::device(const std::string &serial_number)
     return nullptr;
 }
 
+auto sokketter_core::addable_power_strips() -> std::vector<sokketter::power_strip_configuration>
+{
+    /**
+     * @brief only devices reachable by an address can be added without being discovered.
+     */
+    static constexpr std::array<sokketter::power_strip_type, 1> addable_types = {
+        sokketter::power_strip_type::ENERGENIE_EG_PMXX_LAN};
+
+    std::vector<sokketter::power_strip_configuration> configurations;
+
+    for (const auto &type : addable_types)
+    {
+        const auto device = power_strip_factory::create(type);
+        if (device == nullptr)
+        {
+            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "Failed creating the template device of type {}!",
+                static_cast<int>(type));
+            continue;
+        }
+
+        configurations.push_back(device->configuration());
+    }
+
+    return configurations;
+}
+
+auto sokketter_core::add_device(const sokketter::power_strip_configuration &configuration)
+    -> std::shared_ptr<sokketter::power_strip>
+{
+    if (configuration.type == sokketter::power_strip_type::UNKNOWN)
+    {
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "Failed adding the device - no type was provided!");
+        return nullptr;
+    }
+
+    if (configuration.address.empty())
+    {
+        SPDLOG_LOGGER_ERROR(
+            SOKKETTER_LOGGER, "Failed adding the device - no address was provided!");
+        return nullptr;
+    }
+
+    auto &database = m_database.get();
+
+    const auto it = std::find_if(
+        database.begin(), database.end(), [&](const std::shared_ptr<sokketter::power_strip> &item) {
+            return item != nullptr && item->configuration().address == configuration.address;
+        });
+    if (it != database.end())
+    {
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+            "Failed adding the device - a device at address '{}' is already present!",
+            configuration.address);
+        return nullptr;
+    }
+
+    auto device = power_strip_factory::create(configuration.type);
+    if (device == nullptr)
+    {
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "Failed adding the device - failed creating it!");
+        return nullptr;
+    }
+
+    auto *base_device = dynamic_cast<power_strip_base *>(device.get());
+    if (base_device == nullptr)
+    {
+        SPDLOG_LOGGER_ERROR(
+            SOKKETTER_LOGGER, "Failed casting the added device to power_strip_base!");
+        return nullptr;
+    }
+
+    /**
+     * @brief the identifier is only known once the device is discovered, so the address is used
+     * as a stable placeholder until then.
+     */
+    auto new_configuration = device->configuration();
+    new_configuration.id = configuration.address;
+    new_configuration.name = configuration.name;
+    new_configuration.description = configuration.description;
+    new_configuration.address = configuration.address;
+    new_configuration.authentication.password = configuration.authentication.password;
+    new_configuration.is_manually_added = true;
+
+    device->configure(new_configuration);
+
+    if (!base_device->reconnect())
+    {
+        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+            "Failed adding the device - failed connecting to the address '{}'!",
+            new_configuration.address);
+        return nullptr;
+    }
+
+    database.push_back(device);
+    m_database.save();
+
+    SPDLOG_LOGGER_INFO(
+        SOKKETTER_LOGGER, "{}: device was manually added to the database.", device->to_string());
+
+    return device;
+}
+
 auto sokketter_core::normalize_version_string(std::string version) -> std::string
 {
     while (!version.empty() && (version.front() == 'v' || version.front() == 'V'))
