@@ -46,6 +46,11 @@ public:
 
     auto device(const std::string &serial_number) -> std::shared_ptr<sokketter::power_strip>;
 
+    auto addable_power_strips() -> std::vector<sokketter::power_strip_configuration>;
+
+    auto add_device(const sokketter::power_strip_configuration &configuration)
+        -> std::shared_ptr<sokketter::power_strip>;
+
     auto release_link() -> std::string;
     auto is_new_release_available(std::string &latest_version) -> bool;
 
