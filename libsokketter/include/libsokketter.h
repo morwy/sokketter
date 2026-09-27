@@ -353,7 +353,8 @@ namespace sokketter {
 
         /**
          * @brief Address of the power strip in format "USB:x" or "IP:IP_ADDRESS".
-         * @attention Read-only, populated internally by the library, not to be set by the user.
+         * @attention Read-only for discovered devices, populated internally by the library.
+         * @attention Provided by the user for the manually added devices.
          */
         std::string address = "";
     };
