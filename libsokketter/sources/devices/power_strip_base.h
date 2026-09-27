@@ -17,7 +17,7 @@ public:
     virtual bool initialize(std::shared_ptr<kommpot::device_communication> communication);
 
     /**
-     * @brief establishes communication with a manually added device from its configured address.
+     * @brief re-establishes communication with the device from its configured address.
      * @return true in case of success, false if the device cannot be reached.
      */
     virtual auto reconnect() -> bool;
