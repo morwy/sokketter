@@ -31,6 +31,53 @@
 #    include <spdlog/sinks/syslog_sink.h>
 #endif
 
+namespace {
+    auto normalize_address(const std::string &address) -> std::string
+    {
+        auto normalized = address;
+        const auto scheme_separator = normalized.find("://");
+        if (scheme_separator != std::string::npos)
+        {
+            const auto authority_start = scheme_separator + 3;
+            const auto authority_end = normalized.find_first_of("/?#", authority_start);
+            normalized = normalized.substr(authority_start, authority_end == std::string::npos
+                                                                ? std::string::npos
+                                                                : authority_end - authority_start);
+        }
+
+        while (!normalized.empty() && normalized.back() == '/')
+        {
+            normalized.pop_back();
+        }
+
+        std::transform(normalized.begin(), normalized.end(), normalized.begin(),
+            [](const unsigned char character) {
+                return static_cast<char>(std::tolower(character));
+            });
+
+        return normalized;
+    }
+
+    auto initialize_existing_device(power_strip_base &device,
+        const std::shared_ptr<kommpot::device_communication> &communication) -> bool
+    {
+        const auto saved_configuration = device.configuration();
+        if (!device.initialize(communication))
+        {
+            return false;
+        }
+
+        auto configuration = device.configuration();
+        configuration.name = saved_configuration.name;
+        configuration.description = saved_configuration.description;
+        configuration.authentication = saved_configuration.authentication;
+        configuration.address = saved_configuration.address;
+        configuration.is_manually_added = saved_configuration.is_manually_added;
+        device.configure(configuration);
+        return true;
+    }
+} // namespace
+
 auto sokketter_core::initialize() -> bool
 {
     const auto &shared_data_folder_path = sokketter::storage_path();
@@ -159,10 +206,22 @@ auto sokketter_core::devices(const sokketter::device_filter &filter)
         }
 
         /**
-         * @brief look for saved configuration of this device.
+         * @brief look for saved configuration of this device, a manually added device is matched
+         * by its address because its identifier is only known once it is discovered.
          */
         auto it = std::find_if(database.begin(), database.end(),
             [&](const std::shared_ptr<sokketter::power_strip> &item) {
+                if (item == nullptr)
+                {
+                    return false;
+                }
+
+                if (item->configuration().is_manually_added)
+                {
+                    return normalize_address(item->configuration().address) ==
+                           normalize_address(device->configuration().address);
+                }
+
                 return item->configuration().id == device->configuration().id;
             });
 
@@ -176,7 +235,12 @@ auto sokketter_core::devices(const sokketter::device_filter &filter)
                 continue;
             }
 
-            baseIt->initialize(communication);
+            if (!initialize_existing_device(*baseIt, communication))
+            {
+                SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+                    "{}: failed initializing the existing device!", device->to_string());
+                continue;
+            }
 
             SPDLOG_LOGGER_DEBUG(
                 SOKKETTER_LOGGER, "{}: device was successfully created!", device->to_string());
@@ -195,6 +259,8 @@ auto sokketter_core::devices(const sokketter::device_filter &filter)
             sokketter_core::instance().database().save();
         }
     }
+
+    connect_manually_added_devices();
 
     /**
      * Sort the database by device name.
@@ -747,11 +813,23 @@ auto sokketter_core::new_devices_received(
         }
 
         /**
-         * @brief look for saved configuration of this device.
+         * @brief look for saved configuration of this device, a manually added device is matched
+         * by its address because its identifier is only known once it is discovered.
          */
         auto it = std::find_if(database.begin(), database.end(),
             [&](const std::shared_ptr<sokketter::power_strip> &item) {
-                return item && item->configuration().id == device->configuration().id;
+                if (item == nullptr)
+                {
+                    return false;
+                }
+
+                if (item->configuration().is_manually_added)
+                {
+                    return normalize_address(item->configuration().address) ==
+                           normalize_address(device->configuration().address);
+                }
+
+                return item->configuration().id == device->configuration().id;
             });
 
         if (it != database.end())
@@ -764,7 +842,12 @@ auto sokketter_core::new_devices_received(
                 continue;
             }
 
-            baseIt->initialize(communication);
+            if (!initialize_existing_device(*baseIt, communication))
+            {
+                SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+                    "{}: failed initializing the existing device!", device->to_string());
+                continue;
+            }
 
             SPDLOG_LOGGER_DEBUG(
                 SOKKETTER_LOGGER, "{}: device was successfully created!", device->to_string());
@@ -784,6 +867,8 @@ auto sokketter_core::new_devices_received(
         }
     }
 
+    connect_manually_added_devices();
+
     /**
      * Sort the database by device name.
      */
@@ -796,6 +881,38 @@ auto sokketter_core::new_devices_received(
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Created devices: {}.", database.size());
 
     m_device_cb(database);
+}
+
+auto sokketter_core::connect_manually_added_devices() -> void
+{
+    for (auto &device : m_database.get())
+    {
+        if (device == nullptr || device->is_connected())
+        {
+            continue;
+        }
+
+        const auto &configuration = device->configuration();
+        if (!configuration.is_manually_added || configuration.address.empty())
+        {
+            continue;
+        }
+
+        auto *base_device = dynamic_cast<power_strip_base *>(device.get());
+        if (base_device == nullptr)
+        {
+            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+                "{}: failed casting the device to power_strip_base!", device->to_string());
+            continue;
+        }
+
+        if (!base_device->reconnect())
+        {
+            SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER,
+                "{}: failed connecting to the manually added device at '{}'.", device->to_string(),
+                configuration.address);
+        }
+    }
 }
 
 auto sokketter_core::new_status_received(kommpot::enumeration_status status) -> void

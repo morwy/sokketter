@@ -100,6 +100,11 @@ private:
     auto new_devices_received(
         std::vector<std::shared_ptr<kommpot::device_communication>> communications) -> void;
     auto new_status_received(kommpot::enumeration_status status) -> void;
+
+    /**
+     * @brief re-establishes communication for the manually added devices, as it is not persisted.
+     */
+    auto connect_manually_added_devices() -> void;
 };
 
 #endif // CORE_H

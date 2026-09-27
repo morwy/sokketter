@@ -67,10 +67,21 @@ auto energenie_eg_pmxx_lan::initialize(std::shared_ptr<kommpot::device_communica
     configuration.timeout_ms = HTTP_TIMEOUT_MSECS;
     communication->set_configuration(configuration);
 
-    m_serial_number = identification->mac;
+    /**
+     * @brief a manually added device is reached by its address only, so its MAC stays a wildcard
+     * until the device is discovered and the manually assigned identifier must be kept.
+     */
+    if (identification->mac.find('*') == std::string::npos)
+    {
+        m_serial_number = identification->mac;
+        m_configuration.id = identification->mac;
+    }
 
-    m_configuration.id = identification->mac;
     m_configuration.address = identification->address;
+    if (identification->port != 0 && identification->port != 80)
+    {
+        m_configuration.address += ":" + std::to_string(identification->port);
+    }
 
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: initialization.", this->to_string());
 
@@ -79,7 +90,8 @@ auto energenie_eg_pmxx_lan::initialize(std::shared_ptr<kommpot::device_communica
 
 auto energenie_eg_pmxx_lan::reconnect() -> bool
 {
-    const auto &address = m_configuration.address;
+    const auto configured_address = m_configuration.address;
+    const auto &address = configured_address;
     if (address.empty())
     {
         SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "{}: no address configured!", this->to_string());
@@ -93,6 +105,10 @@ auto energenie_eg_pmxx_lan::reconnect() -> bool
     {
         device_identification.port = 0;
     }
+    else
+    {
+        device_identification.address = "http://" + address;
+    }
 
     auto communication = kommpot::device(device_identification);
     if (communication == nullptr)
@@ -102,7 +118,20 @@ auto energenie_eg_pmxx_lan::reconnect() -> bool
         return false;
     }
 
-    return initialize(communication);
+    if (!initialize(communication))
+    {
+        m_communication.reset();
+        return false;
+    }
+
+    m_configuration.address = configured_address;
+    if (!try_authenticate())
+    {
+        m_communication.reset();
+        return false;
+    }
+
+    return true;
 }
 
 auto energenie_eg_pmxx_lan::try_authenticate() -> bool

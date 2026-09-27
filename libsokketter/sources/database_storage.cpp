@@ -61,7 +61,12 @@ namespace sokketter {
             {"name", ps.configuration().name}, {"description", ps.configuration().description},
             {"authentication-type", ps.configuration().authentication.type},
             {"authentication-password", ps.configuration().authentication.password},
-            {"sockets", sockets}};
+            {"manually-added", ps.configuration().is_manually_added}, {"sockets", sockets}};
+
+        if (ps.configuration().is_manually_added)
+        {
+            j["address"] = ps.configuration().address;
+        }
     }
 
     void from_json(const nlohmann::json &j, sokketter::power_strip &ps)
@@ -75,6 +80,16 @@ namespace sokketter {
         configuration.authentication.type =
             j.value("authentication-type", sokketter::power_strip_authentication_type::UNKNOWN);
         configuration.authentication.password = j.value("authentication-password", "");
+        configuration.is_manually_added = j.value("manually-added", false);
+
+        /**
+         * @brief only a manually added device keeps its address, a discovered one gets it back
+         * during the enumeration.
+         */
+        if (configuration.is_manually_added)
+        {
+            configuration.address = j.value("address", "");
+        }
 
         ps.configure(configuration);
 

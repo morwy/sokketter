@@ -357,6 +357,12 @@ namespace sokketter {
          * @attention Provided by the user for the manually added devices.
          */
         std::string address = "";
+
+        /**
+         * @brief states if the power strip was added manually instead of being discovered.
+         * @attention Read-only, populated internally by the library, not to be set by the user.
+         */
+        bool is_manually_added = false;
     };
 
     /**
