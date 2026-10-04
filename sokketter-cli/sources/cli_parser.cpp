@@ -29,7 +29,7 @@ namespace {
     }
 } // namespace
 
-int cli_parser::parse_and_process(int argc, char *argv[])
+auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
 {
     /** ************************************************************************
      *
