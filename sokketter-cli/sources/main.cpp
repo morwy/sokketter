@@ -2,6 +2,7 @@
 
 #include "libsokketter.h"
 
+#include <cstdlib>
 #include <iostream>
 
 namespace {
@@ -21,7 +22,11 @@ auto main(int argc, char *argv[]) -> int
     settings.logging_callback = cli_logging_callback;
     sokketter::set_settings(settings);
 
-    sokketter::initialize();
+    if (!sokketter::initialize())
+    {
+        std::cerr << "Failed to initialize sokketter." << std::endl;
+        return EXIT_FAILURE;
+    }
 
     const int return_code = cli_parser::parse_and_process(argc, argv);
 
