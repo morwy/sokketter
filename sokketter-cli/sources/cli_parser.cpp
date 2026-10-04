@@ -8,9 +8,19 @@
 #include <vector>
 
 namespace {
+    /**
+     * @brief rewrites underscores to dashes in long-option tokens, e.g. --device_at_index becomes
+     * --device-at-index.
+     *
+     * @attention CLI11's ignore_underscore() strips underscores from both the registered name and
+     * the input, so it cannot alias an underscored spelling to a dashed option name. This pass
+     * provides that aliasing. It is deliberately limited to tokens that begin with "--" so that
+     * option values (paths such as /dev/ttyUSB_0, device serials, or negative numbers) are never
+     * silently mutated.
+     */
     auto normalize_cli_argument(std::string argument) -> std::string
     {
-        if (argument.size() > 1 && (argument[0] == '-' || argument[0] == '/'))
+        if (argument.rfind("--", 0) == 0)
         {
             std::replace(argument.begin(), argument.end(), '_', '-');
         }
