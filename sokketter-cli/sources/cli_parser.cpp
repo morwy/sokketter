@@ -267,6 +267,63 @@ int cli_parser::parse_and_process(int argc, char *argv[])
         bool all_succeeded = true;
 
         /**
+         * @attention apply the requested power action to a single socket, printing the
+         * per-socket result. Returns false if any of the requested actions failed.
+         */
+        auto apply_action = [&](const sokketter::socket &socket, const size_t display_index) -> bool
+        {
+            if (subcommand_power_status->parsed())
+            {
+                std::cout << "  Socket " << display_index << ": " << socket.to_string() << std::endl;
+                return true;
+            }
+
+            bool succeeded = true;
+
+            if (subcommand_power_on->parsed())
+            {
+                if (!socket.power(true))
+                {
+                    std::cerr << "  Socket " << display_index << ": failed to turn on." << std::endl;
+                    succeeded = false;
+                }
+                else
+                {
+                    std::cout << "  Socket " << display_index << ": turned on." << std::endl;
+                }
+            }
+
+            if (subcommand_power_off->parsed())
+            {
+                if (!socket.power(false))
+                {
+                    std::cerr << "  Socket " << display_index << ": failed to turn off."
+                              << std::endl;
+                    succeeded = false;
+                }
+                else
+                {
+                    std::cout << "  Socket " << display_index << ": turned off." << std::endl;
+                }
+            }
+
+            if (subcommand_power_toggle->parsed())
+            {
+                if (!socket.toggle())
+                {
+                    std::cerr << "  Socket " << display_index << ": failed to toggle." << std::endl;
+                    succeeded = false;
+                }
+                else
+                {
+                    std::cout << "  Socket " << display_index << ": toggled." << std::endl;
+                }
+            }
+
+            return succeeded;
+        };
+
+        /**
          * @attention use all sockets if no indices were specified.
          */
         if (sockets_argument->count() == 0 || socket_indices.empty())
@@ -276,52 +333,9 @@ int cli_parser::parse_and_process(int argc, char *argv[])
             size_t socket_index = 1;
             for (const auto &socket : device->sockets())
             {
-                if (subcommand_power_status->parsed())
+                if (!apply_action(socket, socket_index))
                 {
-                    std::cout << "  Socket " << socket_index << ": " << socket.to_string()
-                              << std::endl;
-                }
-
-                if (subcommand_power_on->parsed())
-                {
-                    if (!socket.power(true))
-                    {
-                        std::cerr << "  Socket " << socket_index << ": failed to turn on."
-                                  << std::endl;
-                        all_succeeded = false;
-                    }
-                    else
-                    {
-                        std::cout << "  Socket " << socket_index << ": turned on." << std::endl;
-                    }
-                }
-
-                if (subcommand_power_off->parsed())
-                {
-                    if (!socket.power(false))
-                    {
-                        std::cerr << "  Socket " << socket_index << ": failed to turn off."
-                                  << std::endl;
-                        all_succeeded = false;
-                    }
-                    else
-                    {
-                        std::cout << "  Socket " << socket_index << ": turned off." << std::endl;
-                    }
-                }
-
-                if (subcommand_power_toggle->parsed())
-                {
-                    if (!socket.power(!socket.is_powered_on()))
-                    {
-                        std::cerr << "  Socket " << socket_index << ": failed to toggle."
-                                  << std::endl;
-                        all_succeeded = false;
-                    }
-                    else
-                    {
-                        std::cout << "  Socket " << socket_index << ": toggled." << std::endl;
-                    }
+                    all_succeeded = false;
                 }
 
                 ++socket_index;
@@ -354,49 +368,9 @@ int cli_parser::parse_and_process(int argc, char *argv[])
              */
             const auto &socket = device->sockets().at(socket_index - 1);
 
-            if (subcommand_power_status->parsed())
+            if (!apply_action(socket, socket_index))
             {
-                std::cout << "  Socket " << socket_index << ": " << socket.to_string() << std::endl;
-            }
-
-            if (subcommand_power_on->parsed())
-            {
-                if (!socket.power(true))
-                {
-                    std::cerr << "  Socket " << socket_index << ": failed to turn on." << std::endl;
-                    all_succeeded = false;
-                }
-                else
-                {
-                    std::cout << "  Socket " << socket_index << ": turned on." << std::endl;
-                }
-            }
-
-            if (subcommand_power_off->parsed())
-            {
-                if (!socket.power(false))
-                {
-                    std::cerr << "  Socket " << socket_index << ": failed to turn off."
-                              << std::endl;
-                    all_succeeded = false;
-                }
-                else
-                {
-                    std::cout << "  Socket " << socket_index << ": turned off." << std::endl;
-                }
-            }
-
-            if (subcommand_power_toggle->parsed())
-            {
-                if (!socket.power(!socket.is_powered_on()))
-                {
-                    std::cerr << "  Socket " << socket_index << ": failed to toggle." << std::endl;
-                    all_succeeded = false;
-                }
-                else
-                {
-                    std::cout << "  Socket " << socket_index << ": toggled." << std::endl;
-                }
+                all_succeeded = false;
             }
         }
 
