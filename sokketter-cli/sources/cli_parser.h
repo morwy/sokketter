@@ -49,6 +49,7 @@ public:
                 "list. Case-insensitive. Available types are: USB, ETHERNET, LAN. Default: USB."
              << std::endl;
         help << "    -i,--device-at-index UINT\t\tStates which power strip to use by its index. "
+                "Indices start from 1 and match the numbering printed by the list subcommand. "
                 "Excludes --device-with-serial option."
              << std::endl;
         help << "    -n,--device-with-serial TEXT\tStates which power strip to use by its serial "

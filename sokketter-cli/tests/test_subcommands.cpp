@@ -62,7 +62,7 @@ namespace {
 
         std::ostringstream output;
         output << "Listing available devices...\n";
-        output << "Available devices:\n";
+        output << "Available devices (indices start from 1):\n";
 
         for (size_t index = 0; index < devices.size(); ++index)
         {
@@ -366,7 +366,7 @@ TEST(cli_subcommand_tests, test_power_both_access_flags)
 {
     // MAN-CLI-09
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
-        (char *)"--device-at-index", (char *)"0", (char *)"--device-with-serial", (char *)"TEST"};
+        (char *)"--device-at-index", (char *)"1", (char *)"--device-with-serial", (char *)"TEST"};
 
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
@@ -424,7 +424,7 @@ TEST(cli_subcommand_tests, test_power_status_via_index)
 {
     // MAN-CLI-07
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
-        (char *)"--device-at-index", (char *)"0", (char *)"--sockets", (char *)"1"};
+        (char *)"--device-at-index", (char *)"1", (char *)"--sockets", (char *)"1"};
 
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
@@ -444,6 +444,25 @@ TEST(cli_subcommand_tests, test_power_status_via_index)
     ASSERT_EQ(
         out, expected_device_header(device) + expected_selected_socket_status_output(device, {1}));
     ASSERT_EQ(err, "");
+}
+
+TEST(cli_subcommand_tests, test_power_zero_device_index)
+{
+    // MAN-CLI-16
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
+        (char *)"--device-at-index", (char *)"0", (char *)"--sockets", (char *)"1"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    ASSERT_EQ(return_code, EXIT_FAILURE);
+    ASSERT_EQ(out, "");
+    ASSERT_EQ(err, "Device index 0 is out of range (valid range starts from 1).\n");
 }
 
 TEST(cli_subcommand_tests, test_power_status_via_serial)
@@ -484,7 +503,7 @@ TEST(cli_subcommand_tests, test_power_on_specified_socket)
 {
     // MAN-CLI-13
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"on",
-        (char *)"--device-at-index", (char *)"0", (char *)"--sockets", (char *)"1"};
+        (char *)"--device-at-index", (char *)"1", (char *)"--sockets", (char *)"1"};
 
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
@@ -509,7 +528,7 @@ TEST(cli_subcommand_tests, test_power_on_specified_socket)
 TEST(cli_subcommand_tests, test_power_off_specified_socket)
 {
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"off",
-        (char *)"--device-at-index", (char *)"0", (char *)"--sockets", (char *)"1"};
+        (char *)"--device-at-index", (char *)"1", (char *)"--sockets", (char *)"1"};
 
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
@@ -538,7 +557,7 @@ TEST(cli_subcommand_tests, test_power_off_specified_socket)
 TEST(cli_subcommand_tests, test_power_toggle_specified_socket)
 {
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"toggle",
-        (char *)"--device-at-index", (char *)"0", (char *)"--sockets", (char *)"1"};
+        (char *)"--device-at-index", (char *)"1", (char *)"--sockets", (char *)"1"};
 
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
@@ -567,7 +586,7 @@ TEST(cli_subcommand_tests, test_power_toggle_specified_socket)
 TEST(cli_subcommand_tests, test_power_status_all)
 {
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
-        (char *)"--device-at-index", (char *)"0"};
+        (char *)"--device-at-index", (char *)"1"};
 
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
@@ -596,7 +615,7 @@ TEST(cli_subcommand_tests, test_power_on_all)
 {
     // MAN-CLI-12
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"on",
-        (char *)"--device-at-index", (char *)"0"};
+        (char *)"--device-at-index", (char *)"1"};
 
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
@@ -621,7 +640,7 @@ TEST(cli_subcommand_tests, test_power_on_all)
 TEST(cli_subcommand_tests, test_power_off_all)
 {
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"off",
-        (char *)"--device-at-index", (char *)"0"};
+        (char *)"--device-at-index", (char *)"1"};
 
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
@@ -650,7 +669,7 @@ TEST(cli_subcommand_tests, test_power_off_all)
 TEST(cli_subcommand_tests, test_power_toggle_all)
 {
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"toggle",
-        (char *)"--device-at-index", (char *)"0"};
+        (char *)"--device-at-index", (char *)"1"};
 
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
@@ -680,7 +699,7 @@ TEST(cli_subcommand_tests, test_power_too_big_socket_index)
 {
     // MAN-CLI-16
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"toggle",
-        (char *)"--device-at-index", (char *)"0", (char *)"--sockets", (char *)"99"};
+        (char *)"--device-at-index", (char *)"1", (char *)"--sockets", (char *)"99"};
 
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
@@ -705,7 +724,7 @@ TEST(cli_subcommand_tests, test_power_zero_socket_index)
 {
     // MAN-CLI-16
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"toggle",
-        (char *)"--device-at-index", (char *)"0", (char *)"--sockets", (char *)"0"};
+        (char *)"--device-at-index", (char *)"1", (char *)"--sockets", (char *)"0"};
 
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
@@ -729,7 +748,7 @@ TEST(cli_subcommand_tests, test_power_zero_socket_index)
 TEST(cli_subcommand_tests, test_power_negative_socket_index)
 {
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"toggle",
-        (char *)"--device-at-index", (char *)"0", (char *)"--sockets", (char *)"-1"};
+        (char *)"--device-at-index", (char *)"1", (char *)"--sockets", (char *)"-1"};
 
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
@@ -785,7 +804,7 @@ TEST(cli_subcommand_tests, test_power_off_multiple_sockets)
 {
     // MAN-CLI-14
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"off",
-        (char *)"--device-at-index", (char *)"0", (char *)"--sockets", (char *)"1", (char *)"2"};
+        (char *)"--device-at-index", (char *)"1", (char *)"--sockets", (char *)"1", (char *)"2"};
 
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
@@ -815,7 +834,7 @@ TEST(cli_subcommand_tests, test_power_toggle_double_restores_state)
         device != nullptr ? expected_selected_socket_status_output(device, {1}) : "";
 
     std::vector<char *> toggle_args = {(char *)"sokketter-cli", (char *)"power", (char *)"toggle",
-        (char *)"--device-at-index", (char *)"0", (char *)"--sockets", (char *)"1"};
+        (char *)"--device-at-index", (char *)"1", (char *)"--sockets", (char *)"1"};
 
     for (int i = 0; i < 2; ++i)
     {
@@ -833,7 +852,7 @@ TEST(cli_subcommand_tests, test_power_toggle_double_restores_state)
     }
 
     std::vector<char *> status_args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
-        (char *)"--device-at-index", (char *)"0", (char *)"--sockets", (char *)"1"};
+        (char *)"--device-at-index", (char *)"1", (char *)"--sockets", (char *)"1"};
 
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
@@ -873,7 +892,7 @@ TEST(cli_subcommand_tests, underscore_option_syntax)
 {
     // MAN-CLI-18
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
-        (char *)"--device_at_index", (char *)"0", (char *)"--sockets", (char *)"1"};
+        (char *)"--device_at_index", (char *)"1", (char *)"--sockets", (char *)"1"};
 
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();

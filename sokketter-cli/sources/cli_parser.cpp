@@ -188,7 +188,7 @@ int cli_parser::parse_and_process(int argc, char *argv[])
             return EXIT_FAILURE;
         }
 
-        std::cout << "Available devices:" << std::endl;
+        std::cout << "Available devices (indices start from 1):" << std::endl;
 
         size_t counter = 1;
         for (const auto &device : devices)
@@ -236,7 +236,18 @@ int cli_parser::parse_and_process(int argc, char *argv[])
 
         if (option_device_index->count() > 0)
         {
-            device = sokketter::device(device_index);
+            /**
+             * @attention --device-at-index is 1-based, matching the numbering printed by the list
+             * subcommand, so it has to be decremented before being passed to the 0-based library.
+             */
+            if (device_index == 0)
+            {
+                std::cerr << "Device index 0 is out of range (valid range starts from 1)."
+                          << std::endl;
+                return EXIT_FAILURE;
+            }
+
+            device = sokketter::device(device_index - 1);
         }
         else if (option_device_serial->count() > 0)
         {
