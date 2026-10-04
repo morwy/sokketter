@@ -292,14 +292,23 @@ int cli_parser::parse_and_process(int argc, char *argv[])
             std::cout << device->to_string() << std::endl;
         }
 
+        /**
+         * @attention validate all indices before touching hardware, so an invalid index cannot
+         * leave the device in a partially-changed state.
+         */
         for (const auto &socket_index : socket_indices)
         {
             if (socket_index == 0 || socket_index > device->sockets().size())
             {
-                std::cerr << "Socket index " << socket_index << " is out of range." << std::endl;
+                std::cerr << "Socket index " << socket_index
+                          << " is out of range (valid range: 1-" << device->sockets().size()
+                          << ")." << std::endl;
                 return EXIT_FAILURE;
             }
+        }
 
+        for (const auto &socket_index : socket_indices)
+        {
             /**
              * @attention decrement CLI socket index to match the vector index.
              */
