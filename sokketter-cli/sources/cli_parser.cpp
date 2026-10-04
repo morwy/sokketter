@@ -408,6 +408,14 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
             }
         }
 
+        /**
+         * @attention deduplicate the indices after validation, so a repeated index such as
+         * --sockets 1 1 applies the action to the socket only once.
+         */
+        std::sort(socket_indices.begin(), socket_indices.end());
+        socket_indices.erase(
+            std::unique(socket_indices.begin(), socket_indices.end()), socket_indices.end());
+
         for (const auto &socket_index : socket_indices)
         {
             /**
