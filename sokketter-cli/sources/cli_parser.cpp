@@ -99,7 +99,7 @@ int cli_parser::parse_and_process(int argc, char *argv[])
     }
 
     /**
-     * @brief adding an option to include disconnected devices in the list and power subcommands.
+     * @brief adding an option to select which device types (USB/ETHERNET) are included in the list subcommand.
      */
     std::string included_device_types = "";
     auto option_included_devices_types =
@@ -289,7 +289,11 @@ int cli_parser::parse_and_process(int argc, char *argv[])
 
         if (device == nullptr)
         {
-            std::cerr << "No device was found." << std::endl;
+            std::cerr << "No device was found for "
+                      << (option_device_index->count() > 0
+                              ? "index " + std::to_string(device_index) + "."
+                              : "serial \"" + device_serial + "\".")
+                      << std::endl;
             return EXIT_FAILURE;
         }
 

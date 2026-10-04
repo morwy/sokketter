@@ -515,7 +515,7 @@ TEST(cli_subcommand_tests, test_power_status_no_device)
 
     ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, "");
-    ASSERT_EQ(err, "No device was found.\n");
+    ASSERT_EQ(err, "No device was found for serial \"TEST2\".\n");
 }
 
 TEST(cli_subcommand_tests, test_power_status_via_index)
@@ -641,7 +641,7 @@ TEST(cli_subcommand_tests, test_power_off_specified_socket)
     {
         ASSERT_EQ(return_code, EXIT_FAILURE);
         ASSERT_EQ(out, "");
-        ASSERT_EQ(err, "No device was found.\n");
+        ASSERT_EQ(err, "No device was found for index 1.\n");
     }
     else
     {
@@ -670,7 +670,7 @@ TEST(cli_subcommand_tests, test_power_toggle_specified_socket)
     {
         ASSERT_EQ(return_code, EXIT_FAILURE);
         ASSERT_EQ(out, "");
-        ASSERT_EQ(err, "No device was found.\n");
+        ASSERT_EQ(err, "No device was found for index 1.\n");
     }
     else
     {
@@ -699,7 +699,7 @@ TEST(cli_subcommand_tests, test_power_status_all)
     {
         ASSERT_EQ(return_code, EXIT_FAILURE);
         ASSERT_EQ(out, "");
-        ASSERT_EQ(err, "No device was found.\n");
+        ASSERT_EQ(err, "No device was found for index 1.\n");
     }
     else
     {
@@ -753,7 +753,7 @@ TEST(cli_subcommand_tests, test_power_off_all)
     {
         ASSERT_EQ(return_code, EXIT_FAILURE);
         ASSERT_EQ(out, "");
-        ASSERT_EQ(err, "No device was found.\n");
+        ASSERT_EQ(err, "No device was found for index 1.\n");
     }
     else
     {
@@ -782,7 +782,7 @@ TEST(cli_subcommand_tests, test_power_toggle_all)
     {
         ASSERT_EQ(return_code, EXIT_FAILURE);
         ASSERT_EQ(out, "");
-        ASSERT_EQ(err, "No device was found.\n");
+        ASSERT_EQ(err, "No device was found for index 1.\n");
     }
     else
     {
