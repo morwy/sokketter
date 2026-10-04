@@ -362,6 +362,104 @@ TEST(cli_subcommand_tests, list_include_lan_device_types_is_case_insensitive)
     EXPECT_EQ(err_lower, err_upper);
 }
 
+TEST(cli_subcommand_tests, list_include_device_types_rejects_unknown_type)
+{
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"list",
+        (char *)"--include-device-types", (char *)"ethernett"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    const auto out = testing::internal::GetCapturedStdout();
+    const auto err = testing::internal::GetCapturedStderr();
+
+    ASSERT_EQ(return_code, EXIT_FAILURE);
+    ASSERT_EQ(out, "Listing available devices...\n");
+    ASSERT_EQ(err, "Unknown device type: ethernett. Available types are: USB, ETHERNET, LAN.\n");
+}
+
+TEST(cli_subcommand_tests, list_include_device_types_rejects_substring_match)
+{
+    std::vector<char *> args = {
+        (char *)"sokketter-cli", (char *)"list", (char *)"--include-device-types", (char *)"island"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    const auto out = testing::internal::GetCapturedStdout();
+    const auto err = testing::internal::GetCapturedStderr();
+
+    ASSERT_EQ(return_code, EXIT_FAILURE);
+    ASSERT_EQ(out, "Listing available devices...\n");
+    ASSERT_EQ(err, "Unknown device type: island. Available types are: USB, ETHERNET, LAN.\n");
+}
+
+TEST(cli_subcommand_tests, list_include_device_types_accepts_comma_separated_tokens)
+{
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"list",
+        (char *)"--include-device-types", (char *)"USB, Ethernet , LAN"};
+
+    set_test_device_number("0");
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    unset_test_device_number();
+
+    const auto out = testing::internal::GetCapturedStdout();
+    const auto err = testing::internal::GetCapturedStderr();
+
+    /**
+     * @attention all tokens are valid, so parsing must succeed and reach the listing stage.
+     * With zero fake devices the run ends with "No devices found." rather than a validation error.
+     */
+    ASSERT_EQ(return_code, EXIT_FAILURE);
+    ASSERT_EQ(out, "Listing available devices...\n");
+    ASSERT_EQ(err, "No devices found.\n");
+}
+
+TEST(cli_subcommand_tests, list_include_device_types_rejects_empty_value)
+{
+    std::vector<char *> args = {
+        (char *)"sokketter-cli", (char *)"list", (char *)"--include-device-types", (char *)""};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    const auto out = testing::internal::GetCapturedStdout();
+    const auto err = testing::internal::GetCapturedStderr();
+
+    ASSERT_EQ(return_code, EXIT_FAILURE);
+    ASSERT_EQ(out, "Listing available devices...\n");
+    ASSERT_EQ(err, "No device types were specified. Available types are: USB, ETHERNET, LAN.\n");
+}
+
+TEST(cli_subcommand_tests, list_include_device_types_rejects_unknown_token_in_list)
+{
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"list",
+        (char *)"--include-device-types", (char *)"usb,poland"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    const auto out = testing::internal::GetCapturedStdout();
+    const auto err = testing::internal::GetCapturedStderr();
+
+    ASSERT_EQ(return_code, EXIT_FAILURE);
+    ASSERT_EQ(out, "Listing available devices...\n");
+    ASSERT_EQ(err, "Unknown device type: poland. Available types are: USB, ETHERNET, LAN.\n");
+}
+
 TEST(cli_subcommand_tests, test_power_both_access_flags)
 {
     // MAN-CLI-09

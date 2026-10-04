@@ -162,23 +162,56 @@ int cli_parser::parse_and_process(int argc, char *argv[])
 
         if (option_included_devices_types->count() > 0)
         {
-            auto normalized_device_types = included_device_types;
-            std::transform(normalized_device_types.begin(), normalized_device_types.end(),
-                normalized_device_types.begin(),
-                [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
-
+            /**
+             * @attention the option is selective: the listed device types replace the default
+             * USB-only filter, so --include-device-types ethernet lists only Ethernet devices.
+             * Tokens are split on comma and matched exactly, so unknown or misspelled
+             * values are rejected instead of being silently ignored.
+             */
             using underlying_type = std::underlying_type_t<sokketter::power_strip_type>;
 
-            const bool include_ethernet_devices =
-                normalized_device_types.find("ethernet") != std::string::npos ||
-                normalized_device_types.find("lan") != std::string::npos;
+            underlying_type selected_types = 0;
 
-            if (include_ethernet_devices)
+            std::istringstream token_stream(included_device_types);
+            std::string token;
+            while (std::getline(token_stream, token, ','))
             {
-                filter.included_types = static_cast<sokketter::power_strip_type>(
-                    static_cast<underlying_type>(filter.included_types) |
-                    static_cast<underlying_type>(sokketter::power_strip_type::ETHERNET_DEVICES));
+                token.erase(std::remove_if(token.begin(), token.end(),
+                              [](unsigned char character) { return std::isspace(character) != 0; }),
+                    token.end());
+
+                std::transform(token.begin(), token.end(), token.begin(),
+                    [](unsigned char character) {
+                        return static_cast<char>(std::tolower(character));
+                    });
+
+                if (token == "usb")
+                {
+                    selected_types |=
+                        static_cast<underlying_type>(sokketter::power_strip_type::USB_DEVICES);
+                }
+                else if (token == "ethernet" || token == "lan")
+                {
+                    selected_types |=
+                        static_cast<underlying_type>(sokketter::power_strip_type::ETHERNET_DEVICES);
+                }
+                else
+                {
+                    std::cerr << "Unknown device type: " << token
+                              << ". Available types are: USB, ETHERNET, LAN." << std::endl;
+                    return EXIT_FAILURE;
+                }
             }
+
+            if (selected_types == 0)
+            {
+                std::cerr << "No device types were specified. Available types are: USB, ETHERNET, "
+                             "LAN."
+                          << std::endl;
+                return EXIT_FAILURE;
+            }
+
+            filter.included_types = static_cast<sokketter::power_strip_type>(selected_types);
         }
 
         const auto &devices = sokketter::devices(filter);

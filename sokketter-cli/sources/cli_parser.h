@@ -46,7 +46,8 @@ public:
 
         help << "  Options:" << std::endl;
         help << "    -t,--include-device-types TEXT\tStates which device types to include in the "
-                "list. Case-insensitive. Available types are: USB, ETHERNET, LAN. Default: USB."
+                "list, replacing the default USB-only selection. Comma-separated, case-insensitive. "
+                "Available types are: USB, ETHERNET, LAN. Unknown types are rejected. Default: USB."
              << std::endl;
         help << "    -i,--device-at-index UINT\t\tStates which power strip to use by its index. "
                 "Indices start from 1 and match the numbering printed by the list subcommand. "
