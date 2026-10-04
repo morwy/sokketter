@@ -973,7 +973,7 @@ class Build:
         else:
             cmake_command.append(f"-DCMAKE_PREFIX_PATH={self.qt_kit_folder}")
 
-        if BuildStage.TEST.value in self.stages and self.system != System.WINDOWS:
+        if BuildStage.TEST.value in self.stages:
             cmake_command.append("-DSOKKETTER_ENABLE_TESTING=true")
 
         self.__execute_command(cmake_command)
@@ -1049,6 +1049,15 @@ class Build:
             raise FileNotFoundError("No library files found in libs directory.")
 
         self.logger.info("Build verification completed successfully.")
+
+    def __test(self) -> None:
+        test_command = [
+            "ctest",
+            "--test-dir",
+            "build",
+            "--output-on-failure",
+        ]
+        self.__execute_command(test_command)
 
     def __package_library(self) -> None:
         """
@@ -1870,6 +1879,12 @@ Filename: "{{app}}\\sokketter-ui.exe"; Description: "{{cm:LaunchProgram,sokkette
             or BuildStage.ALL.value in self.stages
         ):
             self.__verify_build()
+
+        if (
+            BuildStage.TEST.value in self.stages
+            or BuildStage.ALL.value in self.stages
+        ):
+            self.__test()
 
         if (
             BuildStage.PACKAGE.value in self.stages
