@@ -250,6 +250,12 @@ int cli_parser::parse_and_process(int argc, char *argv[])
         }
 
         /**
+         * @attention track whether every power operation succeeded, so the exit code reflects
+         * failures even when other sockets were processed successfully.
+         */
+        bool all_succeeded = true;
+
+        /**
          * @attention use all sockets if no indices were specified.
          */
         if (sockets_argument->count() == 0 || socket_indices.empty())
@@ -267,20 +273,44 @@ int cli_parser::parse_and_process(int argc, char *argv[])
 
                 if (subcommand_power_on->parsed())
                 {
-                    socket.power(true);
-                    std::cout << "  Socket " << socket_index << ": turned on." << std::endl;
+                    if (!socket.power(true))
+                    {
+                        std::cerr << "  Socket " << socket_index << ": failed to turn on."
+                                  << std::endl;
+                        all_succeeded = false;
+                    }
+                    else
+                    {
+                        std::cout << "  Socket " << socket_index << ": turned on." << std::endl;
+                    }
                 }
 
                 if (subcommand_power_off->parsed())
                 {
-                    socket.power(false);
-                    std::cout << "  Socket " << socket_index << ": turned off." << std::endl;
+                    if (!socket.power(false))
+                    {
+                        std::cerr << "  Socket " << socket_index << ": failed to turn off."
+                                  << std::endl;
+                        all_succeeded = false;
+                    }
+                    else
+                    {
+                        std::cout << "  Socket " << socket_index << ": turned off." << std::endl;
+                    }
                 }
 
                 if (subcommand_power_toggle->parsed())
                 {
-                    socket.power(!socket.is_powered_on());
-                    std::cout << "  Socket " << socket_index << ": toggled." << std::endl;
+                    if (!socket.power(!socket.is_powered_on()))
+                    {
+                        std::cerr << "  Socket " << socket_index << ": failed to toggle."
+                                  << std::endl;
+                        all_succeeded = false;
+                    }
+                    else
+                    {
+                        std::cout << "  Socket " << socket_index << ": toggled." << std::endl;
+                    }
                 }
 
                 ++socket_index;
@@ -300,9 +330,8 @@ int cli_parser::parse_and_process(int argc, char *argv[])
         {
             if (socket_index == 0 || socket_index > device->sockets().size())
             {
-                std::cerr << "Socket index " << socket_index
-                          << " is out of range (valid range: 1-" << device->sockets().size()
-                          << ")." << std::endl;
+                std::cerr << "Socket index " << socket_index << " is out of range (valid range: 1-"
+                          << device->sockets().size() << ")." << std::endl;
                 return EXIT_FAILURE;
             }
         }
@@ -321,24 +350,46 @@ int cli_parser::parse_and_process(int argc, char *argv[])
 
             if (subcommand_power_on->parsed())
             {
-                socket.power(true);
-                std::cout << "  Socket " << socket_index << ": turned on." << std::endl;
+                if (!socket.power(true))
+                {
+                    std::cerr << "  Socket " << socket_index << ": failed to turn on." << std::endl;
+                    all_succeeded = false;
+                }
+                else
+                {
+                    std::cout << "  Socket " << socket_index << ": turned on." << std::endl;
+                }
             }
 
             if (subcommand_power_off->parsed())
             {
-                socket.power(false);
-                std::cout << "  Socket " << socket_index << ": turned off." << std::endl;
+                if (!socket.power(false))
+                {
+                    std::cerr << "  Socket " << socket_index << ": failed to turn off."
+                              << std::endl;
+                    all_succeeded = false;
+                }
+                else
+                {
+                    std::cout << "  Socket " << socket_index << ": turned off." << std::endl;
+                }
             }
 
             if (subcommand_power_toggle->parsed())
             {
-                socket.power(!socket.is_powered_on());
-                std::cout << "  Socket " << socket_index << ": toggled." << std::endl;
+                if (!socket.power(!socket.is_powered_on()))
+                {
+                    std::cerr << "  Socket " << socket_index << ": failed to toggle." << std::endl;
+                    all_succeeded = false;
+                }
+                else
+                {
+                    std::cout << "  Socket " << socket_index << ": toggled." << std::endl;
+                }
             }
         }
 
-        return EXIT_SUCCESS;
+        return all_succeeded ? EXIT_SUCCESS : EXIT_FAILURE;
     }
 
     // LCOV_EXCL_START
