@@ -9,7 +9,7 @@
 
 #include <cli11/CLI11.hpp>
 
-class OverriddenHelpFormatter : public CLI::Formatter
+class overridden_help_formatter : public CLI::Formatter
 {
 public:
     auto make_help(const CLI::App *app, std::string, CLI::AppFormatMode) const

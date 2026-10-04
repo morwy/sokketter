@@ -46,7 +46,7 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
     application.ignore_case();
     application.ignore_underscore();
     application.allow_windows_style_options();
-    application.formatter(std::make_shared<OverriddenHelpFormatter>());
+    application.formatter(std::make_shared<overridden_help_formatter>());
     application.require_subcommand(1, 1);
 
     /**
