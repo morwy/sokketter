@@ -71,6 +71,7 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
      */
     auto subcommand_power = application.add_subcommand("power");
     subcommand_power->ignore_underscore();
+    subcommand_power->require_subcommand(1, 1);
 
     auto subcommand_power_status = subcommand_power->add_subcommand("status");
     auto subcommand_power_on = subcommand_power->add_subcommand("on");
@@ -100,6 +101,15 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
     option_device_serial->ignore_underscore();
     option_device_index->excludes(option_device_serial);
     option_device_serial->excludes(option_device_index);
+
+    /**
+     * @warning option groups are nameless subcommands and inherit a help flag from the parent.
+     * That flag captures --help before it can fall through to the application level, which breaks
+     * help precedence (e.g. "power --help" fails the required subcommand check instead of showing
+     * help). Removing it lets --help fall through to the application-level help flag.
+     */
+    device_group->set_help_flag();
+    device_group->set_help_all_flag();
 
     /**
      * @attention overwriting the default help to show the same text for all subcommands.

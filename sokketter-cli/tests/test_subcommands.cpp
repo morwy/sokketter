@@ -190,10 +190,9 @@ TEST(cli_subcommand_tests, power_and_list_together)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_EQ(return_code, 109);
+    ASSERT_EQ(return_code, 106);
     ASSERT_EQ(out, "");
-    ASSERT_EQ(err,
-        "The following argument was not expected: list\nRun with --help for more information.\n");
+    ASSERT_EQ(err, "A subcommand is required\nRun with --help for more information.\n");
 }
 
 TEST(cli_subcommand_tests, list_no_devices)
@@ -873,10 +872,9 @@ TEST(cli_subcommand_tests, test_power_random_subcommand)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_EQ(return_code, 109);
+    ASSERT_EQ(return_code, 106);
     ASSERT_EQ(out, "");
-    ASSERT_EQ(err, "The following argument was not expected: random\nRun with --help for more "
-                   "information.\n");
+    ASSERT_EQ(err, "A subcommand is required\nRun with --help for more information.\n");
 }
 
 TEST(cli_subcommand_tests, test_power_on_random_subcommand)
