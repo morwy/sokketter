@@ -814,7 +814,9 @@ TEST(cli_subcommand_tests, test_power_too_big_socket_index)
 
     ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, expected_device_header(device));
-    ASSERT_EQ(err, "Socket index 99 is out of range.\n");
+    ASSERT_EQ(err,
+        "Socket index 99 is out of range (valid range: 1-" +
+            std::to_string(device->sockets().size()) + ").\n");
 }
 
 TEST(cli_subcommand_tests, test_power_zero_socket_index)
@@ -839,7 +841,9 @@ TEST(cli_subcommand_tests, test_power_zero_socket_index)
 
     ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, expected_device_header(device));
-    ASSERT_EQ(err, "Socket index 0 is out of range.\n");
+    ASSERT_EQ(err,
+        "Socket index 0 is out of range (valid range: 1-" +
+            std::to_string(device->sockets().size()) + ").\n");
 }
 
 TEST(cli_subcommand_tests, test_power_negative_socket_index)
@@ -1008,4 +1012,587 @@ TEST(cli_subcommand_tests, underscore_option_syntax)
     ASSERT_EQ(
         out, expected_device_header(device) + expected_selected_socket_status_output(device, {1}));
     ASSERT_EQ(err, "");
+}
+
+TEST(cli_subcommand_tests, power_status_short_flags)
+{
+    // MAN-CLI-07 via short spellings -i / -s
+    set_test_device_number("1");
+
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
+        (char *)"-i", (char *)"1", (char *)"-s", (char *)"1"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    const auto device = first_available_device();
+
+    unset_test_device_number();
+
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    if (device == nullptr)
+    {
+        GTEST_SKIP() << "no device is available";
+    }
+
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(
+        out, expected_device_header(device) + expected_selected_socket_status_output(device, {1}));
+    ASSERT_EQ(err, "");
+}
+
+TEST(cli_subcommand_tests, power_status_short_serial_flag)
+{
+    // MAN-CLI-08 via short spelling -n
+    set_test_device_number("1");
+
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
+        (char *)"-n", (char *)"TEST_SERIAL_NUMBER_0", (char *)"-s", (char *)"1"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    const auto device = first_available_device();
+
+    unset_test_device_number();
+
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    if (device == nullptr)
+    {
+        GTEST_SKIP() << "no device is available";
+    }
+
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(
+        out, expected_device_header(device) + expected_selected_socket_status_output(device, {1}));
+    ASSERT_EQ(err, "");
+}
+
+TEST(cli_subcommand_tests, power_status_underscored_serial_option_keeps_value)
+{
+    // MAN-CLI-18: --device_with_serial is aliased, but its underscored value must not be mutated.
+    set_test_device_number("1");
+
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
+        (char *)"--device_with_serial", (char *)"TEST_SERIAL_NUMBER_0", (char *)"--sockets",
+        (char *)"1"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    const auto device = first_available_device();
+
+    unset_test_device_number();
+
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    if (device == nullptr)
+    {
+        GTEST_SKIP() << "no device is available";
+    }
+
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(
+        out, expected_device_header(device) + expected_selected_socket_status_output(device, {1}));
+    ASSERT_EQ(err, "");
+}
+
+TEST(cli_subcommand_tests, power_status_windows_style_options)
+{
+    // MAN-CLI-18: windows-style spellings of the power options.
+    set_test_device_number("1");
+
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
+        (char *)"/device-at-index", (char *)"1", (char *)"/sockets", (char *)"1"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    const auto device = first_available_device();
+
+    unset_test_device_number();
+
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    if (device == nullptr)
+    {
+        GTEST_SKIP() << "no device is available";
+    }
+
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(
+        out, expected_device_header(device) + expected_selected_socket_status_output(device, {1}));
+    ASSERT_EQ(err, "");
+}
+
+TEST(cli_subcommand_tests, mixed_case_power_subcommands)
+{
+    // MAN-CLI-18: mixed-case spellings of power and its action subcommands.
+    set_test_device_number("1");
+
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"POWER", (char *)"Status",
+        (char *)"-i", (char *)"1", (char *)"-s", (char *)"1"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    const auto device = first_available_device();
+
+    unset_test_device_number();
+
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    if (device == nullptr)
+    {
+        GTEST_SKIP() << "no device is available";
+    }
+
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(
+        out, expected_device_header(device) + expected_selected_socket_status_output(device, {1}));
+    ASSERT_EQ(err, "");
+}
+
+TEST(cli_subcommand_tests, power_on_via_serial)
+{
+    // MAN-CLI-13 selected by serial instead of index.
+    set_test_device_number("1");
+
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"on",
+        (char *)"-n", (char *)"TEST_SERIAL_NUMBER_0", (char *)"-s", (char *)"1"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    const auto device = first_available_device();
+
+    unset_test_device_number();
+
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    if (device == nullptr)
+    {
+        GTEST_SKIP() << "no device is available";
+    }
+
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(out, expected_device_header(device) +
+                       expected_selected_socket_action_output(device, {1}, "turned on."));
+    ASSERT_EQ(err, "");
+}
+
+TEST(cli_subcommand_tests, power_off_via_serial)
+{
+    set_test_device_number("1");
+
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"off",
+        (char *)"-n", (char *)"TEST_SERIAL_NUMBER_0", (char *)"-s", (char *)"1"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    const auto device = first_available_device();
+
+    unset_test_device_number();
+
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    if (device == nullptr)
+    {
+        GTEST_SKIP() << "no device is available";
+    }
+
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(out, expected_device_header(device) +
+                       expected_selected_socket_action_output(device, {1}, "turned off."));
+    ASSERT_EQ(err, "");
+}
+
+TEST(cli_subcommand_tests, power_toggle_via_serial)
+{
+    set_test_device_number("1");
+
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"toggle",
+        (char *)"-n", (char *)"TEST_SERIAL_NUMBER_0", (char *)"-s", (char *)"1"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    const auto device = first_available_device();
+
+    unset_test_device_number();
+
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    if (device == nullptr)
+    {
+        GTEST_SKIP() << "no device is available";
+    }
+
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(out, expected_device_header(device) +
+                       expected_selected_socket_action_output(device, {1}, "toggled."));
+    ASSERT_EQ(err, "");
+}
+
+TEST(cli_subcommand_tests, power_toggle_multiple_sockets)
+{
+    // MAN-CLI-14 for the toggle action.
+    set_test_device_number("1");
+
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"toggle",
+        (char *)"-i", (char *)"1", (char *)"-s", (char *)"1", (char *)"2"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    const auto device = first_available_device();
+
+    unset_test_device_number();
+
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    if (device == nullptr)
+    {
+        GTEST_SKIP() << "no device is available";
+    }
+
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(out, expected_device_header(device) +
+                       expected_selected_socket_action_output(device, {1, 2}, "toggled."));
+    ASSERT_EQ(err, "");
+}
+
+TEST(cli_subcommand_tests, power_duplicate_socket_indices_applied_once)
+{
+    // --sockets 1 1 must apply the action to socket 1 exactly once.
+    set_test_device_number("1");
+
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"on",
+        (char *)"-i", (char *)"1", (char *)"-s", (char *)"1", (char *)"1"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    const auto device = first_available_device();
+
+    unset_test_device_number();
+
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    if (device == nullptr)
+    {
+        GTEST_SKIP() << "no device is available";
+    }
+
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(out, expected_device_header(device) +
+                       expected_selected_socket_action_output(device, {1}, "turned on."));
+    ASSERT_EQ(err, "");
+}
+
+TEST(cli_subcommand_tests, power_validates_all_socket_indices_before_action)
+{
+    // An invalid index in the list must abort the whole command before any socket is touched.
+    set_test_device_number("1");
+
+    const auto device = first_available_device();
+    if (device == nullptr)
+    {
+        unset_test_device_number();
+        GTEST_SKIP() << "no device is available";
+    }
+
+    const std::string initial_status = expected_selected_socket_status_output(device, {1});
+
+    std::vector<char *> power_args = {(char *)"sokketter-cli", (char *)"power", (char *)"on",
+        (char *)"-i", (char *)"1", (char *)"-s", (char *)"1", (char *)"99"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &power_code = cli_parser::parse_and_process(power_args.size(), power_args.data());
+    const auto &power_out = testing::internal::GetCapturedStdout();
+    const auto &power_err = testing::internal::GetCapturedStderr();
+
+    ASSERT_EQ(power_code, EXIT_FAILURE);
+    ASSERT_EQ(power_out, expected_device_header(device));
+    ASSERT_EQ(power_err,
+        "Socket index 99 is out of range (valid range: 1-" +
+            std::to_string(device->sockets().size()) + ").\n");
+
+    std::vector<char *> status_args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
+        (char *)"-i", (char *)"1", (char *)"-s", (char *)"1"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &status_code = cli_parser::parse_and_process(status_args.size(), status_args.data());
+    const auto &status_out = testing::internal::GetCapturedStdout();
+    testing::internal::GetCapturedStderr();
+
+    unset_test_device_number();
+
+    ASSERT_EQ(status_code, EXIT_SUCCESS);
+    ASSERT_EQ(status_out, expected_device_header(device) + initial_status);
+}
+
+TEST(cli_subcommand_tests, power_device_index_out_of_range)
+{
+    // A valid-format index beyond the device count reports the index-based miss.
+    unset_test_device_number();
+
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
+        (char *)"-i", (char *)"999", (char *)"-s", (char *)"1"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    ASSERT_EQ(return_code, EXIT_FAILURE);
+    ASSERT_EQ(out, "");
+    ASSERT_EQ(err, "No device was found for index 999.\n");
+}
+
+TEST(cli_subcommand_tests, power_device_index_conversion_error)
+{
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
+        (char *)"-i", (char *)"abc", (char *)"-s", (char *)"1"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    ASSERT_EQ(return_code, 104);
+    ASSERT_EQ(out, "");
+    ASSERT_EQ(err,
+        "Could not convert: --device-at-index = abc\nRun with --help for more information.\n");
+}
+
+TEST(cli_subcommand_tests, power_sockets_missing_value_error)
+{
+    std::vector<char *> args = {
+        (char *)"sokketter-cli", (char *)"power", (char *)"status", (char *)"-i", (char *)"1",
+        (char *)"-s"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    ASSERT_EQ(return_code, 114);
+    ASSERT_EQ(out, "");
+    ASSERT_THAT(err, StartsWith("--sockets"));
+    ASSERT_THAT(err, HasSubstr("Run with --help for more information."));
+}
+
+TEST(cli_subcommand_tests, list_include_device_types_short_flag)
+{
+    // MAN-CLI-19 via short spelling -t
+    set_test_device_number("2");
+
+    std::vector<char *> args = {
+        (char *)"sokketter-cli", (char *)"list", (char *)"-t", (char *)"usb"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+    const auto &expected_output = expected_list_output();
+
+    unset_test_device_number();
+
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(out, expected_output);
+    ASSERT_EQ(err, "");
+}
+
+TEST(cli_subcommand_tests, list_include_device_types_underscore_spelling)
+{
+    // MAN-CLI-18: --include_device_types must alias to --include-device-types.
+    set_test_device_number("2");
+
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"list",
+        (char *)"--include_device_types", (char *)"usb"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+    const auto &expected_output = expected_list_output();
+
+    unset_test_device_number();
+
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(out, expected_output);
+    ASSERT_EQ(err, "");
+}
+
+TEST(cli_subcommand_tests, list_include_ethernet_device_types_with_fake_devices)
+{
+    // MAN-CLI-19: the ethernet filter is accepted and reaches the listing stage.
+    set_test_device_number("2");
+
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"list",
+        (char *)"--include-device-types", (char *)"ethernet"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+    const auto &expected_output = expected_list_output();
+
+    unset_test_device_number();
+
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(out, expected_output);
+    ASSERT_EQ(err, "");
+}
+
+TEST(cli_subcommand_tests, list_include_lan_device_types_with_fake_devices)
+{
+    // MAN-CLI-20: the lan alias behaves the same as ethernet.
+    set_test_device_number("2");
+
+    std::vector<char *> args = {
+        (char *)"sokketter-cli", (char *)"list", (char *)"--include-device-types", (char *)"lan"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+    const auto &expected_output = expected_list_output();
+
+    unset_test_device_number();
+
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(out, expected_output);
+    ASSERT_EQ(err, "");
+}
+
+TEST(cli_subcommand_tests, list_include_device_types_skips_empty_tokens)
+{
+    /**
+     * @attention review finding 6: empty tokens between commas must be skipped rather than
+     * reported as an unknown type. Expected behavior per the review document; the remaining
+     * tokens are valid, so the run must reach the listing stage.
+     */
+    set_test_device_number("0");
+
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"list",
+        (char *)"--include-device-types", (char *)"usb,,ethernet"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    unset_test_device_number();
+
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    ASSERT_EQ(return_code, EXIT_FAILURE);
+    ASSERT_EQ(out, "Listing available devices...\n");
+    ASSERT_EQ(err, "No devices found.\n");
+}
+
+TEST(cli_subcommand_tests, power_without_action_subcommand_is_rejected)
+{
+    /**
+     * @attention review finding 1: `power` alone must not be a silent no-op with exit 0.
+     * Expected behavior per the review document: power requires exactly one action subcommand.
+     */
+    std::vector<char *> args = {
+        (char *)"sokketter-cli", (char *)"power", (char *)"-i", (char *)"1"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    ASSERT_EQ(return_code, 106);
+    ASSERT_EQ(out, "");
+    ASSERT_EQ(err, "A subcommand is required\nRun with --help for more information.\n");
+}
+
+TEST(cli_subcommand_tests, power_with_two_action_subcommands_is_rejected)
+{
+    /**
+     * @attention review finding 1: contradictory actions must not both run. Expected behavior
+     * per the review document: at most one action subcommand is accepted.
+     */
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"on",
+        (char *)"off", (char *)"-i", (char *)"1"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    ASSERT_EQ(return_code, 109);
+    ASSERT_EQ(out, "");
+    ASSERT_EQ(err,
+        "The following argument was not expected: off\nRun with --help for more information.\n");
 }

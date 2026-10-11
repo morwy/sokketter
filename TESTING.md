@@ -264,7 +264,7 @@ graph TD
 
 | Suite | Location | Status |
 | --- | --- | --- |
-| CLI parser tests | [sokketter-cli/tests](sokketter-cli/tests) | Present — options, subcommands, general parsing. |
+| CLI parser tests | [sokketter-cli/tests](sokketter-cli/tests) | Present — options, subcommands, general parsing, plus full `MAN-CLI-*` / `AUTO-CLI-*` coverage (short flags, mixed case, windows-style, underscore aliasing, dedup, validate-before-hardware, actions via serial, multi-socket toggle, conversion errors). |
 | Library unit tests | — | **Missing** — factory, storage, device logic untested. |
 | UI tests | — | **Missing**. |
 | kommpot tests | [third-party/kommpot/tests](third-party/kommpot/tests) | Vendored; do not edit. |
