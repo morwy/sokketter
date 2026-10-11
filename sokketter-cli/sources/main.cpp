@@ -30,7 +30,11 @@ auto main(int argc, char *argv[]) -> int
 
     const int return_code = cli_parser::parse_and_process(argc, argv);
 
-    sokketter::deinitialize();
+    if (!sokketter::deinitialize())
+    {
+        std::cerr << "Failed to deinitialize sokketter." << std::endl;
+        return EXIT_FAILURE;
+    }
 
     return return_code;
 }
