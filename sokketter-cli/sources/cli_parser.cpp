@@ -78,9 +78,6 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
     auto subcommand_power_off = subcommand_power->add_subcommand("off");
     auto subcommand_power_toggle = subcommand_power->add_subcommand("toggle");
 
-    subcommand_list->excludes(subcommand_power);
-    subcommand_power->excludes(subcommand_list);
-
     /**
      * @brief adding device and socket access options.
      */
