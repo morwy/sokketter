@@ -28,7 +28,15 @@ auto main(int argc, char *argv[]) -> int
         return EXIT_FAILURE;
     }
 
-    const int return_code = cli_parser::parse_and_process(argc, argv);
+    int return_code = EXIT_FAILURE;
+    try
+    {
+        return_code = cli_parser::parse_and_process(argc, argv);
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "Unexpected error: " << e.what() << std::endl;
+    }
 
     if (!sokketter::deinitialize())
     {
