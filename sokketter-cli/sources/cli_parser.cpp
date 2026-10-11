@@ -270,6 +270,11 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
     else if (subcommand_power->parsed())
     {
         /**
+         * @attention ensure the device database is populated and communication handles are live.
+         */
+        sokketter::devices();
+
+        /**
          * @warning stating device access group as required via CLI11 functionality
          * does not work as expected. It has a higher precedence than following subcommands,
          * thus it displays the wrong error message. Checking it manually.
