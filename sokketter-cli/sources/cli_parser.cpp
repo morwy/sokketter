@@ -387,6 +387,12 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
 
         auto &sockets = device->sockets();
 
+        if (sockets.empty())
+        {
+            std::cerr << "Device has no controllable sockets (is it connected?)." << std::endl;
+            return EXIT_FAILURE;
+        }
+
         /**
          * @attention use all sockets if no indices were specified.
          */
