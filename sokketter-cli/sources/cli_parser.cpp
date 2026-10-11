@@ -14,14 +14,17 @@ namespace {
      *
      * @attention CLI11's ignore_underscore() strips underscores from both the registered name and
      * the input, so it cannot alias an underscored spelling to a dashed option name. This pass
-     * provides that aliasing. It is deliberately limited to tokens that begin with "--" so that
-     * option values (paths such as /dev/ttyUSB_0, device serials, or negative numbers) are never
-     * silently mutated.
+     * provides that aliasing. It covers tokens that begin with "--" as well as Windows-style
+     * tokens that begin with "/" (enabled via allow_windows_style_options()), so that spellings
+     * such as /device_at_index are aliased too.
+     * @attention as a consequence, option values that begin with "/" (paths such as /dev/ttyUSB_0)
+     * are also rewritten; such values are not expected for any current option. Negative numbers
+     * and bare serials are unaffected.
      * @attention stops at key-value splitter '='.
      */
     auto normalize_cli_argument(std::string argument) -> std::string
     {
-        if (argument.rfind("--", 0) == 0)
+        if (argument.rfind("--", 0) == 0 || (!argument.empty() && argument.front() == '/'))
         {
             const auto separator = argument.find('=');
             const auto end = (separator == std::string::npos)

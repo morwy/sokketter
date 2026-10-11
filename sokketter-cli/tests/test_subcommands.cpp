@@ -1139,6 +1139,69 @@ TEST(cli_subcommand_tests, power_status_windows_style_options)
     ASSERT_EQ(err, "");
 }
 
+TEST(cli_subcommand_tests, power_status_windows_style_underscored_options)
+{
+    // MAN-CLI-18: underscored Windows-style spellings are aliased to the dashed option names.
+    set_test_device_number("1");
+
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
+        (char *)"/device_at_index", (char *)"1", (char *)"/sockets", (char *)"1"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    const auto device = first_available_device();
+
+    unset_test_device_number();
+
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    if (device == nullptr)
+    {
+        GTEST_SKIP() << "no device is available";
+    }
+
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(
+        out, expected_device_header(device) + expected_selected_socket_status_output(device, {1}));
+    ASSERT_EQ(err, "");
+}
+
+TEST(cli_subcommand_tests, power_status_windows_style_underscored_serial_option_keeps_value)
+{
+    // MAN-CLI-18: /device_with_serial is aliased, but its underscored value must not be mutated.
+    set_test_device_number("1");
+
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
+        (char *)"/device_with_serial", (char *)"TEST_SERIAL_NUMBER_0", (char *)"/sockets",
+        (char *)"1"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    const auto device = first_available_device();
+
+    unset_test_device_number();
+
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    if (device == nullptr)
+    {
+        GTEST_SKIP() << "no device is available";
+    }
+
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(
+        out, expected_device_header(device) + expected_selected_socket_status_output(device, {1}));
+    ASSERT_EQ(err, "");
+}
+
 TEST(cli_subcommand_tests, mixed_case_power_subcommands)
 {
     // MAN-CLI-18: mixed-case spellings of power and its action subcommands.
