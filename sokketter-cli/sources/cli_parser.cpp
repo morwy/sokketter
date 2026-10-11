@@ -380,6 +380,8 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
             return succeeded;
         };
 
+        auto &sockets = device->sockets();
+
         /**
          * @attention use all sockets if no indices were specified.
          */
@@ -388,7 +390,7 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
             std::cout << device->to_string() << std::endl;
 
             size_t socket_index = 1;
-            for (const auto &socket : device->sockets())
+            for (const auto &socket : sockets)
             {
                 if (!apply_action(socket, socket_index))
                 {
@@ -410,10 +412,10 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
          */
         for (const auto &socket_index : socket_indices)
         {
-            if (socket_index == 0 || socket_index > device->sockets().size())
+            if (socket_index == 0 || socket_index > sockets.size())
             {
                 std::cerr << "Socket index " << socket_index << " is out of range (valid range: 1-"
-                          << device->sockets().size() << ")." << std::endl;
+                          << sockets.size() << ")." << std::endl;
                 return EXIT_FAILURE;
             }
         }
@@ -431,7 +433,7 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
             /**
              * @attention decrement CLI socket index to match the vector index.
              */
-            const auto &socket = device->sockets().at(socket_index - 1);
+            const auto &socket = sockets.at(socket_index - 1);
 
             if (!apply_action(socket, socket_index))
             {
