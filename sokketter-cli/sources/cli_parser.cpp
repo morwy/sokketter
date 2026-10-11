@@ -212,6 +212,11 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
                         return static_cast<char>(std::tolower(character));
                     });
 
+                if (token.empty())
+                {
+                    continue;
+                }
+
                 if (token == "usb")
                 {
                     selected_types |=
