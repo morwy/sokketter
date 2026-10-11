@@ -32,6 +32,13 @@ public:
         help << "  list\t\tLists all available devices." << std::endl;
         help << std::endl;
 
+        help << "  Options:" << std::endl;
+        help << "    -t,--include-device-types TEXT\tStates which device types to include in the "
+                "list, replacing the default USB-only selection. Comma-separated, case-insensitive. "
+                "Available types are: USB, ETHERNET, LAN. Unknown types are rejected. Default: USB."
+             << std::endl;
+        help << std::endl;
+
         help << "  power\t\tContains actions related to power control of the socket(s)."
              << std::endl;
         help << std::endl;
@@ -44,10 +51,6 @@ public:
         help << std::endl;
 
         help << "  Options:" << std::endl;
-        help << "    -t,--include-device-types TEXT\tStates which device types to include in the "
-                "list, replacing the default USB-only selection. Comma-separated, case-insensitive. "
-                "Available types are: USB, ETHERNET, LAN. Unknown types are rejected. Default: USB."
-             << std::endl;
         help << "    -i,--device-at-index UINT\t\tStates which power strip to use by its index. "
                 "Indices start from 1 and match the numbering printed by the list subcommand. "
                 "Excludes --device-with-serial option."
