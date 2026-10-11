@@ -17,12 +17,17 @@ namespace {
      * provides that aliasing. It is deliberately limited to tokens that begin with "--" so that
      * option values (paths such as /dev/ttyUSB_0, device serials, or negative numbers) are never
      * silently mutated.
+     * @attention stops at key-value splitter '='.
      */
     auto normalize_cli_argument(std::string argument) -> std::string
     {
         if (argument.rfind("--", 0) == 0)
         {
-            std::replace(argument.begin(), argument.end(), '_', '-');
+            const auto separator = argument.find('=');
+            const auto end = (separator == std::string::npos)
+                                 ? argument.end()
+                                 : argument.begin() + static_cast<std::ptrdiff_t>(separator);
+            std::replace(argument.begin(), end, '_', '-');
         }
 
         return argument;
@@ -109,7 +114,8 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
     }
 
     /**
-     * @brief adding an option to select which device types (USB/ETHERNET) are included in the list subcommand.
+     * @brief adding an option to select which device types (USB/ETHERNET) are included in the list
+     * subcommand.
      */
     std::string included_device_types = "";
     auto option_included_devices_types =
@@ -186,12 +192,13 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
             std::string token;
             while (std::getline(token_stream, token, ','))
             {
-                token.erase(std::remove_if(token.begin(), token.end(),
-                              [](unsigned char character) { return std::isspace(character) != 0; }),
+                token.erase(
+                    std::remove_if(token.begin(), token.end(),
+                        [](unsigned char character) { return std::isspace(character) != 0; }),
                     token.end());
 
-                std::transform(token.begin(), token.end(), token.begin(),
-                    [](unsigned char character) {
+                std::transform(
+                    token.begin(), token.end(), token.begin(), [](unsigned char character) {
                         return static_cast<char>(std::tolower(character));
                     });
 
@@ -301,8 +308,8 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
         {
             std::cerr << "No device was found for "
                       << (option_device_index->count() > 0
-                              ? "index " + std::to_string(device_index) + "."
-                              : "serial \"" + device_serial + "\".")
+                                 ? "index " + std::to_string(device_index) + "."
+                                 : "serial \"" + device_serial + "\".")
                       << std::endl;
             return EXIT_FAILURE;
         }
@@ -317,11 +324,12 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
          * @attention apply the requested power action to a single socket, printing the
          * per-socket result. Returns false if any of the requested actions failed.
          */
-        auto apply_action = [&](const sokketter::socket &socket, const size_t display_index) -> bool
-        {
+        auto apply_action = [&](const sokketter::socket &socket,
+                                const size_t display_index) -> bool {
             if (subcommand_power_status->parsed())
             {
-                std::cout << "  Socket " << display_index << ": " << socket.to_string() << std::endl;
+                std::cout << "  Socket " << display_index << ": " << socket.to_string()
+                          << std::endl;
                 return true;
             }
 
@@ -331,7 +339,8 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
             {
                 if (!socket.power(true))
                 {
-                    std::cerr << "  Socket " << display_index << ": failed to turn on." << std::endl;
+                    std::cerr << "  Socket " << display_index << ": failed to turn on."
+                              << std::endl;
                     succeeded = false;
                 }
                 else
