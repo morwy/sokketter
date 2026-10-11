@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include <cstdlib>
 #include <sstream>
 #include <string>
 
@@ -65,7 +64,7 @@ public:
 
         help << "Examples:" << std::endl;
         help << "  sokketter-cli list" << std::endl;
-        help << "  sokketter-cli power on --sockets 1 --device-at-index 0" << std::endl;
+        help << "  sokketter-cli power on --sockets 1 --device-at-index 1" << std::endl;
         help << "  sokketter-cli power status --device-with-serial 01:02:03:04:05" << std::endl;
         help << std::endl;
 
