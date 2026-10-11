@@ -268,17 +268,6 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
     else if (subcommand_power->parsed())
     {
         /**
-         * @warning --help flag is not being forwarded to application level,
-         * even though a fallthrough is set for all subcommands.
-         * Checking it manually for power and power related subcommands.
-         */
-        if (subcommand_power->count("--help") > 0 || subcommand_power->count("-h") > 0)
-        {
-            std::cout << application.help() << std::endl;
-            return EXIT_SUCCESS;
-        }
-
-        /**
          * @warning stating device access group as required via CLI11 functionality
          * does not work as expected. It has a higher precedence than following subcommands,
          * thus it displays the wrong error message. Checking it manually.
