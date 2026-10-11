@@ -33,7 +33,6 @@ auto main(int argc, char *argv[]) -> int
     if (!sokketter::deinitialize())
     {
         std::cerr << "Failed to deinitialize sokketter." << std::endl;
-        return EXIT_FAILURE;
     }
 
     return return_code;
