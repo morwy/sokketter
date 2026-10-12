@@ -300,8 +300,13 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
         const auto devices = visible_devices(filter);
         if (devices.empty())
         {
+            /**
+             * @attention an empty device bus is a valid answer to "list", not a command failure, so
+             * the subcommand exits successfully. Scripts that need to distinguish "no devices" from
+             * an error should check for the "No devices found." message rather than the exit code.
+             */
             std::cerr << "No devices found." << std::endl;
-            return EXIT_FAILURE;
+            return EXIT_SUCCESS;
         }
 
         std::cout << "Available devices (indices start from 1):" << std::endl;

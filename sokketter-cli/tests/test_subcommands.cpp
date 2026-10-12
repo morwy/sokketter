@@ -240,7 +240,7 @@ TEST(cli_subcommand_tests, list_no_devices)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_EQ(return_code, EXIT_FAILURE);
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_EQ(out, "Listing available devices...\n");
     ASSERT_EQ(err, "No devices found.\n");
 }
@@ -446,7 +446,7 @@ TEST(cli_subcommand_tests, list_include_device_types_accepts_comma_separated_tok
      * @attention all tokens are valid, so parsing must succeed and reach the listing stage.
      * With zero fake devices the run ends with "No devices found." rather than a validation error.
      */
-    ASSERT_EQ(return_code, EXIT_FAILURE);
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_EQ(out, "Listing available devices...\n");
     ASSERT_EQ(err, "No devices found.\n");
 }
@@ -1640,7 +1640,7 @@ TEST(cli_subcommand_tests, list_include_device_types_skips_empty_tokens)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_EQ(return_code, EXIT_FAILURE);
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_EQ(out, "Listing available devices...\n");
     ASSERT_EQ(err, "No devices found.\n");
 }

@@ -66,6 +66,11 @@ public:
              << std::endl;
         help << std::endl;
 
+        help << "Exit codes:" << std::endl;
+        help << "  0\t\tThe command completed successfully." << std::endl;
+        help << "  1\t\tThe command failed." << std::endl;
+        help << std::endl;
+
         help << "Examples:" << std::endl;
         help << "  sokketter-cli list" << std::endl;
         help << "  sokketter-cli power on --sockets 1 --device-at-index 1" << std::endl;
