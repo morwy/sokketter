@@ -4,6 +4,8 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
+#include <iostream>
 #include <numeric>
 #include <type_traits>
 #include <vector>
