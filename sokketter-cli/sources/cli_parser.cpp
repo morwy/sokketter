@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <numeric>
+#include <sstream>
 #include <type_traits>
 #include <vector>
 
