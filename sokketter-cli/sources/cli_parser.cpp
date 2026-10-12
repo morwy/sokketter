@@ -89,6 +89,16 @@ namespace {
 
 auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
 {
+    /**
+     * @brief guard against an empty argument vector (possible via execve on POSIX). Without it,
+     * normalized_argv would be empty and its data() may be null; CLI11 never dereferences it today,
+     * but the guard keeps the call safe if it is ever changed to parse(normalized_argv).
+     */
+    if (argc == 0)
+    {
+        return EXIT_FAILURE;
+    }
+
     /** ************************************************************************
      *
      * @brief parameter configuration section.
