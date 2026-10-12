@@ -217,7 +217,13 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
     }
     catch (const CLI::ParseError &e)
     {
-        return application.exit(e);
+        /**
+         * @attention application.exit() prints the error/usage text and returns CLI11's own
+         * exit code (100+ for parse errors, 0 for the success family: --help/--version).
+         * Collapse it onto the documented contract: 0 for success, 1 for any failure.
+         */
+        const int cli_exit_code = application.exit(e);
+        return cli_exit_code == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
     }
 
     /** ************************************************************************

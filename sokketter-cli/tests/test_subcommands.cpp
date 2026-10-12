@@ -199,7 +199,7 @@ TEST(cli_subcommand_tests, list_and_power_together)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_EQ(return_code, 109);
+    ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, "");
     ASSERT_EQ(err,
         "The following argument was not expected: power\nRun with --help for more information.\n");
@@ -218,7 +218,7 @@ TEST(cli_subcommand_tests, power_and_list_together)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_EQ(return_code, 106);
+    ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, "");
     ASSERT_EQ(err, "A subcommand is required\nRun with --help for more information.\n");
 }
@@ -280,7 +280,7 @@ TEST(cli_subcommand_tests, list_random_subcommand)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_EQ(return_code, 109);
+    ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, "");
     ASSERT_EQ(err,
         "The following argument was not expected: random\nRun with --help for more information.\n");
@@ -501,7 +501,7 @@ TEST(cli_subcommand_tests, test_power_both_access_flags)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_EQ(return_code, 108);
+    ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, "");
     ASSERT_EQ(err,
         "--device-at-index excludes --device-with-serial\nRun with --help for more information.\n");
@@ -887,7 +887,7 @@ TEST(cli_subcommand_tests, test_power_negative_socket_index)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_EQ(return_code, 104);
+    ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, "");
     ASSERT_EQ(err, "Could not convert: --sockets = -1\nRun with --help for more information.\n");
 }
@@ -904,7 +904,7 @@ TEST(cli_subcommand_tests, test_power_random_subcommand)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_EQ(return_code, 106);
+    ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, "");
     ASSERT_EQ(err, "A subcommand is required\nRun with --help for more information.\n");
 }
@@ -922,7 +922,7 @@ TEST(cli_subcommand_tests, test_power_on_random_subcommand)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_EQ(return_code, 109);
+    ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, "");
     ASSERT_EQ(err, "The following argument was not expected: random\nRun with --help for more "
                    "information.\n");
@@ -1496,7 +1496,7 @@ TEST(cli_subcommand_tests, power_device_index_conversion_error)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_EQ(return_code, 104);
+    ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, "");
     ASSERT_EQ(err,
         "Could not convert: --device-at-index = abc\nRun with --help for more information.\n");
@@ -1516,7 +1516,7 @@ TEST(cli_subcommand_tests, power_sockets_missing_value_error)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_EQ(return_code, 114);
+    ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, "");
     ASSERT_THAT(err, StartsWith("--sockets"));
     ASSERT_THAT(err, HasSubstr("Run with --help for more information."));
@@ -1662,7 +1662,7 @@ TEST(cli_subcommand_tests, power_without_action_subcommand_is_rejected)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_EQ(return_code, 106);
+    ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, "");
     ASSERT_EQ(err, "A subcommand is required\nRun with --help for more information.\n");
 }
@@ -1684,7 +1684,7 @@ TEST(cli_subcommand_tests, power_with_two_action_subcommands_is_rejected)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_EQ(return_code, 109);
+    ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, "");
     ASSERT_EQ(err,
         "The following argument was not expected: off\nRun with --help for more information.\n");
