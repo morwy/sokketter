@@ -27,18 +27,38 @@ namespace {
 #endif
     }
 
+    /**
+     * @brief mirrors the CLI's client-side visibility rule: devices whose type bits intersect the
+     * filter are visible, and TEST_DEVICE is always visible because the library returns fake
+     * devices regardless of the filter.
+     */
+    bool is_visible_device(const std::shared_ptr<sokketter::power_strip> &device,
+        const sokketter::power_strip_type &included_types)
+    {
+        using underlying_type = std::underlying_type_t<sokketter::power_strip_type>;
+
+        const auto device_type = static_cast<underlying_type>(device->configuration().type);
+        const auto test_device_type =
+            static_cast<underlying_type>(sokketter::power_strip_type::TEST_DEVICE);
+
+        return device_type == test_device_type
+            || (device_type & static_cast<underlying_type>(included_types)) != 0;
+    }
+
     std::shared_ptr<sokketter::power_strip> first_available_device()
     {
         sokketter::device_filter filter;
         filter.included_types = sokketter::power_strip_type::USB_DEVICES;
 
-        const auto &devices = sokketter::devices(filter);
-        if (devices.empty())
+        for (const auto &device : sokketter::devices(filter))
         {
-            return nullptr;
+            if (is_visible_device(device, filter.included_types))
+            {
+                return device;
+            }
         }
 
-        return devices.front();
+        return nullptr;
     }
 
     bool any_device_available(const sokketter::power_strip_type &included_types)
@@ -54,8 +74,16 @@ namespace {
         sokketter::device_filter filter;
         filter.included_types = sokketter::power_strip_type::USB_DEVICES;
 
-        const auto &devices = sokketter::devices(filter);
-        if (devices.empty())
+        std::vector<std::shared_ptr<sokketter::power_strip>> visible;
+        for (const auto &device : sokketter::devices(filter))
+        {
+            if (is_visible_device(device, filter.included_types))
+            {
+                visible.push_back(device);
+            }
+        }
+
+        if (visible.empty())
         {
             return "No devices found.\n";
         }
@@ -64,9 +92,9 @@ namespace {
         output << "Listing available devices...\n";
         output << "Available devices (indices start from 1):\n";
 
-        for (size_t index = 0; index < devices.size(); ++index)
+        for (size_t index = 0; index < visible.size(); ++index)
         {
-            output << index + 1 << ". " << devices[index]->to_string() << "\n";
+            output << index + 1 << ". " << visible[index]->to_string() << "\n";
         }
 
         return output.str();
@@ -640,7 +668,7 @@ TEST(cli_subcommand_tests, test_power_off_specified_socket)
     {
         ASSERT_EQ(return_code, EXIT_FAILURE);
         ASSERT_EQ(out, "");
-        ASSERT_EQ(err, "No device was found for index 1.\n");
+        ASSERT_EQ(err, "Device index 1 is out of range (no devices are available).\n");
     }
     else
     {
@@ -669,7 +697,7 @@ TEST(cli_subcommand_tests, test_power_toggle_specified_socket)
     {
         ASSERT_EQ(return_code, EXIT_FAILURE);
         ASSERT_EQ(out, "");
-        ASSERT_EQ(err, "No device was found for index 1.\n");
+        ASSERT_EQ(err, "Device index 1 is out of range (no devices are available).\n");
     }
     else
     {
@@ -698,7 +726,7 @@ TEST(cli_subcommand_tests, test_power_status_all)
     {
         ASSERT_EQ(return_code, EXIT_FAILURE);
         ASSERT_EQ(out, "");
-        ASSERT_EQ(err, "No device was found for index 1.\n");
+        ASSERT_EQ(err, "Device index 1 is out of range (no devices are available).\n");
     }
     else
     {
@@ -752,7 +780,7 @@ TEST(cli_subcommand_tests, test_power_off_all)
     {
         ASSERT_EQ(return_code, EXIT_FAILURE);
         ASSERT_EQ(out, "");
-        ASSERT_EQ(err, "No device was found for index 1.\n");
+        ASSERT_EQ(err, "Device index 1 is out of range (no devices are available).\n");
     }
     else
     {
@@ -781,7 +809,7 @@ TEST(cli_subcommand_tests, test_power_toggle_all)
     {
         ASSERT_EQ(return_code, EXIT_FAILURE);
         ASSERT_EQ(out, "");
-        ASSERT_EQ(err, "No device was found for index 1.\n");
+        ASSERT_EQ(err, "Device index 1 is out of range (no devices are available).\n");
     }
     else
     {
@@ -1434,23 +1462,25 @@ TEST(cli_subcommand_tests, power_validates_all_socket_indices_before_action)
 
 TEST(cli_subcommand_tests, power_device_index_out_of_range)
 {
-    // A valid-format index beyond the device count reports the index-based miss.
-    unset_test_device_number();
+    // A valid-format index beyond the visible device count reports the positional range.
+    set_test_device_number("2");
 
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
-        (char *)"-i", (char *)"999", (char *)"-s", (char *)"1"};
+        (char *)"-i", (char *)"3", (char *)"-s", (char *)"1"};
 
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
+    unset_test_device_number();
+
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, "");
-    ASSERT_EQ(err, "No device was found for index 999.\n");
+    ASSERT_EQ(err, "Device index 3 is out of range (valid range: 1-2).\n");
 }
 
 TEST(cli_subcommand_tests, power_device_index_conversion_error)

@@ -35,6 +35,53 @@ namespace {
 
         return argument;
     }
+
+    /**
+     * @brief the device filter used by the list subcommand by default and by the power subcommand
+     * when resolving --device-at-index.
+     *
+     * @attention both the printed numbering and the index resolution go through this filter, which
+     * is what makes the contract "index N addresses the device printed as N by list" hold.
+     * Ethernet devices are addressable only via --device-with-serial.
+     */
+    auto default_display_filter() -> sokketter::device_filter
+    {
+        sokketter::device_filter filter;
+        filter.included_types = sokketter::power_strip_type::USB_DEVICES;
+        return filter;
+    }
+
+    /**
+     * @brief returns the exact device list the user sees for the given filter, in the exact order
+     * it is printed.
+     *
+     * @attention the library's devices(filter) only uses the filter to select which communications
+     * to enumerate and returns the whole persisted database, so the CLI applies the type filter
+     * client-side to make display and index resolution agree.
+     * @attention TEST_DEVICE is not part of any type group; the library returns fake devices
+     * regardless of the filter, so they stay visible here as well.
+     */
+    auto visible_devices(const sokketter::device_filter &filter)
+        -> std::vector<std::shared_ptr<sokketter::power_strip>>
+    {
+        using underlying_type = std::underlying_type_t<sokketter::power_strip_type>;
+
+        const auto included_types = static_cast<underlying_type>(filter.included_types);
+        const auto test_device_type =
+            static_cast<underlying_type>(sokketter::power_strip_type::TEST_DEVICE);
+
+        std::vector<std::shared_ptr<sokketter::power_strip>> visible;
+        for (const auto &device : sokketter::devices(filter))
+        {
+            const auto device_type = static_cast<underlying_type>(device->configuration().type);
+
+            if (device_type == test_device_type || (device_type & included_types) != 0)
+            {
+                visible.push_back(device);
+            }
+        }
+        return visible;
+    }
 } // namespace
 
 auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
@@ -246,7 +293,7 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
             filter.included_types = static_cast<sokketter::power_strip_type>(selected_types);
         }
 
-        const auto &devices = sokketter::devices(filter);
+        const auto devices = visible_devices(filter);
         if (devices.empty())
         {
             std::cerr << "No devices found." << std::endl;
@@ -295,10 +342,6 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
 
         if (option_device_index->count() > 0)
         {
-            /**
-             * @attention --device-at-index is 1-based, matching the numbering printed by the list
-             * subcommand, so it has to be decremented before being passed to the 0-based library.
-             */
             if (device_index == 0)
             {
                 std::cerr << "Device index 0 is out of range (valid range starts from 1)."
@@ -306,7 +349,29 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
                 return EXIT_FAILURE;
             }
 
-            device = sokketter::device(device_index - 1);
+            /**
+             * @attention --device-at-index is 1-based and resolves positionally against the same
+             * filtered vector the list subcommand prints with its default filter, so index N always
+             * addresses the device printed as N. The library's sokketter::device(index) indexes the
+             * unfiltered database and must not be used here.
+             */
+            const auto visible = visible_devices(default_display_filter());
+
+            if (visible.empty())
+            {
+                std::cerr << "Device index " << device_index
+                          << " is out of range (no devices are available)." << std::endl;
+                return EXIT_FAILURE;
+            }
+
+            if (device_index > visible.size())
+            {
+                std::cerr << "Device index " << device_index << " is out of range (valid range: 1-"
+                          << visible.size() << ")." << std::endl;
+                return EXIT_FAILURE;
+            }
+
+            device = visible[device_index - 1];
         }
         else if (option_device_serial->count() > 0)
         {
