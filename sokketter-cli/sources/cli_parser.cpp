@@ -180,6 +180,7 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
     std::string included_device_types;
     auto option_included_device_types =
         subcommand_list->add_option("--include-device-types,-t", included_device_types);
+    option_included_device_types->ignore_underscore();
 
     /** ************************************************************************
      *
