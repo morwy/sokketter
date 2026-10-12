@@ -250,9 +250,7 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
     {
         std::cout << "Listing available devices..." << std::endl;
 
-        sokketter::device_filter filter;
-
-        filter.included_types = sokketter::power_strip_type::USB_DEVICES;
+        auto filter = default_display_filter();
 
         if (option_included_device_types->count() > 0)
         {
