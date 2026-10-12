@@ -199,7 +199,8 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
      ** ***********************************************************************/
     std::vector<std::string> normalized_arguments;
     normalized_arguments.reserve(argc);
-    for (int index = 0; index < argc; ++index)
+    normalized_arguments.emplace_back(argv[0]); // program name: never normalized
+    for (int index = 1; index < argc; ++index)
     {
         normalized_arguments.emplace_back(normalize_cli_argument(argv[index]));
     }
