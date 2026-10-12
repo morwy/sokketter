@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <numeric>
 #include <type_traits>
 #include <vector>
 
@@ -462,59 +463,52 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
         }
 
         /**
-         * @attention use all sockets if no indices were specified.
+         * @attention build the list of 1-based socket indices to act on once: all sockets when no
+         * indices were specified, otherwise the validated and deduplicated user-provided indices.
          */
-        if (sockets_argument->count() == 0 || socket_indices.empty())
-        {
-            std::cout << device->to_string() << std::endl;
+        std::vector<size_t> targets;
 
-            size_t socket_index = 1;
-            for (const auto &socket : sockets)
+        if (socket_indices.empty())
+        {
+            targets.resize(sockets.size());
+            std::iota(targets.begin(), targets.end(), 1);
+        }
+        else
+        {
+            /**
+             * @attention validate all indices before touching hardware, so an invalid index cannot
+             * leave the device in a partially-changed state.
+             */
+            for (const auto &socket_index : socket_indices)
             {
-                if (!apply_action(socket, socket_index))
+                if (socket_index == 0 || socket_index > sockets.size())
                 {
-                    all_succeeded = false;
+                    std::cerr << "Socket index " << socket_index
+                              << " is out of range (valid range: 1-" << sockets.size() << ")."
+                              << std::endl;
+                    return EXIT_FAILURE;
                 }
-
-                ++socket_index;
             }
+
+            /**
+             * @attention deduplicate the indices after validation, so a repeated index such as
+             * --sockets 1 1 applies the action to the socket only once.
+             */
+            std::sort(socket_indices.begin(), socket_indices.end());
+            socket_indices.erase(
+                std::unique(socket_indices.begin(), socket_indices.end()), socket_indices.end());
+
+            targets = socket_indices;
         }
 
-        if (!socket_indices.empty())
-        {
-            std::cout << device->to_string() << std::endl;
-        }
+        std::cout << device->to_string() << std::endl;
 
-        /**
-         * @attention validate all indices before touching hardware, so an invalid index cannot
-         * leave the device in a partially-changed state.
-         */
-        for (const auto &socket_index : socket_indices)
-        {
-            if (socket_index == 0 || socket_index > sockets.size())
-            {
-                std::cerr << "Socket index " << socket_index << " is out of range (valid range: 1-"
-                          << sockets.size() << ")." << std::endl;
-                return EXIT_FAILURE;
-            }
-        }
-
-        /**
-         * @attention deduplicate the indices after validation, so a repeated index such as
-         * --sockets 1 1 applies the action to the socket only once.
-         */
-        std::sort(socket_indices.begin(), socket_indices.end());
-        socket_indices.erase(
-            std::unique(socket_indices.begin(), socket_indices.end()), socket_indices.end());
-
-        for (const auto &socket_index : socket_indices)
+        for (const auto target : targets)
         {
             /**
              * @attention decrement CLI socket index to match the vector index.
              */
-            const auto &socket = sockets.at(socket_index - 1);
-
-            if (!apply_action(socket, socket_index))
+            if (!apply_action(sockets.at(target - 1), target))
             {
                 all_succeeded = false;
             }

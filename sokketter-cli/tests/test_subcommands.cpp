@@ -841,7 +841,7 @@ TEST(cli_subcommand_tests, test_power_too_big_socket_index)
     }
 
     ASSERT_EQ(return_code, EXIT_FAILURE);
-    ASSERT_EQ(out, expected_device_header(device));
+    ASSERT_EQ(out, "");
     ASSERT_EQ(err,
         "Socket index 99 is out of range (valid range: 1-" +
             std::to_string(device->sockets().size()) + ").\n");
@@ -868,7 +868,7 @@ TEST(cli_subcommand_tests, test_power_zero_socket_index)
     }
 
     ASSERT_EQ(return_code, EXIT_FAILURE);
-    ASSERT_EQ(out, expected_device_header(device));
+    ASSERT_EQ(out, "");
     ASSERT_EQ(err,
         "Socket index 0 is out of range (valid range: 1-" +
             std::to_string(device->sockets().size()) + ").\n");
@@ -1439,7 +1439,7 @@ TEST(cli_subcommand_tests, power_validates_all_socket_indices_before_action)
     const auto &power_err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(power_code, EXIT_FAILURE);
-    ASSERT_EQ(power_out, expected_device_header(device));
+    ASSERT_EQ(power_out, "");
     ASSERT_EQ(power_err,
         "Socket index 99 is out of range (valid range: 1-" +
             std::to_string(device->sockets().size()) + ").\n");
