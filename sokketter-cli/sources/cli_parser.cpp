@@ -396,62 +396,73 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
         bool all_succeeded = true;
 
         /**
+         * @attention the requested action is invariant across sockets; resolve it once here so the
+         * per-socket lambda contains a single decision point instead of re-testing every
+         * subcommand on each call.
+         */
+        enum class power_action
+        {
+            status,
+            on,
+            off,
+            toggle
+        };
+
+        const power_action action = subcommand_power_status->parsed() ? power_action::status
+                                    : subcommand_power_on->parsed()   ? power_action::on
+                                    : subcommand_power_off->parsed()  ? power_action::off
+                                                                      : power_action::toggle;
+
+        /**
          * @attention apply the requested power action to a single socket, printing the
-         * per-socket result. Returns false if any of the requested actions failed.
+         * per-socket result. Returns false if the requested action failed.
          */
         auto apply_action = [&](const sokketter::socket &socket,
                                 const size_t display_index) -> bool {
-            if (subcommand_power_status->parsed())
+            switch (action)
             {
+            case power_action::status: {
                 std::cout << "  Socket " << display_index << ": " << socket.to_string()
                           << std::endl;
                 return true;
             }
 
-            bool succeeded = true;
-
-            if (subcommand_power_on->parsed())
-            {
+            case power_action::on: {
                 if (!socket.power(true))
                 {
                     std::cerr << "  Socket " << display_index << ": failed to turn on."
                               << std::endl;
-                    succeeded = false;
+                    return false;
                 }
-                else
-                {
-                    std::cout << "  Socket " << display_index << ": turned on." << std::endl;
-                }
+                std::cout << "  Socket " << display_index << ": turned on." << std::endl;
+                return true;
             }
 
-            if (subcommand_power_off->parsed())
-            {
+            case power_action::off: {
                 if (!socket.power(false))
                 {
                     std::cerr << "  Socket " << display_index << ": failed to turn off."
                               << std::endl;
-                    succeeded = false;
+                    return false;
                 }
-                else
-                {
-                    std::cout << "  Socket " << display_index << ": turned off." << std::endl;
-                }
+                std::cout << "  Socket " << display_index << ": turned off." << std::endl;
+                return true;
             }
 
-            if (subcommand_power_toggle->parsed())
-            {
+            case power_action::toggle: {
                 if (!socket.toggle())
                 {
                     std::cerr << "  Socket " << display_index << ": failed to toggle." << std::endl;
-                    succeeded = false;
+                    return false;
                 }
-                else
-                {
-                    std::cout << "  Socket " << display_index << ": toggled." << std::endl;
-                }
+                std::cout << "  Socket " << display_index << ": toggled." << std::endl;
+                return true;
+            }
             }
 
-            return succeeded;
+            // LCOV_EXCL_START
+            return false;
+            // LCOV_EXCL_STOP
         };
 
         auto &sockets = device->sockets();
