@@ -9,9 +9,10 @@ add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 
 find_package(Threads REQUIRED)
 
-include_directories(${CMAKE_CURRENT_LIST_DIR}/sources)
-include_directories(${CMAKE_CURRENT_LIST_DIR}/../libsokketter/include)
-include_directories(${CMAKE_CURRENT_LIST_DIR}/../third-party)
+set(CLI_INCLUDE_DIRS
+    ${CMAKE_CURRENT_LIST_DIR}/sources
+    ${CMAKE_CURRENT_LIST_DIR}/../libsokketter/include
+    ${CMAKE_CURRENT_LIST_DIR}/../third-party)
 
 #
 # Stating common details.
@@ -64,6 +65,8 @@ if(PLATFORM_OS_WINDOWS)
 endif()
 
 add_executable(${PROJECT_NAME} ${PROJECT_FOLDER_FILES})
+
+target_include_directories(${PROJECT_NAME} PRIVATE ${CLI_INCLUDE_DIRS})
 
 sokketter_set_output_directories(${PROJECT_NAME})
 

@@ -15,6 +15,13 @@ list(FILTER PROJECT_FOLDER_FILES EXCLUDE REGEX ".*main\\.cpp.*")
 add_executable(${PROJECT_NAME} ${TEST_FOLDER_FILES} ${PROJECT_FOLDER_FILES} ${GTEST_FILES})
 
 #
+# The parent directory no longer leaks its include directories to this subdirectory, so the test
+# target needs the same include paths as the sokketter-cli target to compile cli_parser.cpp and the
+# test sources. CLI_INCLUDE_DIRS is inherited from the parent scope.
+#
+target_include_directories(${PROJECT_NAME} PRIVATE ${CLI_INCLUDE_DIRS})
+
+#
 # Link with sokketter dependencies.
 #
 target_link_libraries(${PROJECT_NAME} PRIVATE  gtest gtest_main ${SOKKETTER_LIBRARIES})
