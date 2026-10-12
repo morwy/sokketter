@@ -144,7 +144,7 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
     size_t device_index = 0;
     auto option_device_index = device_group->add_option("--device-at-index,-i", device_index);
 
-    std::string device_serial = "";
+    std::string device_serial;
     auto option_device_serial = device_group->add_option("--device-with-serial,-n", device_serial);
 
     option_device_index->ignore_underscore();
@@ -177,8 +177,8 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
      * @brief adding an option to select which device types (USB/ETHERNET) are included in the list
      * subcommand.
      */
-    std::string included_device_types = "";
-    auto option_included_devices_types =
+    std::string included_device_types;
+    auto option_included_device_types =
         subcommand_list->add_option("--include-device-types,-t", included_device_types);
 
     /** ************************************************************************
@@ -236,7 +236,7 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
 
         filter.included_types = sokketter::power_strip_type::USB_DEVICES;
 
-        if (option_included_devices_types->count() > 0)
+        if (option_included_device_types->count() > 0)
         {
             /**
              * @attention the option is selective: the listed device types replace the default
