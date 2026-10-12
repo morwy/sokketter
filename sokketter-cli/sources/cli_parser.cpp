@@ -345,11 +345,6 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
     else if (subcommand_power->parsed())
     {
         /**
-         * @attention ensure the device database is populated and communication handles are live.
-         */
-        sokketter::devices();
-
-        /**
          * @warning stating device access group as required via CLI11 functionality
          * does not work as expected. It has a higher precedence than following subcommands,
          * thus it displays the wrong error message. Checking it manually.
@@ -379,6 +374,8 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
              * filtered vector the list subcommand prints with its default filter, so index N always
              * addresses the device printed as N. The library's sokketter::device(index) indexes the
              * unfiltered database and must not be used here.
+             * @attention visible_devices() performs the enumeration itself, so no separate
+             * sokketter::devices() call is needed on this path.
              */
             const auto visible = visible_devices(default_display_filter());
 
@@ -400,6 +397,11 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
         }
         else if (option_device_serial->count() > 0)
         {
+            /**
+             * @attention serial lookup consults the persisted database, so enumerate first to bind
+             * live communication handles.
+             */
+            sokketter::devices();
             device = sokketter::device(device_serial);
         }
 
