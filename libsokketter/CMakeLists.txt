@@ -1,6 +1,10 @@
 set(PROJECT_NAME "sokketter")
 project(${PROJECT_NAME} LANGUAGES CXX C)
 
+# spdlog compiles out log macros below the active level (default INFO). The library uses
+# SPDLOG_LOGGER_DEBUG extensively, so the compile-time level must be lowered to TRACE to keep
+# those calls compiled in; the runtime settings_structure::logging_level then selects which
+# compiled-in levels actually reach the logging callback.
 add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 
 #
