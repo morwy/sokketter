@@ -241,8 +241,8 @@ TEST(cli_subcommand_tests, list_no_devices)
     const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(out, "Listing available devices...\n");
-    ASSERT_EQ(err, "No devices found.\n");
+    ASSERT_EQ(out, "Listing available devices...\nNo devices found.\n");
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, list_test_devices)
@@ -447,8 +447,8 @@ TEST(cli_subcommand_tests, list_include_device_types_accepts_comma_separated_tok
      * With zero fake devices the run ends with "No devices found." rather than a validation error.
      */
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(out, "Listing available devices...\n");
-    ASSERT_EQ(err, "No devices found.\n");
+    ASSERT_EQ(out, "Listing available devices...\nNo devices found.\n");
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, list_include_device_types_rejects_empty_value)
@@ -1641,8 +1641,8 @@ TEST(cli_subcommand_tests, list_include_device_types_skips_empty_tokens)
     const auto &err = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(out, "Listing available devices...\n");
-    ASSERT_EQ(err, "No devices found.\n");
+    ASSERT_EQ(out, "Listing available devices...\nNo devices found.\n");
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, power_without_action_subcommand_is_rejected)

@@ -318,10 +318,12 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
         {
             /**
              * @attention an empty device bus is a valid answer to "list", not a command failure, so
-             * the subcommand exits successfully. Scripts that need to distinguish "no devices" from
-             * an error should check for the "No devices found." message rather than the exit code.
+             * the subcommand exits successfully. The message is part of the command's answer and is
+             * therefore written to stdout alongside the rest of the list output. Scripts that need
+             * to distinguish "no devices" from an error should check for the "No devices found."
+             * message rather than the exit code.
              */
-            std::cerr << "No devices found." << std::endl;
+            std::cout << "No devices found." << std::endl;
             return EXIT_SUCCESS;
         }
 
