@@ -33,7 +33,7 @@ set(SOKKETTER_EXECUTABLE "sokketter-cli")
 endif()
 
 # FILEFLAGSMASK value for version.rc, i.e. VS_FFI_FILEFLAGSMASK from winver.h (mask of valid FILEFLAGS bits).
-set(SOKKETTER_BINARY_TYPE 0x3fL)
+set(SOKKETTER_BINARY_TYPE 0x3f)
 
 configure_file(${PROJECT_ROOT_PATH}/version.rc.in ${CMAKE_CURRENT_BINARY_DIR}/version.rc @ONLY)
 
