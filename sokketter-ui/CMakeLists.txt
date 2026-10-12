@@ -47,7 +47,7 @@ endif()
 # FILEFLAGSMASK value for version.rc, i.e. VS_FFI_FILEFLAGSMASK from winver.h (mask of valid FILEFLAGS bits).
 set(SOKKETTER_BINARY_TYPE 0x3fL)
 
-configure_file(${PROJECT_ROOT_PATH}/version.rc.in ${CMAKE_CURRENT_SOURCE_DIR}/resources/version.rc @ONLY)
+configure_file(${PROJECT_ROOT_PATH}/version.rc.in ${CMAKE_CURRENT_BINARY_DIR}/version.rc @ONLY)
 
 #
 # Add source files recursively.
@@ -70,6 +70,14 @@ foreach(FILE_EXTENSION IN LISTS FILE_EXTENSIONS)
     file (GLOB_RECURSE FOUND_FILES ${CMAKE_CURRENT_SOURCE_DIR}/${FILE_EXTENSION})
     set(PROJECT_FOLDER_FILES ${PROJECT_FOLDER_FILES} ${FOUND_FILES})
 endforeach()
+
+#
+# The generated version.rc lives in the build tree, so it is not covered by the source-tree globs
+# above and must be added explicitly.
+#
+if(PLATFORM_OS_WINDOWS)
+    list(APPEND PROJECT_FOLDER_FILES ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
+endif()
 
 #
 # Add third-party classes.
