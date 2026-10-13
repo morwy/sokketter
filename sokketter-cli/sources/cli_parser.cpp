@@ -258,7 +258,7 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
             /**
              * @attention the option is selective: the listed device types replace the default
              * USB-only filter, so --include-device-types ethernet lists only Ethernet devices.
-             * Tokens are split on comma and matched exactly, so unknown or misspelled
+             * Tokens are split on comma and matched exactly, so unknown, misspelled, or empty
              * values are rejected instead of being silently ignored.
              */
             using underlying_type = std::underlying_type_t<sokketter::power_strip_type>;
@@ -281,7 +281,10 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
 
                 if (token.empty())
                 {
-                    continue;
+                    std::cerr << "Empty device type in --include-device-types. Available types are: "
+                                 "USB, ETHERNET, LAN."
+                              << std::endl;
+                    return EXIT_FAILURE;
                 }
 
                 if (token == "usb")
@@ -300,6 +303,18 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
                               << ". Available types are: USB, ETHERNET, LAN." << std::endl;
                     return EXIT_FAILURE;
                 }
+            }
+
+            /**
+             * @attention getline never yields a final empty token when the value ends with a
+             * comma, so a trailing comma must be rejected explicitly.
+             */
+            if (!included_device_types.empty() && included_device_types.back() == ',')
+            {
+                std::cerr << "Empty device type in --include-device-types. Available types are: "
+                             "USB, ETHERNET, LAN."
+                          << std::endl;
+                return EXIT_FAILURE;
             }
 
             if (selected_types == 0)

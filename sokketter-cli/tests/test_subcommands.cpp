@@ -1618,15 +1618,13 @@ TEST(cli_subcommand_tests, list_include_lan_device_types_with_fake_devices)
     ASSERT_EQ(err, "");
 }
 
-TEST(cli_subcommand_tests, list_include_device_types_skips_empty_tokens)
+TEST(cli_subcommand_tests, list_include_device_types_rejects_empty_token_in_list)
 {
     /**
-     * @attention review finding 6: empty tokens between commas must be skipped rather than
-     * reported as an unknown type. Expected behavior per the review document; the remaining
-     * tokens are valid, so the run must reach the listing stage.
+     * @attention empty tokens between commas are malformed input and must be rejected like any
+     * other invalid token, so that typos such as a trailing comma fail loudly instead of being
+     * silently ignored.
      */
-    set_test_device_number("0");
-
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"list",
         (char *)"--include-device-types", (char *)"usb,,ethernet"};
 
@@ -1635,14 +1633,36 @@ TEST(cli_subcommand_tests, list_include_device_types_skips_empty_tokens)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
-    unset_test_device_number();
+    const auto &out = testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    ASSERT_EQ(return_code, EXIT_FAILURE);
+    ASSERT_EQ(out, "Listing available devices...\n");
+    ASSERT_EQ(err,
+        "Empty device type in --include-device-types. Available types are: USB, ETHERNET, LAN.\n");
+}
+
+TEST(cli_subcommand_tests, list_include_device_types_rejects_trailing_comma)
+{
+    /**
+     * @attention a trailing comma produces an empty final token, which is a typo and must be
+     * rejected rather than silently ignored.
+     */
+    std::vector<char *> args = {
+        (char *)"sokketter-cli", (char *)"list", (char *)"--include-device-types", (char *)"usb,"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(out, "Listing available devices...\nNo devices found.\n");
-    ASSERT_EQ(err, "");
+    ASSERT_EQ(return_code, EXIT_FAILURE);
+    ASSERT_EQ(out, "Listing available devices...\n");
+    ASSERT_EQ(err,
+        "Empty device type in --include-device-types. Available types are: USB, ETHERNET, LAN.\n");
 }
 
 TEST(cli_subcommand_tests, power_without_action_subcommand_is_rejected)
