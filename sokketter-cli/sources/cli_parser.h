@@ -59,10 +59,9 @@ public:
         help << "    -n,--device-with-serial TEXT\tStates which power strip to use by its serial "
                 "number. Excludes --device-at-index option."
              << std::endl;
-        help << "    -s,--sockets UINT ...\t\tStates one or multiple socket(s) indices. Empty "
-                "option means that subcommand will apply\n\t\t\t\t\tto all available sockets. "
-                "Indices start "
-                "from 1 to be in accordance with physical markings\n\t\t\t\t\ton the device."
+        help << "    -s,--sockets UINT ...\t\tStates one or multiple socket(s) indices. Omitting "
+                "this option applies the\n\t\t\t\t\tsubcommand to all available sockets. Indices "
+                "start from 1 to be in accordance with physical markings\n\t\t\t\t\ton the device."
              << std::endl;
         help << std::endl;
 
