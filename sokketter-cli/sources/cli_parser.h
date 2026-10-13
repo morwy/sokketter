@@ -54,8 +54,9 @@ public:
         help << "  Options:" << std::endl;
         help << "    -i,--device-at-index UINT\t\tStates which power strip to use by its index. "
                 "Indices start from 1 and match the numbering printed by the list subcommand "
-                "with its default USB-only selection. Ethernet devices are addressable only "
-                "via --device-with-serial. Excludes --device-with-serial option."
+                "with the same --include-device-types selection (default: USB-only). Without "
+                "the option, Ethernet devices are addressable only via --device-with-serial. "
+                "Excludes --device-with-serial option."
              << std::endl;
         help << "    -n,--device-with-serial TEXT\tStates which power strip to use by its serial "
                 "number, as printed by the list\n\t\t\t\t\tsubcommand (the identifier in "
@@ -64,6 +65,12 @@ public:
         help << "    -s,--sockets UINT ...\t\tStates one or multiple socket(s) indices. Omitting "
                 "this option applies the\n\t\t\t\t\tsubcommand to all available sockets. Indices "
                 "start from 1 to be in accordance with physical markings\n\t\t\t\t\ton the device."
+             << std::endl;
+        help << "    -t,--include-device-types TEXT\tRestricts which device types the device "
+                "selection may address, the same way as for the list subcommand. Comma-separated, "
+                "case-insensitive. Available types are: USB, ETHERNET, LAN. Unknown types are "
+                "rejected. Default: USB. Test devices are always addressable regardless of the "
+                "selected types."
              << std::endl;
         help << std::endl;
 

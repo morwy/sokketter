@@ -108,6 +108,83 @@ namespace {
         }
         return visible;
     }
+
+    /**
+     * @brief parses the comma-separated --include-device-types value shared by the list and power
+     * subcommands into a bit-flag mask.
+     *
+     * @attention tokens are split on comma, whitespace-stripped and matched case-insensitively;
+     * empty tokens (including a trailing comma) and unknown tokens are rejected with identical
+     * error text on stderr, so both subcommands report the same diagnostics.
+     * @attention returns false when the value is malformed; selected_types is then unspecified.
+     */
+    auto parse_device_types(const std::string &raw_value,
+        sokketter::power_strip_type &selected_types) -> bool
+    {
+        selected_types = sokketter::power_strip_type::UNKNOWN;
+
+        std::istringstream token_stream(raw_value);
+        std::string token;
+        while (std::getline(token_stream, token, ','))
+        {
+            token.erase(
+                std::remove_if(token.begin(), token.end(),
+                    [](unsigned char character) { return std::isspace(character) != 0; }),
+                token.end());
+
+            std::transform(
+                token.begin(), token.end(), token.begin(), [](unsigned char character) {
+                    return static_cast<char>(std::tolower(character));
+                });
+
+            if (token.empty())
+            {
+                std::cerr << "Empty device type in --include-device-types. Available types are: "
+                             "USB, ETHERNET, LAN."
+                          << std::endl;
+                return false;
+            }
+
+            if (token == "usb")
+            {
+                selected_types =
+                    type_union(selected_types, sokketter::power_strip_type::USB_DEVICES);
+            }
+            else if (token == "ethernet" || token == "lan")
+            {
+                selected_types =
+                    type_union(selected_types, sokketter::power_strip_type::ETHERNET_DEVICES);
+            }
+            else
+            {
+                std::cerr << "Unknown device type: " << token
+                          << ". Available types are: USB, ETHERNET, LAN." << std::endl;
+                return false;
+            }
+        }
+
+        /**
+         * @attention getline never yields a final empty token when the value ends with a
+         * comma, so a trailing comma must be rejected explicitly.
+         */
+        if (!raw_value.empty() && raw_value.back() == ',')
+        {
+            std::cerr << "Empty device type in --include-device-types. Available types are: "
+                         "USB, ETHERNET, LAN."
+                      << std::endl;
+            return false;
+        }
+
+        if (selected_types == sokketter::power_strip_type::UNKNOWN)
+        {
+            std::cerr << "No device types were specified. Available types are: USB, ETHERNET, "
+                         "LAN."
+                      << std::endl;
+            return false;
+        }
+
+        return true;
+    }
 } // namespace
 
 auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
@@ -206,13 +283,20 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
     }
 
     /**
-     * @brief adding an option to select which device types (USB/ETHERNET) are included in the list
-     * subcommand.
+     * @brief adding an option to select which device types (USB/ETHERNET) are included by the list
+     * and power subcommands.
+     *
+     * @attention the two options share one storage since the subcommands are mutually exclusive
+     * (require_subcommand(1, 1)); presence is tracked per option via the returned pointers.
      */
     std::string included_device_types;
-    auto option_included_device_types =
+    auto option_list_device_types =
         subcommand_list->add_option("--include-device-types,-t", included_device_types);
-    option_included_device_types->ignore_underscore();
+    option_list_device_types->ignore_underscore();
+
+    auto option_power_device_types =
+        subcommand_power->add_option("--include-device-types,-t", included_device_types);
+    option_power_device_types->ignore_underscore();
 
     /** ************************************************************************
      *
@@ -282,73 +366,15 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
 
         auto filter = default_display_filter();
 
-        if (option_included_device_types->count() > 0)
+        if (option_list_device_types->count() > 0)
         {
             /**
              * @attention the option is selective: the listed device types replace the default
              * USB-only filter, so --include-device-types ethernet lists only Ethernet devices.
-             * Tokens are split on comma and matched exactly, so unknown, misspelled, or empty
-             * values are rejected instead of being silently ignored.
              */
             sokketter::power_strip_type selected_types = sokketter::power_strip_type::UNKNOWN;
-
-            std::istringstream token_stream(included_device_types);
-            std::string token;
-            while (std::getline(token_stream, token, ','))
+            if (!parse_device_types(included_device_types, selected_types))
             {
-                token.erase(
-                    std::remove_if(token.begin(), token.end(),
-                        [](unsigned char character) { return std::isspace(character) != 0; }),
-                    token.end());
-
-                std::transform(
-                    token.begin(), token.end(), token.begin(), [](unsigned char character) {
-                        return static_cast<char>(std::tolower(character));
-                    });
-
-                if (token.empty())
-                {
-                    std::cerr << "Empty device type in --include-device-types. Available types are: "
-                                 "USB, ETHERNET, LAN."
-                              << std::endl;
-                    return EXIT_FAILURE;
-                }
-
-                if (token == "usb")
-                {
-                    selected_types = type_union(
-                        selected_types, sokketter::power_strip_type::USB_DEVICES);
-                }
-                else if (token == "ethernet" || token == "lan")
-                {
-                    selected_types = type_union(
-                        selected_types, sokketter::power_strip_type::ETHERNET_DEVICES);
-                }
-                else
-                {
-                    std::cerr << "Unknown device type: " << token
-                              << ". Available types are: USB, ETHERNET, LAN." << std::endl;
-                    return EXIT_FAILURE;
-                }
-            }
-
-            /**
-             * @attention getline never yields a final empty token when the value ends with a
-             * comma, so a trailing comma must be rejected explicitly.
-             */
-            if (!included_device_types.empty() && included_device_types.back() == ',')
-            {
-                std::cerr << "Empty device type in --include-device-types. Available types are: "
-                             "USB, ETHERNET, LAN."
-                          << std::endl;
-                return EXIT_FAILURE;
-            }
-
-            if (selected_types == sokketter::power_strip_type::UNKNOWN)
-            {
-                std::cerr << "No device types were specified. Available types are: USB, ETHERNET, "
-                             "LAN."
-                          << std::endl;
                 return EXIT_FAILURE;
             }
 
@@ -404,6 +430,24 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
             return EXIT_FAILURE;
         }
 
+        /**
+         * @attention --include-device-types restricts the device types that --device-at-index
+         * resolves against and that --device-with-serial may match, mirroring the list
+         * subcommand: with a selection, index N addresses the device that
+         * "list --include-device-types <same selection>" prints as N.
+         */
+        auto filter = default_display_filter();
+        if (option_power_device_types->count() > 0)
+        {
+            sokketter::power_strip_type selected_types = sokketter::power_strip_type::UNKNOWN;
+            if (!parse_device_types(included_device_types, selected_types))
+            {
+                return EXIT_FAILURE;
+            }
+
+            filter.included_types = selected_types;
+        }
+
         std::shared_ptr<sokketter::power_strip> device;
 
         if (option_device_index->count() > 0)
@@ -417,13 +461,14 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
 
             /**
              * @attention --device-at-index is 1-based and resolves positionally against the same
-             * filtered vector the list subcommand prints with its default filter, so index N always
-             * addresses the device printed as N. The library's sokketter::device(index) indexes the
-             * unfiltered database and must not be used here.
+             * filtered vector the list subcommand prints (with its default filter, or with the
+             * selection given via --include-device-types), so index N always addresses the device
+             * printed as N by the matching list invocation. The library's sokketter::device(index)
+             * indexes the unfiltered database and must not be used here.
              * @attention visible_devices() performs the enumeration itself, so no separate
              * sokketter::devices() call is needed on this path.
              */
-            const auto visible = visible_devices(default_display_filter());
+            const auto visible = visible_devices(filter);
 
             if (visible.empty())
             {
@@ -446,9 +491,19 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
             /**
              * @attention serial lookup consults the persisted database, so enumerate first to bind
              * live communication handles.
+             * @attention when --include-device-types restricts the selection, a serial resolving
+             * to a device outside it is reported as not found, mirroring how the index path cannot
+             * reach such devices. TEST_DEVICE stays addressable regardless of the selection.
              */
             sokketter::devices();
             device = sokketter::device(device_serial);
+
+            if (device != nullptr && option_power_device_types->count() > 0 &&
+                device->configuration().type != sokketter::power_strip_type::TEST_DEVICE &&
+                !type_matches(device->configuration().type, filter.included_types))
+            {
+                device = nullptr;
+            }
         }
 
         if (device == nullptr)
