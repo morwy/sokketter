@@ -454,7 +454,12 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
         const power_action action = subcommand_power_status->parsed() ? power_action::status
                                     : subcommand_power_on->parsed()   ? power_action::on
                                     : subcommand_power_off->parsed()  ? power_action::off
-                                                                      : power_action::toggle;
+                                    : subcommand_power_toggle->parsed()
+                                                                      ? power_action::toggle
+                                    : /* require_subcommand(1, 1) guarantees exactly one action is
+                                          parsed; a new action subcommand must be added to this
+                                          chain. */
+                                      power_action::toggle;
 
         /**
          * @attention apply the requested power action to a single socket, printing the
