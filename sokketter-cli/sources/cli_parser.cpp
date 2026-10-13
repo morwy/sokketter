@@ -41,6 +41,35 @@ namespace {
     }
 
     /**
+     * @brief reports whether a concrete device type belongs to the given included-types mask.
+     *
+     * @attention power_strip_type is a scoped bit-flag enum with no operator overloads, so the
+     * membership test is spelled once here and reused by both the display filter and the
+     * --include-device-types token parser to keep the two in lockstep.
+     */
+    auto type_matches(sokketter::power_strip_type device_type,
+        sokketter::power_strip_type included_types) -> bool
+    {
+        using underlying_type = std::underlying_type_t<sokketter::power_strip_type>;
+        return (static_cast<underlying_type>(device_type) &
+                   static_cast<underlying_type>(included_types)) != 0;
+    }
+
+    /**
+     * @brief returns the union of two power_strip_type bit-flag masks.
+     *
+     * @attention companion to type_matches; keeps the bit-flag arithmetic in one place since the
+     * scoped enum provides no operator|.
+     */
+    auto type_union(sokketter::power_strip_type left, sokketter::power_strip_type right)
+        -> sokketter::power_strip_type
+    {
+        using underlying_type = std::underlying_type_t<sokketter::power_strip_type>;
+        return static_cast<sokketter::power_strip_type>(static_cast<underlying_type>(left) |
+            static_cast<underlying_type>(right));
+    }
+
+    /**
      * @brief the device filter used by the list subcommand by default and by the power subcommand
      * when resolving --device-at-index.
      *
@@ -68,18 +97,11 @@ namespace {
     auto visible_devices(const sokketter::device_filter &filter)
         -> std::vector<std::shared_ptr<sokketter::power_strip>>
     {
-        using underlying_type = std::underlying_type_t<sokketter::power_strip_type>;
-
-        const auto included_types = static_cast<underlying_type>(filter.included_types);
-        const auto test_device_type =
-            static_cast<underlying_type>(sokketter::power_strip_type::TEST_DEVICE);
-
         std::vector<std::shared_ptr<sokketter::power_strip>> visible;
         for (const auto &device : sokketter::devices(filter))
         {
-            const auto device_type = static_cast<underlying_type>(device->configuration().type);
-
-            if (device_type == test_device_type || (device_type & included_types) != 0)
+            if (device->configuration().type == sokketter::power_strip_type::TEST_DEVICE ||
+                type_matches(device->configuration().type, filter.included_types))
             {
                 visible.push_back(device);
             }
@@ -269,9 +291,7 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
              * Tokens are split on comma and matched exactly, so unknown, misspelled, or empty
              * values are rejected instead of being silently ignored.
              */
-            using underlying_type = std::underlying_type_t<sokketter::power_strip_type>;
-
-            underlying_type selected_types = 0;
+            sokketter::power_strip_type selected_types = sokketter::power_strip_type::UNKNOWN;
 
             std::istringstream token_stream(included_device_types);
             std::string token;
@@ -297,13 +317,13 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
 
                 if (token == "usb")
                 {
-                    selected_types |=
-                        static_cast<underlying_type>(sokketter::power_strip_type::USB_DEVICES);
+                    selected_types = type_union(
+                        selected_types, sokketter::power_strip_type::USB_DEVICES);
                 }
                 else if (token == "ethernet" || token == "lan")
                 {
-                    selected_types |=
-                        static_cast<underlying_type>(sokketter::power_strip_type::ETHERNET_DEVICES);
+                    selected_types = type_union(
+                        selected_types, sokketter::power_strip_type::ETHERNET_DEVICES);
                 }
                 else
                 {
@@ -325,7 +345,7 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
                 return EXIT_FAILURE;
             }
 
-            if (selected_types == 0)
+            if (selected_types == sokketter::power_strip_type::UNKNOWN)
             {
                 std::cerr << "No device types were specified. Available types are: USB, ETHERNET, "
                              "LAN."
@@ -333,7 +353,7 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
                 return EXIT_FAILURE;
             }
 
-            filter.included_types = static_cast<sokketter::power_strip_type>(selected_types);
+            filter.included_types = selected_types;
         }
 
         run_update_check();
