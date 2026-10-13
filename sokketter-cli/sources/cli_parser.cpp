@@ -230,17 +230,25 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
 
     /** ************************************************************************
      *
-     * @brief show update information section.
+     * @brief update information section.
+     *
+     * @attention the update notice and the background update check are side effects that must not
+     * run for a doomed invocation (e.g. an invalid --include-device-types value), which would pay
+     * a network request and interleave the notice before the command's own error on stderr. The
+     * work is therefore deferred into this lambda and invoked only once each subcommand's input has
+     * been validated and the command is known to be viable.
      *
      ** ***********************************************************************/
-    const auto update_status = sokketter::last_update_check_status();
-    if (!update_status.new_version.empty())
-    {
-        std::cerr << "A new sokketter version " << update_status.new_version << " is available at "
-                  << sokketter::release_link() << "." << std::endl;
-    }
+    const auto run_update_check = []() {
+        const auto update_status = sokketter::last_update_check_status();
+        if (!update_status.new_version.empty())
+        {
+            std::cerr << "A new sokketter version " << update_status.new_version
+                      << " is available at " << sokketter::release_link() << "." << std::endl;
+        }
 
-    sokketter::check_for_update_async();
+        sokketter::check_for_update_async();
+    };
 
     /** ************************************************************************
      *
@@ -327,6 +335,8 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
 
             filter.included_types = static_cast<sokketter::power_strip_type>(selected_types);
         }
+
+        run_update_check();
 
         const auto devices = visible_devices(filter);
         if (devices.empty())
@@ -559,6 +569,8 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
 
             targets = socket_indices;
         }
+
+        run_update_check();
 
         std::cout << device->to_string() << std::endl;
 

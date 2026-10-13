@@ -127,3 +127,28 @@ TEST_F(update_notification_test, empty_cache_prints_nothing)
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_EQ(err, "");
 }
+
+TEST_F(update_notification_test, doomed_invocation_prints_no_notification)
+{
+    /**
+     * @attention a doomed invocation (invalid --include-device-types value) must not pay the
+     * update-check side effects: the cache holds a new version, yet the command fails on input
+     * validation before the deferred update check runs, so stderr carries only the validation
+     * error and no update notice.
+     */
+    write_cache("255.255.255.255");
+
+    std::vector<char *> args = {(char *)"sokketter-cli", (char *)"list",
+        (char *)"--include-device-types", (char *)"garbage"};
+
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+
+    const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
+
+    testing::internal::GetCapturedStdout();
+    const auto &err = testing::internal::GetCapturedStderr();
+
+    ASSERT_EQ(return_code, EXIT_FAILURE);
+    ASSERT_EQ(err, "Unknown device type: garbage. Available types are: USB, ETHERNET, LAN.\n");
+}
