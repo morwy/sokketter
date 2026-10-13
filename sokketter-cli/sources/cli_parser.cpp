@@ -168,8 +168,7 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
      * @brief adding device and socket access options.
      */
     std::vector<size_t> socket_indices;
-    auto sockets_argument = subcommand_power->add_option("--sockets,-s", socket_indices);
-    sockets_argument->ignore_underscore();
+    subcommand_power->add_option("--sockets,-s", socket_indices)->ignore_underscore();
 
     auto device_group =
         subcommand_power->add_option_group("--device-at-index or --device-with-serial");
