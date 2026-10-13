@@ -35,7 +35,8 @@ public:
         help << "  Options:" << std::endl;
         help << "    -t,--include-device-types TEXT\tStates which device types to include in the "
                 "list, replacing the default USB-only selection. Comma-separated, case-insensitive. "
-                "Available types are: USB, ETHERNET, LAN. Unknown types are rejected. Default: USB."
+                "Available types are: USB, ETHERNET, LAN. Unknown types are rejected. Default: USB. "
+                "Test devices are always listed regardless of the selected types."
              << std::endl;
         help << std::endl;
 
