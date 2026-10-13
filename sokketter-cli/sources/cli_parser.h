@@ -57,7 +57,8 @@ public:
                 "via --device-with-serial. Excludes --device-with-serial option."
              << std::endl;
         help << "    -n,--device-with-serial TEXT\tStates which power strip to use by its serial "
-                "number. Excludes --device-at-index option."
+                "number, as printed by the list\n\t\t\t\t\tsubcommand (the identifier in "
+                "parentheses). Excludes --device-at-index option."
              << std::endl;
         help << "    -s,--sockets UINT ...\t\tStates one or multiple socket(s) indices. Omitting "
                 "this option applies the\n\t\t\t\t\tsubcommand to all available sockets. Indices "
