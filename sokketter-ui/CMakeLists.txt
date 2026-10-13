@@ -29,6 +29,9 @@ include_directories(${CMAKE_CURRENT_LIST_DIR}/../third-party/SlidingStackedWidge
 #
 # Stating common details.
 #
+# @attention BUILD_YEAR is captured at configure time, so identical sources produce different
+# copyright metadata (and therefore different binaries) across days. This is acceptable for a
+# desktop tool, but it means CI caches may miss and strict reproducible-build checks will fail.
 string(TIMESTAMP BUILD_YEAR "%Y")
 
 set(SOKKETTER_COMPANY "Paul Ergård")
