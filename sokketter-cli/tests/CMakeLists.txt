@@ -10,7 +10,11 @@ foreach(FILE_EXTENSION IN LISTS FILE_EXTENSIONS)
     set(TEST_FOLDER_FILES ${TEST_FOLDER_FILES} ${FOUND_FILES})
 endforeach()
 
+# PROJECT_FOLDER_FILES carries the sokketter-cli sources (including its main.cpp) into the test
+# target; main.cpp must be excluded so gtest_main's entry point wins. The same guard is applied to
+# TEST_FOLDER_FILES in case a main.cpp is ever added under tests/.
 list(FILTER PROJECT_FOLDER_FILES EXCLUDE REGEX ".*main\\.cpp.*")
+list(FILTER TEST_FOLDER_FILES EXCLUDE REGEX ".*main\\.cpp.*")
 
 add_executable(${PROJECT_NAME} ${TEST_FOLDER_FILES} ${PROJECT_FOLDER_FILES} ${GTEST_FILES})
 
@@ -31,9 +35,6 @@ endforeach()
 
 if(SOKKETTER_ENABLE_COVERAGE AND NOT PLATFORM_OS_WINDOWS)
     message(STATUS "Enabling coverage flags")
-
-    target_compile_options(${PROJECT_NAME} PRIVATE --coverage)
-    target_link_libraries(${PROJECT_NAME} PRIVATE --coverage)
 
     target_compile_options(${PROJECT_NAME} PRIVATE --coverage)
     target_link_libraries(${PROJECT_NAME} PRIVATE --coverage)
