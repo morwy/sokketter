@@ -71,8 +71,7 @@ with fake devices on each supported OS and record the outcome in the matching re
 
 ## A. Command-line interface (`sokketter-cli`)
 
-Enable fake devices (`LIBSOKKETTER_TEST_DEVICE_NUMBER`) except where noted. Verify both `stdout`/`stderr`
-content and the process exit code. 
+Verify both `stdout`/`stderr` content and the process exit code. 
 
 > **Exit-code contract:** the CLI collapses every CLI11 parse-error code (100+) onto the documented
 > contract — **`0`** for success (including `--help`/`--version`) and **`1`** for any failure. See
@@ -105,12 +104,19 @@ content and the process exit code.
 | MAN-CLI-22 | `power status -i 1 -t usb`                            | Exit `0`; `--include-device-types` is accepted on the `power` subcommand and resolves index 1 against the USB selection.                                                     | ⬜               | ⬜             | ⬜             |
 | MAN-CLI-23 | `power status -i 1 -t ethernet` (fake devices)        | Exit `0`; Test devices stay addressable by index even under an Ethernet-only selection.                                                                                      | ⬜               | ⬜             | ⬜             |
 | MAN-CLI-24 | `power status -n TEST_SERIAL_NUMBER_0 -t ethernet`    | Exit `0`; Test devices stay addressable by serial even under an Ethernet-only selection.                                                                                     | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-25 | `power status -i 1 -t garbage`                        | Exit `1`; stderr `Unknown device type: garbage. Available types are: USB, ETHERNET, LAN.`.                                                                                   | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-26 | `list --include-device-types ,usb`                    | Exit `1`; stderr `Empty device type in --include-device-types. …` (leading comma → empty token).                                                                             | ⬜               | ⬜             | ⬜             |
+| MAN-CLI-25 | `power status -i 1 -t garbage`                        | Exit `1`; stderr `Unknown device type: garbage. Available types are: USB, ETHERNET, LAN.`; **no** update-notification line (validation runs before the update check).       | ⬜               | ⬜             | ⬜             |
+| MAN-CLI-26 | `list --include-device-types ,usb`                    | Exit `1`; stderr `Empty device type in --include-device-types. …` (leading comma → empty token; likewise a trailing comma or an empty value).                               | ⬜               | ⬜             | ⬜             |
 | MAN-CLI-27 | `list --include-device-types " "`                     | Exit `1`; stderr `Empty device type in --include-device-types. …` (whitespace-only token).                                                                                   | ⬜               | ⬜             | ⬜             |
 | MAN-CLI-28 | `list --include-device-types=usb`                     | Exit `0`; `=`-form accepted (normalization stops at `=`).                                                                                                                    | ⬜               | ⬜             | ⬜             |
 | MAN-CLI-29 | `power status -i 1` (no devices)                      | Exit `1`; stderr `Device index 1 is out of range (no devices are available).`.                                                                                               | ⬜               | ⬜             | ⬜             |
 | MAN-CLI-30 | `power status -n <real USB serial> -t ethernet`       | Exit `1`; stderr `No device was found for serial "<serial>".` (serial outside the selection is reported as not found).                                                       | ⬜               | ⬜             | ⬜             |
+| MAN-CLI-31 | `list` with `LIBSOKKETTER_TEST_DEVICE_NUMBER=N`       | Fake-device naming contract: entries are `Test Device <i>` with serial `TEST_SERIAL_NUMBER_<i>` and address `TEST_ADDRESS_<i>`, where `i` is **0-based**.                    | ⬜               | ⬜             | ⬜             |
+| MAN-CLI-32 | `power status -i 1 -s 4` then `-s 5` (4-socket device) | `-s 4` exits `0`; `-s 5` exits `1` with an out-of-range message naming the valid range. On a 1-socket device the range is printed degenerate as `1-1`.                       | ⬜               | ⬜             | ⬜             |
+| MAN-CLI-33 | `power status -i N` then `-i N+1` (N devices present) | `-i N` exits `0`; `-i N+1` exits `1` with an out-of-range message naming the valid range.                                                                                    | ⬜               | ⬜             | ⬜             |
+| MAN-CLI-34 | `power status -i 18446744073709551615` / `…616`       | `SIZE_MAX` parses and is reported out of range; `SIZE_MAX + 1` exits `1` with an argument-conversion error.                                                                   | ⬜               | ⬜             | ⬜             |
+| MAN-CLI-35 | `power off -i 1 -s 2 1` and `-s 1 1 2 2`              | Exit `0`; sockets are reported in **sorted** order, and repeated indices are applied **once** (one `turned off.` line per socket).                                           | ⬜               | ⬜             | ⬜             |
+| MAN-CLI-36 | `list list` / `power status status`                   | Exit `1`; stderr `The following argument was not expected: …`.                                                                                                              | ⬜               | ⬜             | ⬜             |
+| MAN-CLI-37 | `list` with invalid/huge `LIBSOKKETTER_TEST_DEVICE_NUMBER` | The value is treated as unset — no fake devices, same output as MAN-CLI-04.                                                                                              | ⬜               | ⬜             | ⬜             |
 
 ## B. Graphical interface (`sokketter-ui`)
 
@@ -216,45 +222,23 @@ are prefixed `AUTO-`.
 
 | Suite            | Location                                               | Status                                                                                                                                                                                                                                                     |
 | ---------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CLI parser tests | [sokketter-cli/tests](sokketter-cli/tests)             | Present — options, subcommands, general parsing, plus full `MAN-CLI-*` / `AUTO-CLI-*` coverage (short flags, mixed case, windows-style, underscore aliasing, dedup, validate-before-hardware, actions via serial, multi-socket toggle, conversion errors). |
+| CLI parser tests | [sokketter-cli/tests](sokketter-cli/tests)             | Present — options, subcommands, general parsing, plus full `MAN-CLI-01`…`MAN-CLI-37` coverage (short flags, mixed case, windows-style, underscore aliasing, dedup, validate-before-hardware, actions via serial, multi-socket toggle, conversion errors). |
 | UI tests         | —                                                      | **Missing**.                                                                                                                                                                                                                                               |
 | kommpot tests    | [third-party/kommpot/tests](third-party/kommpot/tests) | Vendored; do not edit.                                                                                                                                                                                                                                     |
 
 ## Recommended tooling
 
-| Layer                            | Tool                                                       | Rationale                                                                                       |
-| -------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Library / CLI unit + integration | **GoogleTest + GMock**                                     | Already fetched (v1.16.0) and wired via `gtest_discover_tests`; matches existing CLI tests.     |
-| GUI (widget-level)               | **Qt Test (`QtTest`)**                                     | Free, ships with Qt6; `QTest::mouseClick`, `QSignalSpy`, and event injection cover the widgets. |
-| GUI (optional end-to-end)        | **Squish for Qt**                                          | Commercial; only if scripted full-app E2E is required beyond Qt Test.                           |
-| Coverage                         | **lcov/gcov** (Linux/macOS), **OpenCppCoverage** (Windows) | `get_coverage.sh` already uses lcov; OpenCppCoverage fills the Windows gap.                     |
-| Memory / UB                      | **ASan + UBSan** (Clang/GCC)                               | Catch leaks and UB in device/serialization code on Linux/macOS.                                 |
-| Static analysis                  | **clang-tidy + cppcheck**                                  | Enforce the project C++ conventions and catch defects pre-merge.                                |
-| CI orchestration                 | **GitHub Actions** via [Build.py](Build.py)                | Existing pipeline; extend with a test matrix across the three platforms.                        |
+| Layer                     | Tool                                                       | Rationale                                                                                       |
+| ------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| CLI unit + integration    | **GoogleTest + GMock**                                     | Already fetched (v1.16.0) and wired via `gtest_discover_tests`; matches existing CLI tests.     |
+| GUI (widget-level)        | **Qt Test (`QtTest`)**                                     | Free, ships with Qt6; `QTest::mouseClick`, `QSignalSpy`, and event injection cover the widgets. |
+| GUI (optional end-to-end) | **Squish for Qt**                                          | Commercial; only if scripted full-app E2E is required beyond Qt Test.                           |
+| Coverage                  | **lcov/gcov** (Linux/macOS), **OpenCppCoverage** (Windows) | `get_coverage.sh` already uses lcov; OpenCppCoverage fills the Windows gap.                     |
+| Memory / UB               | **ASan + UBSan** (Clang/GCC)                               | Catch leaks and UB in device/serialization code on Linux/macOS.                                 |
+| Static analysis           | **clang-tidy + cppcheck**                                  | Enforce the project C++ conventions and catch defects pre-merge.                                |
+| CI orchestration          | **GitHub Actions** via [Build.py](Build.py)                | Existing pipeline; extend with a test matrix across the three platforms.                        |
 
-## L1 — CLI integration tests (extend `sokketter-cli/tests`)
-
-Extend the existing suite (using `LIBSOKKETTER_TEST_DEVICE_NUMBER`) to close gaps.
-
-| ID | Under test | Derived from | Notes |
-| --- | --- | --- | --- |
-| AUTO-CLI-01 | `power on/off/toggle` on all sockets | MAN-CLI-12 | Assert per-socket stdout lines and exit `0`. |
-| AUTO-CLI-02 | `power` on specific + multiple sockets | MAN-CLI-13/14 | `-s 1`, `-s 1 2`. |
-| AUTO-CLI-03 | `toggle` idempotency | MAN-CLI-15 | Two toggles restore state. |
-| AUTO-CLI-04 | Socket index out of range (`0`, too large) | MAN-CLI-16 | Exit `1`, correct message, 1-based indexing. |
-| AUTO-CLI-05 | Case/underscore/windows-style options | MAN-CLI-18 | Canonical parsing. |
-| AUTO-CLI-06 | Help precedence across subcommands | MAN-CLI-17 | Regression for the manual help-forwarding workaround. |
-| AUTO-CLI-07 | Env-var contract regression | — | Pin the fake-device output the CLI tests rely on: `LIBSOKKETTER_TEST_DEVICE_NUMBER` produces `Test Device <i>` / `TEST_SERIAL_NUMBER_<i>` / `TEST_ADDRESS_<i>` (0-based). |
-| AUTO-CLI-08 | `--include-device-types` on `power` (valid, TEST_DEVICE bypass via `-i` and `-n`) | MAN-CLI-22/23/24 | The option was previously untested on `power`. |
-| AUTO-CLI-09 | `power`-path type-token rejection + update-check deferral on doomed `power` invocation | MAN-CLI-25 | Validation error only; no update notification line. |
-| AUTO-CLI-10 | Token edge inputs: leading comma, whitespace-only, `=`-form, `/include_device_types` | MAN-CLI-26/27/28 | Complements existing empty-value/empty-token/trailing-comma cases. |
-| AUTO-CLI-11 | Index-path "no devices available" branch | MAN-CLI-29 | `Device index N is out of range (no devices are available).` |
-| AUTO-CLI-12 | Socket/device boundary values | MAN-CLI-16/21 | `-s 4` vs `-s 5`, `-i N` vs `-i N+1`, degenerate `1-1` range, `SIZE_MAX` parses vs `SIZE_MAX+1` conversion error. |
-| AUTO-CLI-13 | Sort+dedup of `-s` indices (`-s 2 1` prints sorted; `-s 1 1 2 2` applies once) | MAN-CLI-14 | Ordering observable only with unsorted input. |
-| AUTO-CLI-14 | `argc == 0` guard and repeated subcommands (`list list`, `power status status`) | MAN-CLI-06 | Defensive parsing cases. |
-| AUTO-CLI-15 | Invalid/huge `LIBSOKKETTER_TEST_DEVICE_NUMBER` ⇒ no fake devices | MAN-CLI-04 | `stoul` failure/`out_of_range` falls back to the unset sentinel. |
-
-## L2 — UI automation (new Qt Test target)
+## L1 — UI automation (new Qt Test target)
 
 Widget-level tests with `QtTest`, driving fake devices via the env var. Keep them headless-capable
 (offscreen platform plugin) for CI.
