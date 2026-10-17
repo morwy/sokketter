@@ -19,7 +19,10 @@ The run is split into two phases:
 2. Hardware phase - all cases that require real hardware. The operator is asked to switch the
    hardware on beforehand, and the device database is cleaned again.
 
-At the end a results table with one row per test case (test id and status) is printed.
+After each phase a one-line phase statistics summary is printed. At the end of testing a combined
+TESTING.md-style markdown results table is printed (test id plus a single result column for the
+currently tested OS, filled with the emoji legend from TESTING.md), so the whole result column
+can be copy-pasted straight into the TESTING.md execution tables.
 
 This script is designed to be cross-platform and should work on Windows, Linux, and macOS.
 """
@@ -46,6 +49,13 @@ from Environment import Environment, System
 # Global variables.
 #
 # --------------------------------------------------------------------------------------------------
+# The markdown results tables use the emoji legend from TESTING.md; make sure the console can
+# encode them, even when it (or a redirection pipe) uses a legacy code page such as cp1252.
+_stdout_reconfigure = getattr(sys.stdout, "reconfigure", None)
+if callable(_stdout_reconfigure):
+    _stdout_reconfigure(encoding="utf-8", errors="replace")
+
+
 class TestStatus(str, Enum):
     """
     Enum to define the possible results of a single test case.
@@ -83,6 +93,22 @@ DEVICE_LINE_REGEX = re.compile(
 
 LAN_TYPE = "Energenie EG-PMxx-LAN"
 
+# TESTING.md result legend: each result cell of the markdown table is filled with one of these
+# bare emoji verdicts so the whole column can be copy-pasted straight into the TESTING.md
+# execution tables (the legend itself is printed once below the table).
+STATUS_TO_CELL: dict[TestStatus, str] = {
+    TestStatus.PASS: "✅",
+    TestStatus.FAIL: "❌",
+    TestStatus.BLOCKED: "⚠️",
+    TestStatus.SKIPPED: "⬜",
+}
+
+RESULT_COLUMN_BY_SYSTEM: dict[System, str] = {
+    System.WINDOWS: "Windows",
+    System.LINUX: "Linux",
+    System.MACOS: "macOS",
+}
+
 
 # --------------------------------------------------------------------------------------------------
 #
@@ -116,6 +142,8 @@ class CliTests:
         self.logger.info("Assume hardware ready: %s", self.assume_hardware)
 
         self.results: list[tuple[str, TestStatus]] = []
+        self.phase_results: dict[str, list[tuple[str, TestStatus]]] = {}
+        self.current_phase: str = ""
 
         self.usb_inventory: list[dict[str, str]] = []
         self.lan_inventory: list[dict[str, str]] = []
@@ -409,9 +437,12 @@ class CliTests:
 
     def __record(self, case_id: str, status: TestStatus, detail: str = "") -> None:
         """
-        Store the result of one test case and log it.
+        Store the result of one test case (both overall and in the current phase) and log it.
         """
         self.results.append((case_id, status))
+
+        if self.current_phase:
+            self.phase_results[self.current_phase].append((case_id, status))
 
         if detail:
             self.logger.info("%s: %s (%s)", case_id, status.value, detail)
@@ -689,6 +720,9 @@ class CliTests:
         """
         self.logger.info("Starting the no-hardware (parsing) phase.")
 
+        self.current_phase = "parsing"
+        self.phase_results["parsing"] = []
+
         self.__prompt(
             "PHASE 1: make sure ALL supported power-strip hardware is disconnected "
             "from this machine."
@@ -719,6 +753,8 @@ class CliTests:
             ("CLI-PRS-20", self.test_cli_prs_20),
         ]:
             self.__run_case(case_id, test_function)
+
+        self.__print_phase_stats("Phase 1 (parsing)", self.phase_results["parsing"])
 
         self.logger.info("No-hardware phase completed.")
 
@@ -1190,6 +1226,9 @@ class CliTests:
         """
         self.logger.info("Starting the hardware phase.")
 
+        self.current_phase = "hardware"
+        self.phase_results["hardware"] = []
+
         self.__prompt(
             "PHASE 2: make sure the power-strip hardware is connected and switched ON."
         )
@@ -1233,6 +1272,8 @@ class CliTests:
         ]:
             self.__run_case(case_id, test_function)
 
+        self.__print_phase_stats("Phase 2 (hardware)", self.phase_results["hardware"])
+
         self.logger.info("Hardware phase completed.")
 
     # ---------------------------------------------------------------------------------------------
@@ -1240,33 +1281,60 @@ class CliTests:
     # Reporting.
     #
     # ---------------------------------------------------------------------------------------------
-    def __print_results_table(self) -> None:
+    def __print_markdown_results_table(
+        self, title: str, results: list[tuple[str, TestStatus]]
+    ) -> None:
         """
-        Print the final two-column results table: test id and status.
+        Print a TESTING.md-style markdown results table: one row per test case and a single
+        result column for the currently tested OS, filled with the emoji legend from TESTING.md,
+        so the whole result column can be copy-pasted straight into the TESTING.md tables.
         """
-        id_width = max([len(case_id) for case_id, _ in self.results] + [len("Test ID")])
+        current_column = RESULT_COLUMN_BY_SYSTEM[self.system]
 
-        lines: list[str] = []
-        header = f"{'Test ID'.ljust(id_width)}  Status"
-        lines.append("=" * len(header))
-        lines.append("CLI TEST RESULTS")
-        lines.append("=" * len(header))
-        lines.append(header)
-        lines.append(f"{'-' * id_width}  ------")
+        lines: list[str] = [
+            f"### {title}",
+            "",
+            f"| ID | Result: {current_column} |",
+            "| ---------- | --------------- |",
+        ]
 
-        for case_id, status in self.results:
-            lines.append(f"{case_id.ljust(id_width)}  {status.value}")
+        for case_id, status in results:
+            lines.append(f"| {case_id} | {STATUS_TO_CELL[status]} |")
 
-        summary = ", ".join(
-            f"{status.value}: {sum(1 for _, recorded in self.results if recorded == status)}"
-            for status in TestStatus
-        )
-        lines.append("-" * len(header))
-        lines.append(summary)
+        lines.append("")
+        lines.append("Legend: ✅ Pass · ❌ Fail · ⚠️ Blocked/NA · ⬜ Not run")
 
         report = "\n".join(lines)
         print("\n" + report)
         self.logger.info("\n%s", report)
+
+    def __print_phase_stats(self, phase_name: str, results: list[tuple[str, TestStatus]]) -> None:
+        """
+        Print a brief one-line testing statistics summary for one phase.
+        """
+        counts = {
+            status: sum(1 for _, recorded in results if recorded == status)
+            for status in TestStatus
+        }
+
+        stat_line = (
+            f"{phase_name} stats: {len(results)} total | "
+            f"✅ Pass {counts[TestStatus.PASS]} | "
+            f"❌ Fail {counts[TestStatus.FAIL]} | "
+            f"⚠️ Blocked/NA {counts[TestStatus.BLOCKED]} | "
+            f"⬜ Not run {counts[TestStatus.SKIPPED]}"
+        )
+
+        print("\n" + stat_line)
+        self.logger.info("%s", stat_line)
+
+    def __print_results_table(self) -> None:
+        """
+        Print the combined markdown results table for the whole run.
+        """
+        self.__print_markdown_results_table(
+            "CLI test results (all phases)", self.results
+        )
 
     def run(self) -> None:
         """
@@ -1278,6 +1346,7 @@ class CliTests:
         self.run_hardware_phase()
 
         self.__print_results_table()
+        self.__print_phase_stats("Overall", self.results)
 
         failures = sum(1 for _, status in self.results if status == TestStatus.FAIL)
         self.logger.info("CLI test run completed. Failed cases: %d", failures)
@@ -1298,7 +1367,7 @@ if __name__ == "__main__":
         datefmt="%Y-%m-%d %H:%M:%S",
         handlers=[
             logging.StreamHandler(sys.stdout),
-            logging.FileHandler("cli_tests.log", mode="w"),
+            logging.FileHandler("cli_tests.log", mode="w", encoding="utf-8"),
         ],
     )
 
