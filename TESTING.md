@@ -116,6 +116,8 @@ that require at least one real device to be online.
 | CLI-HW-13 | `power status -i 1 -s 4` then `-s 5` (4-socket device) | `-s 4` exits `0`; `-s 5` exits `1` with an out-of-range message naming the valid range. On a 1-socket device the range is printed degenerate as `1-1`. | ⬜               | ⬜             | ⬜             |
 | CLI-HW-14 | `power status -i N` then `-i N+1` (N devices present)  | `-i N` exits `0`; `-i N+1` exits `1` with an out-of-range message naming the valid range.                                                              | ⬜               | ⬜             | ⬜             |
 | CLI-HW-15 | `power off -i 1 -s 2 1` and `-s 1 1 2 2`               | Exit `0`; sockets are reported in **sorted** order, and repeated indices are applied **once** (one `turned off.` line per socket).                     | ⬜               | ⬜             | ⬜             |
+| CLI-HW-16 | Connect a new device, then inspect `devices.json`.     | Device appended with type/id/name/description/auth/sockets.                                                                            | ⬜               | ⬜             | ⬜             |
+| CLI-HW-17 | Corrupt/partial `devices.json`.                        | The CLI logs an error and starts with a usable (empty) database instead of crashing.                                                   | ⬜               | ⬜             | ⬜             |
 
 ## B. Graphical interface (`sokketter-ui`)
 
@@ -168,6 +170,8 @@ cases that require at least one device real to be present.
 | UI-HW-24  | Set a socket configurable-reset value (validated integer).                                                     | Only non-negative integers accepted; reset button appears when > 0.                                   | ⬜               | ⬜             | ⬜             |
 | UI-HW-25  | Delete/forget the device, choose **No**.                                                                       | Nothing is deleted.                                                                                   | ⬜               | ⬜             | ⬜             |
 | UI-HW-26  | Delete/forget the device, confirm the warning dialog with **Yes**.                                             | Device removed from list and `devices.json`; returns to device list.                                  | ⬜               | ⬜             | ⬜             |
+| UI-HW-27  | Edit any config in application, restart the app.                                                               | Edited values survive the restart.                                                                    | ⬜               | ⬜             | ⬜             |
+| UI-HW-28  | Load an old `devices.json` with no `authentication-type`.                                                      | Loads without error; auth type defaults from the device class (backwards compatible).                 | ⬜               | ⬜             | ⬜             |
 
 ## C. Device-specific
 
@@ -185,15 +189,6 @@ works. Confirm the **socket count** matches the table above.
 | MAN-DEV-07 | Any USB             | Unplug the device mid-session.                                        | Device shown as disconnected; operations fail gracefully; no crash.                | ⬜                      | ⬜                    | ⬜                   |
 | MAN-DEV-08 | Any LAN             | Unplug the device mid-session.                                        | Device shown as disconnected; operations fail gracefully; no crash.                | ⬜                      | ⬜                    | ⬜                   |
 | MAN-DEV-09 | Linux, any USB      | Run without udev rules, then with them.                               | Without rules: access denied/enumeration fails; with rules: works.                 | ⚠️                     | ⬜                    | ⚠️                  |
-
-## D. Persistence & migration
-
-| ID         | Steps                                                     | Expected                                                                              | Result: Windows | Result: Linux | Result: macOS |
-| ---------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------- | --------------- | ------------- | ------------- |
-| MAN-PER-01 | Connect a new device, then inspect `devices.json`.        | Device appended with type/id/name/description/auth/sockets.                           | ⬜               | ⬜             | ⬜             |
-| MAN-PER-02 | Edit any config in application, restart the app.          | Edited values survive the restart.                                                    | ⬜               | ⬜             | ⬜             |
-| MAN-PER-03 | Load an old `devices.json` with no `authentication-type`. | Loads without error; auth type defaults from the device class (backwards compatible). | ⬜               | ⬜             | ⬜             |
-| MAN-PER-04 | Corrupt/partial `devices.json`.                           | App logs an error and starts with a usable (empty) database instead of crashing.      | ⬜               | ⬜             | ⬜             |
 
 ---
 
