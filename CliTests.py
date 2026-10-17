@@ -113,6 +113,10 @@ RESULT_COLUMN_BY_SYSTEM: dict[System, str] = {
     System.MACOS: "macOS",
 }
 
+# Separator written to the log between consecutive test cases so each case's logs are visually
+# delimited.
+CASE_SEPARATOR = "-" * 79
+
 
 # --------------------------------------------------------------------------------------------------
 #
@@ -447,22 +451,26 @@ class CliTests:
 
     def __record(self, case_id: str, status: TestStatus, detail: str = "") -> None:
         """
-        Store the result of one test case (both overall and in the current phase) and log it.
+        Store the result of one test case (both overall and in the current phase) and log it. The
+        result is always reported with the TESTING.md emoji on the first line; any extra detail
+        (e.g. the expected-vs-received block of a failure) follows on subsequent lines.
         """
         self.results.append((case_id, status))
 
         if self.current_phase:
             self.phase_results[self.current_phase].append((case_id, status))
 
+        report_line = f"{case_id}: {STATUS_TO_CELL[status]}"
         if detail:
-            self.logger.info("%s: %s (%s)", case_id, status.value, detail)
-        else:
-            self.logger.info("%s: %s", case_id, status.value)
+            report_line += f"\n{detail}"
+
+        self.logger.info("%s", report_line)
 
     def __run_case(self, case_id: str, test_function) -> None:
         """
         Execute one test function and translate its outcome into a recorded status.
         """
+        self.logger.info("%s", CASE_SEPARATOR)
         self.logger.info("Running test case %s.", case_id)
 
         try:
@@ -470,7 +478,7 @@ class CliTests:
             self.__record(case_id, returned_status or TestStatus.PASS)
 
         except CaseBlocked as error:
-            self.__record(case_id, TestStatus.BLOCKED, str(error))
+            self.__record(case_id, TestStatus.BLOCKED, f"reason: {error}")
 
         except CaseFailure as error:
             self.__record(case_id, TestStatus.FAIL, self.__failure_detail(str(error)))
@@ -482,17 +490,18 @@ class CliTests:
 
     def __failure_detail(self, assertion_message: str) -> str:
         """
-        Build the expected-vs-received details of a failed case: the failed assertion together
-        with the command, exit code, stdout and stderr of the most recent CLI invocation.
+        Build the expected-vs-received block of a failed case: the expected condition on one line,
+        then the received command, exit code, stdout and stderr of the most recent CLI invocation
+        on the following line.
         """
-        detail = f"expected vs received: {assertion_message}"
+        detail = f"expected: {assertion_message}"
 
         if self.last_result is not None:
             detail += (
-                f"\n  last command: {self.cli_binary} {' '.join(self.last_command)}"
-                f"\n  received exit code: {self.last_result.returncode}"
-                f"\n  received stdout:\n{self.last_result.stdout}"
-                f"\n  received stderr:\n{self.last_result.stderr}"
+                f"\nreceived: {self.cli_binary} {' '.join(self.last_command)}"
+                f"\n  exit code: {self.last_result.returncode}"
+                f"\n  stdout:\n{self.last_result.stdout}"
+                f"  stderr:\n{self.last_result.stderr}"
             )
 
         return detail
