@@ -1,13 +1,6 @@
 # sokketter Testing Plan
 
-This document defines how to verify **sokketter** before a release. It has two parts:
-
-- **[Part 1 — Manual Test Plan](#part-1--manual-test-plan)** — a pre-release checklist covering every
-  user-facing feature of the three first-party components (`libsokketter`, `sokketter-cli`,
-  `sokketter-ui`) on Windows, Linux, and macOS.
-- **[Part 2 — Automated Test Plan](#part-2--automated-test-plan)** — a testing strategy derived from
-  the manual plan, with concrete tooling recommendations and a prioritized roadmap.
-
+This document defines how to verify **sokketter** before a release.
 The scope is the current functionality only. Supported devices, platforms, and the public API are
 described in [README.md](README.md) and [AGENTS.md](AGENTS.md).
 
@@ -15,11 +8,10 @@ described in [README.md](README.md) and [AGENTS.md](AGENTS.md).
 
 ## Components under test
 
-| Component | Description | Key sources |
-| --- | --- | --- |
-| `libsokketter` | Core C++17 library. Public API only. | [libsokketter/include/libsokketter.h](libsokketter/include/libsokketter.h) |
-| `sokketter-cli` | CLI11 command-line front end. | [sokketter-cli/sources/cli_parser.cpp](sokketter-cli/sources/cli_parser.cpp) |
-| `sokketter-ui` | Qt6 Widgets GUI. | [sokketter-ui/sources/mainwindow.cpp](sokketter-ui/sources/mainwindow.cpp) |
+| Component       | Description                          | Key sources                                                                  |
+| --------------- | ------------------------------------ | ---------------------------------------------------------------------------- |
+| `sokketter-cli` | CLI11 command-line front end.        | [sokketter-cli/sources/cli_parser.cpp](sokketter-cli/sources/cli_parser.cpp) |
+| `sokketter-ui`  | Qt6 Widgets GUI.                     | [sokketter-ui/sources/mainwindow.cpp](sokketter-ui/sources/mainwindow.cpp)   |
 
 ### Supported devices
 
@@ -64,124 +56,118 @@ Mark a cell ⚠️ when a case does not apply to that platform (e.g. Windows-onl
 
 ---
 
-# Part 1 — Manual Test Plan
+# Test cases
 
-Test-case IDs are prefixed `MAN-`. Unless a case is device-specific (group E) or hardware-only, run it
-with fake devices on each supported OS and record the outcome in the matching result column.
+Run tests case on each supported OS and record the outcome in the matching result column.
 
 ## A. Command-line interface (`sokketter-cli`)
 
-Verify both `stdout`/`stderr` content and the process exit code. 
+Verify both `stdout`/`stderr` content and the process exit code. The cases are split into two groups:
+**parsing** (`CLI-PRS-*`) — everything that runs with **no device online** (help/version, option
+validation, and errors raised before any device is resolved); and **hardware** (`CLI-HW-*`) — cases
+that require at least one real device to be online.
 
 > **Exit-code contract:** the CLI collapses every CLI11 parse-error code (100+) onto the documented
 > contract — **`0`** for success (including `--help`/`--version`) and **`1`** for any failure. See
 > [cli_parser.cpp](sokketter-cli/sources/cli_parser.cpp) `application.exit()` handling. Do **not**
 > expect CLI11's raw `106`/`108`/`109` codes.
 
-| ID         | Command                                               | Expected                                                                                                                                                                     | Result: Windows | Result: Linux | Result: macOS |
-| ---------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | ------------- | ------------- |
-| MAN-CLI-01 | `sokketter-cli` (no args)                             | Exit `1`; stderr `A subcommand is required`.                                                                                                                                 | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-02 | `sokketter-cli --help` / `-h`                         | Exit `0`; prints the descriptive help text.                                                                                                                                  | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-03 | `sokketter-cli --version` / `-v`                      | Exit `0`; prints `sokketter-cli version …`.                                                                                                                                  | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-04 | `sokketter-cli list` (no devices)                     | Exit `0`; **stdout** `Listing available devices…` then `No devices found.` (empty bus is a valid answer, not a failure — scripts must match the message, not the exit code). | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-05 | `sokketter-cli list` (N fake devices)                 | Exit `0`; numbered device list printed.                                                                                                                                      | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-06 | `sokketter-cli list power` / `power list`             | Exit `1`; stderr `The following argument was not expected: …`.                                                                                                               | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-07 | `power status -i 1 -s 1`                              | Exit `0`; prints device + `Socket 1: … status: off`.                                                                                                                         | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-08 | `power status -n <serial> -s 1`                       | Exit `0`; same output selected by serial.                                                                                                                                    | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-09 | `power status -i 1 -n <serial>`                       | Exit `1`; stderr `--device-at-index excludes --device-with-serial`.                                                                                                          | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-10 | `power status` (no device flag)                       | Exit `1`; stderr `[Option Group: …] is required.`.                                                                                                                           | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-11 | `power status -n <missing>`                           | Exit `1`; stderr `No device was found for serial "<missing>".`.                                                                                                              | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-12 | `power on -i 1` (no `--sockets`)                      | Exit `0`; **all** sockets report `turned on.`.                                                                                                                               | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-13 | `power on -i 1 -s 1`                                  | Exit `0`; only socket 1 reports `turned on.`.                                                                                                                                | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-14 | `power off -i 1 -s 1 2`                               | Exit `0`; sockets 1 and 2 report `turned off.`.                                                                                                                              | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-15 | `power toggle -i 1 -s 1` twice                        | Exit `0`; socket returns to its original state after two toggles.                                                                                                            | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-16 | `power status -i 1 -s 0` and `-s 99`                  | Exit `1`; stderr `Socket index … is out of range (valid range: 1-N).` (1-based indices).                                                                                     | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-17 | `power on --help` (and status/off/toggle)             | Exit `0`; help text shown (help precedence over subcommand).                                                                                                                 | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-18 | Windows-style `/help`, mixed case `LIST`, underscores | Parsed the same as canonical forms (`ignore_case` / `ignore_underscore` / windows options).                                                                                  | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-19 | `sokketter-cli list --include-device-types ethernet`  | Exit `0`; Ethernet/LAN include filter is accepted. With fake devices the list is unchanged (Test devices stay listed regardless of selection).                               | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-20 | `sokketter-cli list --include-device-types lan`       | Exit `0`; LAN alias is accepted and behaves the same as `ethernet`.                                                                                                          | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-21 | `power status -i 0`                                   | Exit `1`; stderr `Device index 0 is out of range (valid range starts from 1).`.                                                                                              | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-22 | `power status -i 1 -t usb`                            | Exit `0`; `--include-device-types` is accepted on the `power` subcommand and resolves index 1 against the USB selection.                                                     | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-23 | `power status -i 1 -t ethernet` (fake devices)        | Exit `0`; Test devices stay addressable by index even under an Ethernet-only selection.                                                                                      | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-24 | `power status -n TEST_SERIAL_NUMBER_0 -t ethernet`    | Exit `0`; Test devices stay addressable by serial even under an Ethernet-only selection.                                                                                     | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-25 | `power status -i 1 -t garbage`                        | Exit `1`; stderr `Unknown device type: garbage. Available types are: USB, ETHERNET, LAN.`; **no** update-notification line (validation runs before the update check).       | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-26 | `list --include-device-types ,usb`                    | Exit `1`; stderr `Empty device type in --include-device-types. …` (leading comma → empty token; likewise a trailing comma or an empty value).                               | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-27 | `list --include-device-types " "`                     | Exit `1`; stderr `Empty device type in --include-device-types. …` (whitespace-only token).                                                                                   | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-28 | `list --include-device-types=usb`                     | Exit `0`; `=`-form accepted (normalization stops at `=`).                                                                                                                    | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-29 | `power status -i 1` (no devices)                      | Exit `1`; stderr `Device index 1 is out of range (no devices are available).`.                                                                                               | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-30 | `power status -n <real USB serial> -t ethernet`       | Exit `1`; stderr `No device was found for serial "<serial>".` (serial outside the selection is reported as not found).                                                       | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-31 | `list` with `LIBSOKKETTER_TEST_DEVICE_NUMBER=N`       | Fake-device naming contract: entries are `Test Device <i>` with serial `TEST_SERIAL_NUMBER_<i>` and address `TEST_ADDRESS_<i>`, where `i` is **0-based**.                    | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-32 | `power status -i 1 -s 4` then `-s 5` (4-socket device) | `-s 4` exits `0`; `-s 5` exits `1` with an out-of-range message naming the valid range. On a 1-socket device the range is printed degenerate as `1-1`.                       | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-33 | `power status -i N` then `-i N+1` (N devices present) | `-i N` exits `0`; `-i N+1` exits `1` with an out-of-range message naming the valid range.                                                                                    | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-34 | `power status -i 18446744073709551615` / `…616`       | `SIZE_MAX` parses and is reported out of range; `SIZE_MAX + 1` exits `1` with an argument-conversion error.                                                                   | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-35 | `power off -i 1 -s 2 1` and `-s 1 1 2 2`              | Exit `0`; sockets are reported in **sorted** order, and repeated indices are applied **once** (one `turned off.` line per socket).                                           | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-36 | `list list` / `power status status`                   | Exit `1`; stderr `The following argument was not expected: …`.                                                                                                              | ⬜               | ⬜             | ⬜             |
-| MAN-CLI-37 | `list` with invalid/huge `LIBSOKKETTER_TEST_DEVICE_NUMBER` | The value is treated as unset — no fake devices, same output as MAN-CLI-04.                                                                                              | ⬜               | ⬜             | ⬜             |
+### A1. Parsing (no devices required)
+
+| ID         | Command                                                | Expected                                                                                                                                                                     | Result: Windows | Result: Linux | Result: macOS |
+| ---------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | ------------- | ------------- |
+| CLI-PRS-01 | `sokketter-cli` (no args)                              | Exit `1`; stderr `A subcommand is required`.                                                                                                                                 | ⬜               | ⬜             | ⬜             |
+| CLI-PRS-02 | `sokketter-cli --help` / `-h`                          | Exit `0`; prints the descriptive help text.                                                                                                                                  | ⬜               | ⬜             | ⬜             |
+| CLI-PRS-03 | `sokketter-cli --version` / `-v`                       | Exit `0`; prints `sokketter-cli version …`.                                                                                                                                  | ⬜               | ⬜             | ⬜             |
+| CLI-PRS-04 | `sokketter-cli list` (no devices)                      | Exit `0`; **stdout** `Listing available devices…` then `No devices found.` (empty bus is a valid answer, not a failure — scripts must match the message, not the exit code). | ⬜               | ⬜             | ⬜             |
+| CLI-PRS-05 | `sokketter-cli list power` / `power list`              | Exit `1`; stderr `The following argument was not expected: …`.                                                                                                               | ⬜               | ⬜             | ⬜             |
+| CLI-PRS-06 | `power status -i 1 -n <serial>`                        | Exit `1`; stderr `--device-at-index excludes --device-with-serial`.                                                                                                          | ⬜               | ⬜             | ⬜             |
+| CLI-PRS-07 | `power status` (no device flag)                        | Exit `1`; stderr `[Option Group: …] is required.`.                                                                                                                           | ⬜               | ⬜             | ⬜             |
+| CLI-PRS-08 | `power status -n <missing>`                            | Exit `1`; stderr `No device was found for serial "<missing>".`.                                                                                                              | ⬜               | ⬜             | ⬜             |
+| CLI-PRS-09 | `power on --help` (and status/off/toggle)              | Exit `0`; help text shown (help precedence over subcommand).                                                                                                                 | ⬜               | ⬜             | ⬜             |
+| CLI-PRS-10 | Windows-style `/help`, mixed case `LIST`, underscores  | Parsed the same as canonical forms (`ignore_case` / `ignore_underscore` / windows options).                                                                                  | ⬜               | ⬜             | ⬜             |
+| CLI-PRS-11 | `sokketter-cli list --include-device-types ethernet`   | Exit `0`; Ethernet/LAN include filter is accepted.                                                                                                                           | ⬜               | ⬜             | ⬜             |
+| CLI-PRS-12 | `sokketter-cli list --include-device-types lan`        | Exit `0`; LAN alias is accepted and behaves the same as `ethernet`.                                                                                                          | ⬜               | ⬜             | ⬜             |
+| CLI-PRS-13 | `power status -i 0`                                    | Exit `1`; stderr `Device index 0 is out of range (valid range starts from 1).`.                                                                                              | ⬜               | ⬜             | ⬜             |
+| CLI-PRS-14 | `power status -i 1 -t garbage`                         | Exit `1`; stderr `Unknown device type: garbage. Available types are: USB, ETHERNET, LAN.`; **no** update-notification line (validation runs before the update check).        | ⬜               | ⬜             | ⬜             |
+| CLI-PRS-15 | `list --include-device-types ,usb`                     | Exit `1`; stderr `Empty device type in --include-device-types. …` (leading comma → empty token; likewise a trailing comma or an empty value).                                | ⬜               | ⬜             | ⬜             |
+| CLI-PRS-16 | `list --include-device-types " "`                      | Exit `1`; stderr `Empty device type in --include-device-types. …` (whitespace-only token).                                                                                   | ⬜               | ⬜             | ⬜             |
+| CLI-PRS-17 | `list --include-device-types=usb`                      | Exit `0`; `=`-form accepted (normalization stops at `=`).                                                                                                                    | ⬜               | ⬜             | ⬜             |
+| CLI-PRS-18 | `power status -i 1` (no devices)                       | Exit `1`; stderr `Device index 1 is out of range (no devices are available).`.                                                                                               | ⬜               | ⬜             | ⬜             |
+| CLI-PRS-19 | `power status -i 18446744073709551615` / `…616`        | `SIZE_MAX` parses and is reported out of range; `SIZE_MAX + 1` exits `1` with an argument-conversion error.                                                                  | ⬜               | ⬜             | ⬜             |
+| CLI-PRS-20 | `list list` / `power status status`                    | Exit `1`; stderr `The following argument was not expected: …`.                                                                                                               | ⬜               | ⬜             | ⬜             |
+
+### A2. Hardware (devices are required)
+
+| ID        | Command                                                | Expected                                                                                                                                               | Result: Windows | Result: Linux | Result: macOS |
+| --------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------- | ------------- | ------------- |
+| CLI-HW-01 | `sokketter-cli list` (N devices)                       | Exit `0`; numbered device list printed.                                                                                                                | ⬜               | ⬜             | ⬜             |
+| CLI-HW-02 | `power status -i 1 -s 1`                               | Exit `0`; prints device + `Socket 1: … status: off`.                                                                                                   | ⬜               | ⬜             | ⬜             |
+| CLI-HW-03 | `power status -n <serial> -s 1`                        | Exit `0`; same output selected by serial.                                                                                                              | ⬜               | ⬜             | ⬜             |
+| CLI-HW-04 | `power on -i 1` (no `--sockets`)                       | Exit `0`; **all** sockets report `turned on.`.                                                                                                         | ⬜               | ⬜             | ⬜             |
+| CLI-HW-05 | `power on -i 1 -s 1`                                   | Exit `0`; only socket 1 reports `turned on.`.                                                                                                          | ⬜               | ⬜             | ⬜             |
+| CLI-HW-06 | `power off -i 1 -s 1 2`                                | Exit `0`; sockets 1 and 2 report `turned off.`.                                                                                                        | ⬜               | ⬜             | ⬜             |
+| CLI-HW-07 | `power toggle -i 1 -s 1` twice                         | Exit `0`; socket returns to its original state after two toggles.                                                                                      | ⬜               | ⬜             | ⬜             |
+| CLI-HW-08 | `power status -i 1 -s 0` and `-s 99`                   | Exit `1`; stderr `Socket index … is out of range (valid range: 1-N).` (1-based indices).                                                               | ⬜               | ⬜             | ⬜             |
+| CLI-HW-09 | `power status -i 1 -t usb`                             | Exit `0`; `--include-device-types` is accepted on the `power` subcommand and resolves index 1 against the USB selection.                               | ⬜               | ⬜             | ⬜             |
+| CLI-HW-10 | `power status -i 1 -t ethernet` (devices)              | Exit `0`; Test devices stay addressable by index even under an Ethernet-only selection.                                                                | ⬜               | ⬜             | ⬜             |
+| CLI-HW-11 | `power status -n <real serial> -t ethernet`            | Exit `0`; Test devices stay addressable by serial even under an Ethernet-only selection.                                                               | ⬜               | ⬜             | ⬜             |
+| CLI-HW-12 | `power status -n <real USB serial> -t ethernet`        | Exit `1`; stderr `No device was found for serial "<serial>".` (serial outside the selection is reported as not found).                                 | ⬜               | ⬜             | ⬜             |
+| CLI-HW-13 | `power status -i 1 -s 4` then `-s 5` (4-socket device) | `-s 4` exits `0`; `-s 5` exits `1` with an out-of-range message naming the valid range. On a 1-socket device the range is printed degenerate as `1-1`. | ⬜               | ⬜             | ⬜             |
+| CLI-HW-14 | `power status -i N` then `-i N+1` (N devices present)  | `-i N` exits `0`; `-i N+1` exits `1` with an out-of-range message naming the valid range.                                                              | ⬜               | ⬜             | ⬜             |
+| CLI-HW-15 | `power off -i 1 -s 2 1` and `-s 1 1 2 2`               | Exit `0`; sockets are reported in **sorted** order, and repeated indices are applied **once** (one `turned off.` line per socket).                     | ⬜               | ⬜             | ⬜             |
 
 ## B. Graphical interface (`sokketter-ui`)
 
-Run with fake devices unless a case is hardware-specific.
+The cases are split into two groups: **functional** (`UI-FUN-*`) — everything that runs with **no
+device present** (window chrome, empty list, Settings, About, theme); and **hardware** (`UI-HW-*`) —
+cases that require at least one device real to be present.
 
-### B1. Device list & navigation
-
-| ID        | Steps                                                              | Expected                                                            | Result: Windows | Result: Linux | Result: macOS |
-| --------- | ------------------------------------------------------------------ | ------------------------------------------------------------------- | --------------- | ------------- | ------------- |
-| MAN-UI-01 | Launch the app.                                                    | Main window opens at the persisted geometry.                        | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-02 | With no devices present.                                           | The empty-list placeholder item is shown; clicking it does nothing. | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-03 | Click the refresh control.                                         | Device list re-enumerates.                                          | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-04 | Resize the window.                                                 | List items reflow to the available width without clipping.          | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-05 | Toggle **USB devices** / **Ethernet devices** filters in Settings. | List updates to include only the allowed bus types.                 | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-06 | Observe a disconnected saved device.                               | Item shows disconnected state and is not interactive for switching. | ⬜                      | ⬜                    | ⬜                   |
-
-### B2. Authentication
-
-| ID        | Steps                                                                                                          | Expected                                                                                              | Result: Windows | Result: Linux | Result: macOS |
-| --------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | --------------- | ------------- | ------------- |
-| MAN-UI-07 | Click a device with **no** auth (USB/fake).                                                                    | Goes straight to the socket list.                                                                     | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-08 | Click an EG-PMxx-LAN device (password auth).                                                                   | Redirected to the password page.                                                                      | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-09 | Use the back control on the auth page.                                                                         | Returns to the device list.                                                                           | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-10 | Enter a wrong password.                                                                                        | `Authentication failed! Please try again.`; stays on the page.                                        | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-11 | Enter the correct password and log in (button or Enter).                                                       | `Authentication succeed!`; socket list opens; password saved.                                         | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-12 | After authenticating for the first time, visit the device page, go back and open the same device               | Entering password once again is not required                                                          | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-13 | Click a **connected** device with no auth or valid saved credentials.                                          | `try_authenticate()` runs on the worker thread; on success the socket list opens.                     | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-14 | Click a saved but **offline/disconnected** device (no auth or valid saved credentials).                        | Skips authentication and proceeds straight to the socket list; no connection attempt is forced.       | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-15 | Click a saved but **offline/disconnected** device (with auth but without valid saved credentials).             | Sockets are disabled (cannot toggle while offline), but configuration is still editable and persists. | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-16 | On an **offline** device's socket list, open the edit → Configure page, change device/socket fields, and Save. | Sockets are disabled (cannot toggle while offline), but configuration is still editable and persists. | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-17 | Reconnect a device whose saved password no longer works.                                                       | Auto-redirect back to the authentication page.                                                        | ⬜                      | ⬜                    | ⬜                   |
-
-### B3. Socket control
-
-| ID        | Steps                                                                             | Expected                                                                                  | Result: Windows | Result: Linux | Result: macOS |
-| --------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | --------------- | ------------- | ------------- |
-| MAN-UI-18 | In **single-click** mode, click a socket.                                         | Socket toggles; status LED updates after the async operation.                             | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-19 | For a socket with a configurable reset, press reset.                              | Socket powers off, waits the configured ms, powers back on; button disabled during reset. | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-20 | Proceed to LAN device settings, change anything, save and go back to socket list. | Socket are having the same status as before (ON or OFF) and not UNKNOWN                   | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-21 | Socket with reset = 0 ms.                                                         | Reset button is hidden.                                                                   | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-22 | Rapidly toggle multiple sockets.                                                  | UI stays responsive (I/O on worker thread); no stuck/disabled sockets.                    | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-23 | Switch to **double-click** mode in Settings, single-click a socket.               | Single click does nothing; double click toggles.                                          | ⬜                      | ⬜                    | ⬜                   |
-
-### B4. Configuration
-
-| ID        | Steps                                                              | Expected                                                                | Result: Windows | Result: Linux | Result: macOS |
-| --------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------- | --------------- | ------------- | ------------- |
-| MAN-UI-24 | Open the socket list edit → Configure page.                        | Device edit form + one form per socket are shown.                       | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-25 | Use Configure/back controls.                                       | Navigation returns without saving.                                      | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-26 | Change device name/description and Save.                           | New values persist and appear in the device/socket lists after restart. | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-27 | Change socket name/description and Save.                           | New values persist.                                                     | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-28 | Set a socket configurable-reset value (validated integer).         | Only non-negative integers accepted; reset button appears when > 0.     | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-29 | Delete/forget the device, choose **No**.                           | Nothing is deleted.                                                     | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-30 | Delete/forget the device, confirm the warning dialog with **Yes**. | Device removed from list and `devices.json`; returns to device list.    | ⬜                      | ⬜                    | ⬜                   |
-
-### B5. Settings, About & theme
+### B1. Functional (no device required)
 
 | ID        | Steps                                                        | Expected                                                                     | Result: Windows | Result: Linux | Result: macOS |
 | --------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------- | --------------- | ------------- | ------------- |
-| MAN-UI-31 | Open Settings; click "open data folder".                     | Storage folder opens in the OS file manager.                                 | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-32 | Change theme radio (Auto/Light/Dark).                        | Whole app (incl. dialogs, list items) restyles live.                         | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-33 | With theme = Auto, change the OS light/dark mode.            | App follows the OS theme; Windows title bar switches; macOS detection fires. | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-34 | Open About.                                                  | Shows version, git hash, build date, license line, and components list.      | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-35 | Open the License dialog; switch tabs.                        | Dialog opens, tabs render, OK closes it; respects the current theme.         | ⬜                      | ⬜                    | ⬜                   |
-| MAN-UI-36 | Change UI settings, move/resize the window, close, relaunch. | Geometry restored from `sokketter-ui.json`.                                  | ⬜                      | ⬜                    | ⬜                   |
+| UI-FUN-01 | Launch the app.                                              | Main window opens at the persisted geometry.                                 | ⬜               | ⬜             | ⬜             |
+| UI-FUN-02 | With no devices present.                                     | The empty-list placeholder item is shown; clicking it does nothing.          | ⬜               | ⬜             | ⬜             |
+| UI-FUN-03 | Click the refresh control.                                   | Device list re-enumerates.                                                   | ⬜               | ⬜             | ⬜             |
+| UI-FUN-04 | Resize the window.                                           | List items reflow to the available width without clipping.                   | ⬜               | ⬜             | ⬜             |
+| UI-FUN-05 | Open Settings; click "open data folder".                     | Storage folder opens in the OS file manager.                                 | ⬜               | ⬜             | ⬜             |
+| UI-FUN-06 | Change theme radio (Auto/Light/Dark).                        | Whole app (incl. dialogs, list items) restyles live.                         | ⬜               | ⬜             | ⬜             |
+| UI-FUN-07 | With theme = Auto, change the OS light/dark mode.            | App follows the OS theme; Windows title bar switches; macOS detection fires. | ⬜               | ⬜             | ⬜             |
+| UI-FUN-08 | Open About.                                                  | Shows version, git hash, build date, license line, and components list.      | ⬜               | ⬜             | ⬜             |
+| UI-FUN-09 | Open the License dialog; switch tabs.                        | Dialog opens, tabs render, OK closes it; respects the current theme.         | ⬜               | ⬜             | ⬜             |
+| UI-FUN-10 | Change UI settings, move/resize the window, close, relaunch. | Geometry restored from `sokketter-ui.json`.                                  | ⬜               | ⬜             | ⬜             |
+
+### B2. Hardware (device required)
+
+| ID        | Steps                                                                                                          | Expected                                                                                              | Result: Windows | Result: Linux | Result: macOS |
+| --------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | --------------- | ------------- | ------------- |
+| UI-HW-01  | Toggle **USB devices** / **Ethernet devices** filters in Settings.                                             | List updates to include only the allowed bus types.                                                   | ⬜               | ⬜             | ⬜             |
+| UI-HW-02  | Observe a disconnected saved device.                                                                           | Item shows disconnected state and is not interactive for switching.                                   | ⬜               | ⬜             | ⬜             |
+| UI-HW-03  | Click a device with **no** auth (USB).                                                                         | Goes straight to the socket list.                                                                     | ⬜               | ⬜             | ⬜             |
+| UI-HW-04  | Click an EG-PMxx-LAN device (password auth).                                                                   | Redirected to the password page.                                                                      | ⬜               | ⬜             | ⬜             |
+| UI-HW-05  | Use the back control on the auth page.                                                                         | Returns to the device list.                                                                           | ⬜               | ⬜             | ⬜             |
+| UI-HW-06  | Enter a wrong password.                                                                                        | `Authentication failed! Please try again.`; stays on the page.                                        | ⬜               | ⬜             | ⬜             |
+| UI-HW-07  | Enter the correct password and log in (button or Enter).                                                       | `Authentication succeed!`; socket list opens; password saved.                                         | ⬜               | ⬜             | ⬜             |
+| UI-HW-08  | After authenticating for the first time, visit the device page, go back and open the same device               | Entering password once again is not required                                                          | ⬜               | ⬜             | ⬜             |
+| UI-HW-09  | Click a **connected** device with no auth or valid saved credentials.                                          | `try_authenticate()` runs on the worker thread; on success the socket list opens.                     | ⬜               | ⬜             | ⬜             |
+| UI-HW-10  | Click a saved but **offline/disconnected** device (no auth or valid saved credentials).                        | Skips authentication and proceeds straight to the socket list; no connection attempt is forced.       | ⬜               | ⬜             | ⬜             |
+| UI-HW-11  | Click a saved but **offline/disconnected** device (with auth but without valid saved credentials).             | Sockets are disabled (cannot toggle while offline), but configuration is still editable and persists. | ⬜               | ⬜             | ⬜             |
+| UI-HW-12  | On an **offline** device's socket list, open the edit → Configure page, change device/socket fields, and Save. | Sockets are disabled (cannot toggle while offline), but configuration is still editable and persists. | ⬜               | ⬜             | ⬜             |
+| UI-HW-13  | Reconnect a device whose saved password no longer works.                                                       | Auto-redirect back to the authentication page.                                                        | ⬜               | ⬜             | ⬜             |
+| UI-HW-14  | In **single-click** mode, click a socket.                                                                      | Socket toggles; status LED updates after the async operation.                                         | ⬜               | ⬜             | ⬜             |
+| UI-HW-15  | For a socket with a configurable reset, press reset.                                                           | Socket powers off, waits the configured ms, powers back on; button disabled during reset.             | ⬜               | ⬜             | ⬜             |
+| UI-HW-16  | Proceed to LAN device settings, change anything, save and go back to socket list.                              | Socket are having the same status as before (ON or OFF) and not UNKNOWN                               | ⬜               | ⬜             | ⬜             |
+| UI-HW-17  | Socket with reset = 0 ms.                                                                                      | Reset button is hidden.                                                                               | ⬜               | ⬜             | ⬜             |
+| UI-HW-18  | Rapidly toggle multiple sockets.                                                                               | UI stays responsive (I/O on worker thread); no stuck/disabled sockets.                                | ⬜               | ⬜             | ⬜             |
+| UI-HW-19  | Switch to **double-click** mode in Settings, single-click a socket.                                            | Single click does nothing; double click toggles.                                                      | ⬜               | ⬜             | ⬜             |
+| UI-HW-20  | Open the socket list edit → Configure page.                                                                    | Device edit form + one form per socket are shown.                                                     | ⬜               | ⬜             | ⬜             |
+| UI-HW-21  | Use Configure/back controls.                                                                                   | Navigation returns without saving.                                                                    | ⬜               | ⬜             | ⬜             |
+| UI-HW-22  | Change device name/description and Save.                                                                       | New values persist and appear in the device/socket lists after restart.                               | ⬜               | ⬜             | ⬜             |
+| UI-HW-23  | Change socket name/description and Save.                                                                       | New values persist.                                                                                   | ⬜               | ⬜             | ⬜             |
+| UI-HW-24  | Set a socket configurable-reset value (validated integer).                                                     | Only non-negative integers accepted; reset button appears when > 0.                                   | ⬜               | ⬜             | ⬜             |
+| UI-HW-25  | Delete/forget the device, choose **No**.                                                                       | Nothing is deleted.                                                                                   | ⬜               | ⬜             | ⬜             |
+| UI-HW-26  | Delete/forget the device, confirm the warning dialog with **Yes**.                                             | Device removed from list and `devices.json`; returns to device list.                                  | ⬜               | ⬜             | ⬜             |
 
 ## C. Device-specific
 
@@ -204,15 +190,14 @@ works. Confirm the **socket count** matches the table above.
 
 | ID         | Steps                                                     | Expected                                                                              | Result: Windows | Result: Linux | Result: macOS |
 | ---------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------- | --------------- | ------------- | ------------- |
-| MAN-PER-01 | Connect a new device, then inspect `devices.json`.        | Device appended with type/id/name/description/auth/sockets.                           | ⬜                      | ⬜                    | ⬜                   |
-| MAN-PER-02 | Edit any config in application, restart the app.          | Edited values survive the restart.                                                    | ⬜                      | ⬜                    | ⬜                   |
-| MAN-PER-03 | Enumerate with fake devices, inspect `devices.json`.      | Test devices are **not** persisted.                                                   | ⬜                      | ⬜                    | ⬜                   |
-| MAN-PER-04 | Load an old `devices.json` with no `authentication-type`. | Loads without error; auth type defaults from the device class (backwards compatible). | ⬜                      | ⬜                    | ⬜                   |
-| MAN-PER-05 | Corrupt/partial `devices.json`.                           | App logs an error and starts with a usable (empty) database instead of crashing.      | ⬜                      | ⬜                    | ⬜                   |
+| MAN-PER-01 | Connect a new device, then inspect `devices.json`.        | Device appended with type/id/name/description/auth/sockets.                           | ⬜               | ⬜             | ⬜             |
+| MAN-PER-02 | Edit any config in application, restart the app.          | Edited values survive the restart.                                                    | ⬜               | ⬜             | ⬜             |
+| MAN-PER-03 | Load an old `devices.json` with no `authentication-type`. | Loads without error; auth type defaults from the device class (backwards compatible). | ⬜               | ⬜             | ⬜             |
+| MAN-PER-04 | Corrupt/partial `devices.json`.                           | App logs an error and starts with a usable (empty) database instead of crashing.      | ⬜               | ⬜             | ⬜             |
 
 ---
 
-# Part 2 — Automated Test Plan
+# Future development
 
 The automated suite mirrors the manual plan as a testing pyramid: a broad base of fast library unit
 tests, a middle layer of CLI integration tests, and a thin top layer of GUI automation. Test-case IDs
@@ -222,7 +207,7 @@ are prefixed `AUTO-`.
 
 | Suite            | Location                                               | Status                                                                                                                                                                                                                                                     |
 | ---------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CLI parser tests | [sokketter-cli/tests](sokketter-cli/tests)             | Present — options, subcommands, general parsing, plus full `MAN-CLI-01`…`MAN-CLI-37` coverage (short flags, mixed case, windows-style, underscore aliasing, dedup, validate-before-hardware, actions via serial, multi-socket toggle, conversion errors). |
+| CLI parser tests | [sokketter-cli/tests](sokketter-cli/tests)             | Present — options, subcommands, general parsing, plus full `CLI-PRS-01`…`CLI-PRS-20` / `CLI-HW-01`…`CLI-HW-15` coverage (short flags, mixed case, windows-style, underscore aliasing, dedup, validate-before-hardware, actions via serial, multi-socket toggle, conversion errors). |
 | UI tests         | —                                                      | **Missing**.                                                                                                                                                                                                                                               |
 | kommpot tests    | [third-party/kommpot/tests](third-party/kommpot/tests) | Vendored; do not edit.                                                                                                                                                                                                                                     |
 
@@ -240,17 +225,16 @@ are prefixed `AUTO-`.
 
 ## L1 — UI automation (new Qt Test target)
 
-Widget-level tests with `QtTest`, driving fake devices via the env var. Keep them headless-capable
-(offscreen platform plugin) for CI.
+Widget-level tests with `QtTest`.
 
-| ID | Under test | Derived from | Notes |
-| --- | --- | --- | --- |
-| AUTO-UI-01 | Device list population + empty placeholder | MAN-UI-01/02 | Assert item widgets after enumeration. |
-| AUTO-UI-02 | Bus filter behavior | MAN-UI-05 | Toggle checkboxes → `repopulate_device_list`. |
-| AUTO-UI-03 | Socket toggle single vs double click | MAN-UI-13/14 | `QTest::mouseClick` / `mouseDClick`; `QSignalSpy` on state change. |
-| AUTO-UI-04 | Configurable-reset flow | MAN-UI-15/16 | `toggleResetButton` signal; button hidden at 0 ms. |
-| AUTO-UI-05 | `DeviceEditForm` / `SocketEditForm` round-trip | MAN-UI-19/20/21 | Set fields → `configuration()` returns them; integer validator enforced. |
-| AUTO-UI-06 | Settings persistence | MAN-UI-26/31 | `app_settings_storage` round-trip for toggle/theme/geometry/filters. |
-| AUTO-UI-07 | Theme switch | MAN-UI-27 | Stylesheet changes on `ThemeChange`. |
-| AUTO-UI-08 | Auth page routing | MAN-UI-07/08 | No-auth → socket list; password device → auth page. |
-| AUTO-UI-09 | Offline-device click routing | MAN-UI-33/35 | Offline saved device → socket list without `try_authenticate()`; connected device with failing auth → auth page. Needs a saved-but-disconnected fixture (fake test devices always report connected). |
+| ID | Under test | Derived from | Notes                                                                                                                                                    |
+| ---------- | ---------------------------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AUTO-UI-01 | Device list population + empty placeholder | UI-FUN-01/02 | Assert item widgets after enumeration.                                                                                                                   |
+| AUTO-UI-02 | Bus filter behavior | UI-HW-01 | Toggle checkboxes → `repopulate_device_list`.                                                                                                            |
+| AUTO-UI-03 | Socket toggle single vs double click | UI-HW-14/19 | `QTest::mouseClick` / `mouseDClick`; `QSignalSpy` on state change.                                                                                       |
+| AUTO-UI-04 | Configurable-reset flow | UI-HW-15/17 | `toggleResetButton` signal; button hidden at 0 ms.                                                                                                       |
+| AUTO-UI-05 | `DeviceEditForm` / `SocketEditForm` round-trip | UI-HW-20/22/24 | Set fields → `configuration()` returns them; integer validator enforced.                                                                                 |
+| AUTO-UI-06 | Settings persistence | UI-FUN-10 | `app_settings_storage` round-trip for toggle/theme/geometry/filters.                                                                                     |
+| AUTO-UI-07 | Theme switch | UI-FUN-06 | Stylesheet changes on `ThemeChange`.                                                                                                                     |
+| AUTO-UI-08 | Auth page routing | UI-HW-03/04 | No-auth → socket list; password device → auth page.                                                                                                      |
+| AUTO-UI-09 | Offline-device click routing | UI-HW-10/11 | Offline saved device → socket list without `try_authenticate()`; connected device with failing auth → auth page. Needs a saved-but-disconnected fixture. |
