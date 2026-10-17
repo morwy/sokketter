@@ -449,6 +449,148 @@ class CliTests:
 
             print("Please answer P, F or S.")
 
+    def __run_socket_cycle(self, serial: str, expected_socket_count: int) -> list[str]:
+        """
+        Drive the addressed power strip fully through the CLI: switch all of its sockets off,
+        then all on, then toggle each of its sockets 1..N individually. Returns the list of
+        problems observed (empty when every operation matched the expectations).
+        """
+        problems: list[str] = []
+
+        status = self.__run_cli(["power", "status", "-n", serial], test_device_number=None)
+        if status.returncode != 0:
+            problems.append(
+                f"'power status -n {serial}' exited {status.returncode}; "
+                f"stderr: {status.stderr!r}"
+            )
+            return problems
+
+        socket_count = len(re.findall(r"^\s+Socket \d+:", status.stdout, re.MULTILINE))
+        if socket_count != expected_socket_count:
+            problems.append(
+                f"expected {expected_socket_count} socket(s), 'power status' reported "
+                f"{socket_count}"
+            )
+
+        off = self.__run_cli(["power", "off", "-n", serial], test_device_number=None)
+        turned_off = self.__count_occurrences(off.stdout, "turned off.")
+        if off.returncode != 0 or turned_off != socket_count:
+            problems.append(
+                f"'power off -n {serial}': exit {off.returncode}, {turned_off} 'turned off.' "
+                f"line(s) but {socket_count} socket(s); stderr: {off.stderr!r}"
+            )
+
+        on = self.__run_cli(["power", "on", "-n", serial], test_device_number=None)
+        turned_on = self.__count_occurrences(on.stdout, "turned on.")
+        if on.returncode != 0 or turned_on != socket_count:
+            problems.append(
+                f"'power on -n {serial}': exit {on.returncode}, {turned_on} 'turned on.' "
+                f"line(s) but {socket_count} socket(s); stderr: {on.stderr!r}"
+            )
+
+        for socket_index in range(1, socket_count + 1):
+            toggle = self.__run_cli(
+                ["power", "toggle", "-n", serial, "-s", str(socket_index)],
+                test_device_number=None,
+            )
+            if toggle.returncode != 0 or self.__count_occurrences(
+                toggle.stdout, "toggled."
+            ) != 1:
+                problems.append(
+                    f"'power toggle -n {serial} -s {socket_index}': exit "
+                    f"{toggle.returncode}; stdout: {toggle.stdout!r}; "
+                    f"stderr: {toggle.stderr!r}"
+                )
+
+        return problems
+
+    def __device_cycle_verdict(
+        self, case_id: str, device: dict[str, str], problems: list[str]
+    ) -> str:
+        """
+        After the automated socket cycle, ask the operator to confirm that the correct power
+        strip was detected and physically operated, and that every off/on/toggle visibly worked.
+        Returns "pass", "fail" or "skip" (non-interactive EOF is treated as "skip" so the case
+        is never failed without operator feedback).
+        """
+        problem_report = (
+            "\n".join(f"  - {problem}" for problem in problems)
+            if problems
+            else "  none"
+        )
+
+        print(
+            f"\n--- {case_id} ---\n"
+            f"Device under test: {device['type']} (id {device['id']})\n"
+            "Operations just performed: ALL sockets off -> ALL sockets on -> individual "
+            "toggle of every socket 1..N.\n"
+            f"Automated operation problems:\n{problem_report}\n"
+            f"\nDid the {device['type']} power strip physically react "
+            "(off/on/toggle) and was it the correct strip detected and used?"
+        )
+
+        while True:
+            try:
+                answer = (
+                    input(f"Result for {case_id} ([P]ass / [F]ail / [S]kip)? ")
+                    .strip()
+                    .lower()
+                )
+            except EOFError:
+                self.logger.info(
+                    "No interactive terminal; recording %s as skipped.", case_id
+                )
+                return "skip"
+
+            if answer in ("p", "pass"):
+                return "pass"
+            if answer in ("f", "fail"):
+                return "fail"
+            if answer in ("s", "skip"):
+                return "skip"
+
+            print("Please answer P, F or S.")
+
+    def __device_socket_cycle_case(
+        self, case_id: str, device_type: str, expected_sockets: int
+    ) -> TestStatus:
+        """
+        Automate a device-specific TESTING.md case: locate the detected device of device_type,
+        address it by serial, switch all of its sockets off then on, toggle each of its sockets
+        1..N, and finally ask the operator to confirm that the correct power strip reacted and
+        that every operation visibly worked. The case fails only after operator feedback (or is
+        skipped when no feedback can be obtained).
+        """
+        devices = [device for device in self.usb_inventory if device["type"] == device_type]
+        if not devices:
+            raise CaseBlocked(f"no {device_type} device is connected")
+
+        device = devices[0]
+
+        self.__prompt(
+            f"{case_id}: watch the {device_type} device (id {device['id']}). The runner will "
+            "now switch ALL of its sockets OFF, then ALL ON, then toggle each socket "
+            "individually. Observe which power strip physically reacts."
+        )
+
+        problems = self.__run_socket_cycle(device["id"], expected_sockets)
+        verdict = self.__device_cycle_verdict(case_id, device, problems)
+
+        if verdict == "fail":
+            raise CaseFailure(
+                "operator reported that the wrong power strip reacted or that an operation "
+                f"visibly failed; automated problems: {problems or 'none'}"
+            )
+        if verdict == "skip":
+            return TestStatus.SKIPPED
+        if problems:
+            raise CaseFailure(
+                "operator confirmed the correct power strip, but the automated operations did "
+                f"not all succeed: {problems}"
+            )
+
+        return TestStatus.PASS
+
     def __record(self, case_id: str, status: TestStatus, detail: str = "") -> None:
         """
         Store the result of one test case (both overall and in the current phase) and log it. The
@@ -1126,77 +1268,43 @@ class CliTests:
 
     def test_cli_hw_18(self) -> TestStatus:
         """
-        @brief CLI-HW-18: Gembird SIS-PM plug-in; toggle each of 4 sockets. Physical case.
+        @brief CLI-HW-18: Gembird SIS-PM: the detected device is driven automatically (all 4
+        sockets off, all on, each of the 4 sockets toggled individually) and the operator
+        confirms the correct strip physically reacted.
         """
-        if not any(device["type"] == "Gembird SIS-PM" for device in self.usb_inventory):
-            raise CaseBlocked("no Gembird SIS-PM device is connected")
-
-        return self.__manual_verdict(
-            "CLI-HW-18",
-            "Plug in the Gembird SIS-PM; run 'list'; toggle each of the 4 sockets via "
-            "'power toggle -i 1 -s N'.",
-            "Detected as Gembird SIS-PM; 4 sockets switch physically; status reads back.",
-        )
+        return self.__device_socket_cycle_case("CLI-HW-18", "Gembird SIS-PM", 4)
 
     def test_cli_hw_19(self) -> TestStatus:
         """
-        @brief CLI-HW-19: Gembird MSIS-PM plug-in; toggle the single socket. Physical case.
+        @brief CLI-HW-19: Gembird MSIS-PM: the detected device is driven automatically (its
+        single socket off, on, toggled) and the operator confirms the correct strip physically
+        reacted.
         """
-        if not any(
-            device["type"] == "Gembird MSIS-PM" for device in self.usb_inventory
-        ):
-            raise CaseBlocked("no Gembird MSIS-PM device is connected")
-
-        return self.__manual_verdict(
-            "CLI-HW-19",
-            "Plug in the Gembird MSIS-PM; run 'list'; toggle the single socket.",
-            "Detected as Gembird MSIS-PM; 1 socket switches.",
-        )
+        return self.__device_socket_cycle_case("CLI-HW-19", "Gembird MSIS-PM", 1)
 
     def test_cli_hw_20(self) -> TestStatus:
         """
-        @brief CLI-HW-20: Gembird MSIS-PM (2) plug-in; toggle the single socket. Physical case.
+        @brief CLI-HW-20: Gembird MSIS-PM (2): the detected second MSIS-PM is driven
+        automatically (its single socket off, on, toggled) and the operator confirms the correct
+        strip physically reacted.
         """
-        if not any(
-            device["type"] == "Gembird MSIS-PM (2)" for device in self.usb_inventory
-        ):
-            raise CaseBlocked("no Gembird MSIS-PM (2) device is connected")
-
-        return self.__manual_verdict(
-            "CLI-HW-20",
-            "Plug in the second Gembird MSIS-PM; run 'list'; toggle the single socket.",
-            "Detected as Gembird MSIS-PM (2); 1 socket switches.",
-        )
+        return self.__device_socket_cycle_case("CLI-HW-20", "Gembird MSIS-PM (2)", 1)
 
     def test_cli_hw_21(self) -> TestStatus:
         """
-        @brief CLI-HW-21: Energenie EG-PMS plug-in; toggle each of 4 sockets. Physical case.
+        @brief CLI-HW-21: Energenie EG-PMS: the detected device is driven automatically (all 4
+        sockets off, all on, each of the 4 sockets toggled individually) and the operator
+        confirms the correct strip physically reacted.
         """
-        if not any(
-            device["type"] == "Energenie EG-PMS" for device in self.usb_inventory
-        ):
-            raise CaseBlocked("no Energenie EG-PMS device is connected")
-
-        return self.__manual_verdict(
-            "CLI-HW-21",
-            "Plug in the Energenie EG-PMS; run 'list'; toggle each of the 4 sockets.",
-            "Detected as Energenie EG-PMS; serial read from device; 4 sockets switch.",
-        )
+        return self.__device_socket_cycle_case("CLI-HW-21", "Energenie EG-PMS", 4)
 
     def test_cli_hw_22(self) -> TestStatus:
         """
-        @brief CLI-HW-22: Energenie EG-PMS2 plug-in; toggle each of 4 sockets. Physical case.
+        @brief CLI-HW-22: Energenie EG-PMS2: the detected device is driven automatically (all 4
+        sockets off, all on, each of the 4 sockets toggled individually) and the operator
+        confirms the correct strip physically reacted.
         """
-        if not any(
-            device["type"] == "Energenie EG-PMS2" for device in self.usb_inventory
-        ):
-            raise CaseBlocked("no Energenie EG-PMS2 device is connected")
-
-        return self.__manual_verdict(
-            "CLI-HW-22",
-            "Plug in the Energenie EG-PMS2; run 'list'; toggle each of the 4 sockets.",
-            "Detected as Energenie EG-PMS2; 4 sockets switch.",
-        )
+        return self.__device_socket_cycle_case("CLI-HW-22", "Energenie EG-PMS2", 4)
 
     def test_cli_hw_23(self) -> TestStatus:
         """
