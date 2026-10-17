@@ -19,10 +19,13 @@ The run is split into two phases:
 2. Hardware phase - all cases that require real hardware. The operator is asked to switch the
    hardware on beforehand, and the device database is cleaned again.
 
-After each phase a one-line phase statistics summary is printed. At the end of testing a combined
-TESTING.md-style markdown results table is printed (test id plus a single result column for the
-currently tested OS, filled with the emoji legend from TESTING.md), so the whole result column
-can be copy-pasted straight into the TESTING.md execution tables.
+After each phase a one-line phase statistics summary is printed. At the end of testing a single
+combined TESTING.md-style markdown results table is printed (test id plus one result column for
+the currently tested OS, filled with the bare emoji legend from TESTING.md), so the whole result
+column can be copy-pasted straight into the TESTING.md execution tables. The same report is also
+written to a "YYYY-MM-DD-HH-MM-cli-tests.md" markdown file. Whenever a case fails, the failed
+assertion (expected) is reported together with the received exit code, stdout and stderr of the
+last CLI invocation.
 
 This script is designed to be cross-platform and should work on Windows, Linux, and macOS.
 """
@@ -39,6 +42,7 @@ import os
 import re
 import subprocess
 import sys
+from datetime import datetime
 from enum import Enum
 
 from Environment import Environment, System
@@ -145,6 +149,9 @@ class CliTests:
         self.phase_results: dict[str, list[tuple[str, TestStatus]]] = {}
         self.current_phase: str = ""
 
+        self.last_command: list[str] = []
+        self.last_result: subprocess.CompletedProcess | None = None
+
         self.usb_inventory: list[dict[str, str]] = []
         self.lan_inventory: list[dict[str, str]] = []
 
@@ -244,6 +251,10 @@ class CliTests:
         )
 
         self.logger.info("Exit code: %d", result.returncode)
+
+        self.last_command = arguments
+        self.last_result = result
+
         return result
 
     @staticmethod
@@ -255,8 +266,7 @@ class CliTests:
         """
         if result.returncode != expected:
             raise CaseFailure(
-                f"{context}: expected exit code {expected}, got {result.returncode}; "
-                f"stdout: {result.stdout!r}; stderr: {result.stderr!r}"
+                f"{context}: expected exit code {expected}, received {result.returncode}"
             )
 
     @staticmethod
@@ -266,7 +276,7 @@ class CliTests:
         """
         if needle not in haystack:
             raise CaseFailure(
-                f"{context}: expected {needle!r} in output, got {haystack!r}"
+                f"{context}: expected {needle!r} to be present in the output"
             )
 
     @staticmethod
@@ -276,7 +286,7 @@ class CliTests:
         """
         if needle in haystack:
             raise CaseFailure(
-                f"{context}: did not expect {needle!r} in output, got {haystack!r}"
+                f"{context}: expected {needle!r} NOT to be present in the output"
             )
 
     @staticmethod
@@ -287,7 +297,7 @@ class CliTests:
         match = re.search(pattern, text)
         if match is None:
             raise CaseFailure(
-                f"{context}: expected pattern {pattern!r} in output, got {text!r}"
+                f"{context}: expected pattern {pattern!r} to match the output"
             )
 
         return match
@@ -463,12 +473,29 @@ class CliTests:
             self.__record(case_id, TestStatus.BLOCKED, str(error))
 
         except CaseFailure as error:
-            self.__record(case_id, TestStatus.FAIL, str(error))
+            self.__record(case_id, TestStatus.FAIL, self.__failure_detail(str(error)))
 
         except Exception as error:  # pylint: disable=broad-except  # noqa: BLE001
             # A case crash must not abort the suite; BaseException subclasses
             # (KeyboardInterrupt, SystemExit) are intentionally not caught.
             self.__record(case_id, TestStatus.FAIL, f"unexpected error: {error}")
+
+    def __failure_detail(self, assertion_message: str) -> str:
+        """
+        Build the expected-vs-received details of a failed case: the failed assertion together
+        with the command, exit code, stdout and stderr of the most recent CLI invocation.
+        """
+        detail = f"expected vs received: {assertion_message}"
+
+        if self.last_result is not None:
+            detail += (
+                f"\n  last command: {self.cli_binary} {' '.join(self.last_command)}"
+                f"\n  received exit code: {self.last_result.returncode}"
+                f"\n  received stdout:\n{self.last_result.stdout}"
+                f"\n  received stderr:\n{self.last_result.stderr}"
+            )
+
+        return detail
 
     # ---------------------------------------------------------------------------------------------
     #
@@ -1281,19 +1308,16 @@ class CliTests:
     # Reporting.
     #
     # ---------------------------------------------------------------------------------------------
-    def __print_markdown_results_table(
-        self, title: str, results: list[tuple[str, TestStatus]]
-    ) -> None:
+    def __build_markdown_table(self, results: list[tuple[str, TestStatus]]) -> str:
         """
-        Print a TESTING.md-style markdown results table: one row per test case and a single
-        result column for the currently tested OS, filled with the emoji legend from TESTING.md,
-        so the whole result column can be copy-pasted straight into the TESTING.md tables.
+        Build a TESTING.md-style markdown results table: one row per test case and a single
+        result column for the currently tested OS, filled with the bare emoji verdicts from the
+        TESTING.md legend, so the whole result column can be copy-pasted straight into the
+        TESTING.md tables.
         """
         current_column = RESULT_COLUMN_BY_SYSTEM[self.system]
 
         lines: list[str] = [
-            f"### {title}",
-            "",
             f"| ID | Result: {current_column} |",
             "| ---------- | --------------- |",
         ]
@@ -1301,23 +1325,19 @@ class CliTests:
         for case_id, status in results:
             lines.append(f"| {case_id} | {STATUS_TO_CELL[status]} |")
 
-        lines.append("")
-        lines.append("Legend: ✅ Pass · ❌ Fail · ⚠️ Blocked/NA · ⬜ Not run")
+        return "\n".join(lines)
 
-        report = "\n".join(lines)
-        print("\n" + report)
-        self.logger.info("\n%s", report)
-
-    def __print_phase_stats(self, phase_name: str, results: list[tuple[str, TestStatus]]) -> None:
+    @staticmethod
+    def __phase_stats_line(phase_name: str, results: list[tuple[str, TestStatus]]) -> str:
         """
-        Print a brief one-line testing statistics summary for one phase.
+        Build the brief one-line testing statistics summary of one phase.
         """
         counts = {
             status: sum(1 for _, recorded in results if recorded == status)
             for status in TestStatus
         }
 
-        stat_line = (
+        return (
             f"{phase_name} stats: {len(results)} total | "
             f"✅ Pass {counts[TestStatus.PASS]} | "
             f"❌ Fail {counts[TestStatus.FAIL]} | "
@@ -1325,16 +1345,69 @@ class CliTests:
             f"⬜ Not run {counts[TestStatus.SKIPPED]}"
         )
 
-        print("\n" + stat_line)
-        self.logger.info("%s", stat_line)
+    def __print_phase_stats(self, phase_name: str, results: list[tuple[str, TestStatus]]) -> None:
+        """
+        Print the brief one-line testing statistics summary of one phase (exactly once).
+        """
+        print("\n" + self.__phase_stats_line(phase_name, results))
 
     def __print_results_table(self) -> None:
         """
-        Print the combined markdown results table for the whole run.
+        Print the combined markdown results table for the whole run (exactly once).
         """
-        self.__print_markdown_results_table(
-            "CLI test results (all phases)", self.results
+        report = "\n".join(
+            [
+                "### CLI test results (all phases)",
+                "",
+                self.__build_markdown_table(self.results),
+                "",
+                "Legend: ✅ Pass · ❌ Fail · ⚠️ Blocked/NA · ⬜ Not run",
+            ]
         )
+
+        print("\n" + report)
+
+    def __write_markdown_report(self) -> None:
+        """
+        Write the full run report (per-phase TESTING.md-style tables and statistics, plus the
+        combined overall table) to a "YYYY-MM-DD-HH-MM-cli-tests.md" markdown file for later
+        copy-pasting of the result columns into TESTING.md.
+        """
+        run_time = datetime.now()
+        filename = run_time.strftime("%Y-%m-%d-%H-%M-cli-tests.md")
+
+        current_column = RESULT_COLUMN_BY_SYSTEM[self.system]
+
+        sections: list[str] = [
+            f"# sokketter CLI test results — {run_time.strftime('%Y-%m-%d %H:%M')} "
+            f"({current_column})",
+            "",
+        ]
+
+        for title, phase_key in (
+            ("A1. Parsing (no devices required)", "parsing"),
+            ("A2. Hardware (devices are required)", "hardware"),
+        ):
+            phase = self.phase_results.get(phase_key, [])
+            sections.append(f"## {title}")
+            sections.append("")
+            sections.append(self.__build_markdown_table(phase))
+            sections.append("")
+            sections.append(self.__phase_stats_line(f"Phase {phase_key}", phase))
+            sections.append("")
+
+        sections.append("## Overall")
+        sections.append("")
+        sections.append(self.__build_markdown_table(self.results))
+        sections.append("")
+        sections.append(self.__phase_stats_line("Overall", self.results))
+        sections.append("")
+        sections.append("Legend: ✅ Pass · ❌ Fail · ⚠️ Blocked/NA · ⬜ Not run")
+
+        with open(file=filename, mode="w", encoding="utf-8") as file:
+            file.write("\n".join(sections) + "\n")
+
+        self.logger.info("Markdown results report written to: %s", filename)
 
     def run(self) -> None:
         """
@@ -1347,6 +1420,7 @@ class CliTests:
 
         self.__print_results_table()
         self.__print_phase_stats("Overall", self.results)
+        self.__write_markdown_report()
 
         failures = sum(1 for _, status in self.results if status == TestStatus.FAIL)
         self.logger.info("CLI test run completed. Failed cases: %d", failures)
