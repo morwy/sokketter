@@ -434,9 +434,9 @@ class CliTests:
         except CaseFailure as error:
             self.__record(case_id, TestStatus.FAIL, str(error))
 
-        except (
-            Exception
-        ) as error:  # noqa: BLE001 - a case crash must not abort the suite.
+        except Exception as error:  # pylint: disable=broad-except  # noqa: BLE001
+            # A case crash must not abort the suite; BaseException subclasses
+            # (KeyboardInterrupt, SystemExit) are intentionally not caught.
             self.__record(case_id, TestStatus.FAIL, f"unexpected error: {error}")
 
     # ---------------------------------------------------------------------------------------------
