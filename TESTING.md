@@ -194,9 +194,7 @@ works. Confirm the **socket count** matches the table above.
 
 # Future development
 
-The automated suite mirrors the manual plan as a testing pyramid: a broad base of fast library unit
-tests, a middle layer of CLI integration tests, and a thin top layer of GUI automation. Test-case IDs
-are prefixed `AUTO-`.
+Test-case IDs are prefixed `AUTO-`.
 
 ## Current state
 
