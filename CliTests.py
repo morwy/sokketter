@@ -137,11 +137,15 @@ class CliTests:
         if not os.path.isdir(path):
             raise FileNotFoundError(f"Provided folder does not exist: {path}")
 
-        executable_name = "sokketter-cli.exe" if self.system == System.WINDOWS else "sokketter-cli"
+        executable_name = (
+            "sokketter-cli.exe" if self.system == System.WINDOWS else "sokketter-cli"
+        )
         candidate = os.path.join(path, executable_name)
 
         if not os.path.isfile(candidate):
-            raise FileNotFoundError(f"sokketter-cli binary was not found in folder: {path}")
+            raise FileNotFoundError(
+                f"sokketter-cli binary was not found in folder: {path}"
+            )
 
         return candidate
 
@@ -215,7 +219,9 @@ class CliTests:
         return result
 
     @staticmethod
-    def __expect_exit(result: subprocess.CompletedProcess, expected: int, context: str) -> None:
+    def __expect_exit(
+        result: subprocess.CompletedProcess, expected: int, context: str
+    ) -> None:
         """
         Assert the documented exit-code contract (0 success, 1 any failure).
         """
@@ -231,7 +237,9 @@ class CliTests:
         Assert that the given text appears in the captured output.
         """
         if needle not in haystack:
-            raise CaseFailure(f"{context}: expected {needle!r} in output, got {haystack!r}")
+            raise CaseFailure(
+                f"{context}: expected {needle!r} in output, got {haystack!r}"
+            )
 
     @staticmethod
     def __expect_not_in(haystack: str, needle: str, context: str) -> None:
@@ -239,7 +247,9 @@ class CliTests:
         Assert that the given text does not appear in the captured output.
         """
         if needle in haystack:
-            raise CaseFailure(f"{context}: did not expect {needle!r} in output, got {haystack!r}")
+            raise CaseFailure(
+                f"{context}: did not expect {needle!r} in output, got {haystack!r}"
+            )
 
     @staticmethod
     def __expect_match(pattern: str, text: str, context: str) -> re.Match:
@@ -248,12 +258,16 @@ class CliTests:
         """
         match = re.search(pattern, text)
         if match is None:
-            raise CaseFailure(f"{context}: expected pattern {pattern!r} in output, got {text!r}")
+            raise CaseFailure(
+                f"{context}: expected pattern {pattern!r} in output, got {text!r}"
+            )
 
         return match
 
     @staticmethod
-    def __parse_list_output(result: subprocess.CompletedProcess) -> list[dict[str, str]]:
+    def __parse_list_output(
+        result: subprocess.CompletedProcess,
+    ) -> list[dict[str, str]]:
         """
         Parse the numbered device lines printed by the list subcommand.
         """
@@ -315,9 +329,7 @@ class CliTests:
         """
         Determine the socket count of the first USB device from its status output.
         """
-        result = self.__run_cli(
-            ["power", "status", "-i", "1"], test_device_number=None
-        )
+        result = self.__run_cli(["power", "status", "-i", "1"], test_device_number=None)
         self.__expect_exit(result, 0, "socket count lookup")
 
         return len(re.findall(r"^\s+Socket \d+:", result.stdout, re.MULTILINE))
@@ -345,7 +357,9 @@ class CliTests:
             raise CaseFailure(f"device database file is not valid JSON: {error}")
 
         if not isinstance(database, list):
-            raise CaseFailure(f"device database file does not contain a list: {database!r}")
+            raise CaseFailure(
+                f"device database file does not contain a list: {database!r}"
+            )
 
         return database
 
@@ -360,7 +374,9 @@ class CliTests:
         try:
             input(f"\n{message}\nPress Enter when ready... ")
         except EOFError:
-            self.logger.info("No interactive terminal; continuing without confirmation.")
+            self.logger.info(
+                "No interactive terminal; continuing without confirmation."
+            )
 
     def __manual_verdict(self, case_id: str, steps: str, expected: str) -> TestStatus:
         """
@@ -371,9 +387,15 @@ class CliTests:
 
         while True:
             try:
-                answer = input(f"Result for {case_id} ([P]ass / [F]ail / [S]kip)? ").strip().lower()
+                answer = (
+                    input(f"Result for {case_id} ([P]ass / [F]ail / [S]kip)? ")
+                    .strip()
+                    .lower()
+                )
             except EOFError:
-                self.logger.info("No interactive terminal; recording %s as skipped.", case_id)
+                self.logger.info(
+                    "No interactive terminal; recording %s as skipped.", case_id
+                )
                 return TestStatus.SKIPPED
 
             if answer in ("p", "pass"):
@@ -412,7 +434,9 @@ class CliTests:
         except CaseFailure as error:
             self.__record(case_id, TestStatus.FAIL, str(error))
 
-        except Exception as error:  # noqa: BLE001 - a case crash must not abort the suite.
+        except (
+            Exception
+        ) as error:  # noqa: BLE001 - a case crash must not abort the suite.
             self.__record(case_id, TestStatus.FAIL, f"unexpected error: {error}")
 
     # ---------------------------------------------------------------------------------------------
@@ -464,7 +488,9 @@ class CliTests:
             result = self.__run_cli(arguments)
             self.__expect_exit(result, 1, " ".join(arguments))
             self.__expect_in(
-                result.stderr, "The following argument was not expected", " ".join(arguments)
+                result.stderr,
+                "The following argument was not expected",
+                " ".join(arguments),
             )
 
     def test_cli_prs_06(self) -> None:
@@ -498,7 +524,9 @@ class CliTests:
         result = self.__run_cli(["power", "status", "-n", "MISSING-SERIAL"])
         self.__expect_exit(result, 1, "missing serial")
         self.__expect_in(
-            result.stderr, 'No device was found for serial "MISSING-SERIAL".', "missing serial"
+            result.stderr,
+            'No device was found for serial "MISSING-SERIAL".',
+            "missing serial",
         )
 
     def test_cli_prs_09(self) -> None:
@@ -533,7 +561,9 @@ class CliTests:
         """
         result = self.__run_cli(["list", "--include-device-types", "ethernet"])
         self.__expect_exit(result, 0, "ethernet include filter")
-        self.__expect_in(result.stdout, "Listing available devices", "ethernet include filter")
+        self.__expect_in(
+            result.stdout, "Listing available devices", "ethernet include filter"
+        )
 
     def test_cli_prs_12(self) -> None:
         """
@@ -568,7 +598,9 @@ class CliTests:
             "unknown device type",
         )
         self.__expect_not_in(
-            result.stderr + result.stdout, "A new sokketter version", "unknown device type"
+            result.stderr + result.stdout,
+            "A new sokketter version",
+            "unknown device type",
         )
 
     def test_cli_prs_15(self) -> None:
@@ -603,7 +635,9 @@ class CliTests:
         """
         result = self.__run_cli(["list", "--include-device-types=usb"])
         self.__expect_exit(result, 0, "equals form filter")
-        self.__expect_in(result.stdout, "Listing available devices", "equals form filter")
+        self.__expect_in(
+            result.stdout, "Listing available devices", "equals form filter"
+        )
 
     def test_cli_prs_18(self) -> None:
         """
@@ -622,11 +656,15 @@ class CliTests:
         @brief CLI-PRS-19: SIZE_MAX parses and is out of range; SIZE_MAX + 1 is a conversion
         error. Both exit 1.
         """
-        size_max_result = self.__run_cli(["power", "status", "-i", "18446744073709551615"])
+        size_max_result = self.__run_cli(
+            ["power", "status", "-i", "18446744073709551615"]
+        )
         self.__expect_exit(size_max_result, 1, "SIZE_MAX index")
         self.__expect_in(size_max_result.stderr, "out of range", "SIZE_MAX index")
 
-        overflow_result = self.__run_cli(["power", "status", "-i", "18446744073709551616"])
+        overflow_result = self.__run_cli(
+            ["power", "status", "-i", "18446744073709551616"]
+        )
         self.__expect_exit(overflow_result, 1, "SIZE_MAX + 1 index")
         self.__expect_in(
             overflow_result.stderr, "18446744073709551616", "SIZE_MAX + 1 index"
@@ -640,7 +678,9 @@ class CliTests:
             result = self.__run_cli(arguments)
             self.__expect_exit(result, 1, " ".join(arguments))
             self.__expect_in(
-                result.stderr, "The following argument was not expected", " ".join(arguments)
+                result.stderr,
+                "The following argument was not expected",
+                " ".join(arguments),
             )
 
     def run_no_hardware_phase(self) -> None:
@@ -705,7 +745,9 @@ class CliTests:
         @brief CLI-HW-02: "power status -i 1 -s 1". Exit 0; device + socket 1 status printed.
         """
         self.__require_first_usb()
-        result = self.__run_cli(["power", "status", "-i", "1", "-s", "1"], test_device_number=None)
+        result = self.__run_cli(
+            ["power", "status", "-i", "1", "-s", "1"], test_device_number=None
+        )
         self.__expect_exit(result, 0, "status by index")
         self.__expect_in(result.stdout, "Socket 1:", "status by index")
 
@@ -741,11 +783,15 @@ class CliTests:
         @brief CLI-HW-05: "power on -i 1 -s 1". Exit 0; only socket 1 turned on.
         """
         self.__require_first_usb()
-        result = self.__run_cli(["power", "on", "-i", "1", "-s", "1"], test_device_number=None)
+        result = self.__run_cli(
+            ["power", "on", "-i", "1", "-s", "1"], test_device_number=None
+        )
         self.__expect_exit(result, 0, "power on socket 1")
 
         if self.__count_occurrences(result.stdout, "turned on.") != 1:
-            raise CaseFailure(f"expected exactly one 'turned on.' line, got: {result.stdout!r}")
+            raise CaseFailure(
+                f"expected exactly one 'turned on.' line, got: {result.stdout!r}"
+            )
 
     def test_cli_hw_06(self) -> None:
         """
@@ -775,7 +821,9 @@ class CliTests:
             ["power", "status", "-i", "1", "-s", "1"], test_device_number=None
         )
         self.__expect_exit(before, 0, "toggle before")
-        before_line = self.__expect_match(r"Socket 1: .*status: (on|off)", before.stdout, "toggle")
+        before_line = self.__expect_match(
+            r"Socket 1: .*status: (on|off)", before.stdout, "toggle"
+        )
 
         for _ in range(2):
             toggle = self.__run_cli(
@@ -788,7 +836,9 @@ class CliTests:
             ["power", "status", "-i", "1", "-s", "1"], test_device_number=None
         )
         self.__expect_exit(after, 0, "toggle after")
-        after_line = self.__expect_match(r"Socket 1: .*status: (on|off)", after.stdout, "toggle")
+        after_line = self.__expect_match(
+            r"Socket 1: .*status: (on|off)", after.stdout, "toggle"
+        )
 
         if before_line.group(0) != after_line.group(0):
             raise CaseFailure(
@@ -804,7 +854,8 @@ class CliTests:
 
         for socket_index in ("0", "99"):
             result = self.__run_cli(
-                ["power", "status", "-i", "1", "-s", socket_index], test_device_number=None
+                ["power", "status", "-i", "1", "-s", socket_index],
+                test_device_number=None,
             )
             self.__expect_exit(result, 1, f"socket index {socket_index}")
             self.__expect_match(
@@ -843,7 +894,8 @@ class CliTests:
         """
         device = self.__require_first_lan()
         result = self.__run_cli(
-            ["power", "status", "-n", device["id"], "-t", "ethernet"], test_device_number=None
+            ["power", "status", "-n", device["id"], "-t", "ethernet"],
+            test_device_number=None,
         )
         self.__expect_exit(result, 0, "serial under ethernet selection")
         self.__expect_in(result.stdout, "Socket 1:", "serial under ethernet selection")
@@ -855,7 +907,8 @@ class CliTests:
         """
         device = self.__require_first_usb()
         result = self.__run_cli(
-            ["power", "status", "-n", device["id"], "-t", "ethernet"], test_device_number=None
+            ["power", "status", "-n", device["id"], "-t", "ethernet"],
+            test_device_number=None,
         )
         self.__expect_exit(result, 1, "USB serial under ethernet selection")
         self.__expect_in(
@@ -873,16 +926,20 @@ class CliTests:
         socket_count = self.__socket_count_of_first_usb()
 
         inside = self.__run_cli(
-            ["power", "status", "-i", "1", "-s", str(socket_count)], test_device_number=None
+            ["power", "status", "-i", "1", "-s", str(socket_count)],
+            test_device_number=None,
         )
         self.__expect_exit(inside, 0, f"socket index {socket_count}")
 
         outside = self.__run_cli(
-            ["power", "status", "-i", "1", "-s", str(socket_count + 1)], test_device_number=None
+            ["power", "status", "-i", "1", "-s", str(socket_count + 1)],
+            test_device_number=None,
         )
         self.__expect_exit(outside, 1, f"socket index {socket_count + 1}")
         self.__expect_in(
-            outside.stderr, f"valid range: 1-{socket_count}", f"socket index {socket_count + 1}"
+            outside.stderr,
+            f"valid range: 1-{socket_count}",
+            f"socket index {socket_count + 1}",
         )
 
     def test_cli_hw_14(self) -> None:
@@ -904,7 +961,9 @@ class CliTests:
         )
         self.__expect_exit(outside, 1, f"device index {device_count + 1}")
         self.__expect_in(
-            outside.stderr, f"valid range: 1-{device_count}", f"device index {device_count + 1}"
+            outside.stderr,
+            f"valid range: 1-{device_count}",
+            f"device index {device_count + 1}",
         )
 
     def test_cli_hw_15(self) -> None:
@@ -922,11 +981,17 @@ class CliTests:
             )
             self.__expect_exit(result, 0, "power off socket order")
 
-            lines = [line for line in result.stdout.splitlines() if "turned off." in line]
+            lines = [
+                line for line in result.stdout.splitlines() if "turned off." in line
+            ]
             if len(lines) != 2:
-                raise CaseFailure(f"expected exactly two 'turned off.' lines, got {lines!r}")
+                raise CaseFailure(
+                    f"expected exactly two 'turned off.' lines, got {lines!r}"
+                )
             if "Socket 1:" not in lines[0] or "Socket 2:" not in lines[1]:
-                raise CaseFailure(f"sockets were not reported in sorted order: {lines!r}")
+                raise CaseFailure(
+                    f"sockets were not reported in sorted order: {lines!r}"
+                )
 
     def test_cli_hw_16(self) -> None:
         """
@@ -940,7 +1005,14 @@ class CliTests:
         if not database:
             raise CaseFailure("device database is empty although hardware is connected")
 
-        required_keys = {"type", "id", "name", "description", "authentication-type", "sockets"}
+        required_keys = {
+            "type",
+            "id",
+            "name",
+            "description",
+            "authentication-type",
+            "sockets",
+        }
 
         for device in database:
             missing = required_keys - set(device.keys())
@@ -998,7 +1070,9 @@ class CliTests:
         """
         @brief CLI-HW-19: Gembird MSIS-PM plug-in; toggle the single socket. Physical case.
         """
-        if not any(device["type"] == "Gembird MSIS-PM" for device in self.usb_inventory):
+        if not any(
+            device["type"] == "Gembird MSIS-PM" for device in self.usb_inventory
+        ):
             raise CaseBlocked("no Gembird MSIS-PM device is connected")
 
         return self.__manual_verdict(
@@ -1011,7 +1085,9 @@ class CliTests:
         """
         @brief CLI-HW-20: Gembird MSIS-PM (2) plug-in; toggle the single socket. Physical case.
         """
-        if not any(device["type"] == "Gembird MSIS-PM (2)" for device in self.usb_inventory):
+        if not any(
+            device["type"] == "Gembird MSIS-PM (2)" for device in self.usb_inventory
+        ):
             raise CaseBlocked("no Gembird MSIS-PM (2) device is connected")
 
         return self.__manual_verdict(
@@ -1024,7 +1100,9 @@ class CliTests:
         """
         @brief CLI-HW-21: Energenie EG-PMS plug-in; toggle each of 4 sockets. Physical case.
         """
-        if not any(device["type"] == "Energenie EG-PMS" for device in self.usb_inventory):
+        if not any(
+            device["type"] == "Energenie EG-PMS" for device in self.usb_inventory
+        ):
             raise CaseBlocked("no Energenie EG-PMS device is connected")
 
         return self.__manual_verdict(
@@ -1037,7 +1115,9 @@ class CliTests:
         """
         @brief CLI-HW-22: Energenie EG-PMS2 plug-in; toggle each of 4 sockets. Physical case.
         """
-        if not any(device["type"] == "Energenie EG-PMS2" for device in self.usb_inventory):
+        if not any(
+            device["type"] == "Energenie EG-PMS2" for device in self.usb_inventory
+        ):
             raise CaseBlocked("no Energenie EG-PMS2 device is connected")
 
         return self.__manual_verdict(
@@ -1119,7 +1199,9 @@ class CliTests:
         self.__enumerate_devices()
 
         if not self.usb_inventory and not self.lan_inventory:
-            self.logger.warning("No hardware was detected; recording hardware cases as blocked.")
+            self.logger.warning(
+                "No hardware was detected; recording hardware cases as blocked."
+            )
 
         for case_id, test_function in [
             ("CLI-HW-01", self.test_cli_hw_01),
