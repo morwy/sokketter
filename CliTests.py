@@ -354,7 +354,7 @@ class CliTests:
             with open(file=database_file, mode="r", encoding="utf-8") as file:
                 database = json.load(file)
         except json.JSONDecodeError as error:
-            raise CaseFailure(f"device database file is not valid JSON: {error}")
+            raise CaseFailure(f"device database file is not valid JSON: {error}") from error
 
         if not isinstance(database, list):
             raise CaseFailure(
@@ -1332,22 +1332,22 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    folder = args.folder
+    cli_folder = args.folder
 
-    if not folder:
+    if not cli_folder:
         try:
-            folder = input("Path to the folder containing sokketter-cli: ").strip()
+            cli_folder = input("Path to the folder containing sokketter-cli: ").strip()
         except EOFError:
-            folder = ""
+            cli_folder = ""
 
-    if not folder:
+    if not cli_folder:
         entry_logger.error(
             "No folder was provided. Provide --folder or enter the path interactively."
         )
         sys.exit(1)
 
     try:
-        CliTests(folder, args.storage_path, args.assume_hardware).run()
+        CliTests(cli_folder, args.storage_path, args.assume_hardware).run()
     except FileNotFoundError as error:
         entry_logger.error("%s", error)
         sys.exit(1)
