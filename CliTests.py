@@ -1378,9 +1378,9 @@ class CliTests:
 
     def __write_markdown_report(self) -> None:
         """
-        Write the full run report (per-phase TESTING.md-style tables and statistics, plus the
-        combined overall table) to a "YYYY-MM-DD-HH-MM-cli-tests.md" markdown file for later
-        copy-pasting of the result columns into TESTING.md.
+        Write the per-phase run report (TESTING.md-style tables and statistics for each of the
+        two phases; no combined overall table) to a "YYYY-MM-DD-HH-MM-cli-tests.md" markdown file
+        for later copy-pasting of the result columns into TESTING.md.
         """
         run_time = datetime.now()
         filename = run_time.strftime("%Y-%m-%d-%H-%M-cli-tests.md")
@@ -1405,12 +1405,6 @@ class CliTests:
             sections.append(self.__phase_stats_line(f"Phase {phase_key}", phase))
             sections.append("")
 
-        sections.append("## Overall")
-        sections.append("")
-        sections.append(self.__build_markdown_table(self.results))
-        sections.append("")
-        sections.append(self.__phase_stats_line("Overall", self.results))
-        sections.append("")
         sections.append("Legend: ✅ Pass · ❌ Fail · ⚠️ Blocked/NA · ⬜ Not run")
 
         with open(file=filename, mode="w", encoding="utf-8") as file:
