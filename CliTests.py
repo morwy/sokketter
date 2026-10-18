@@ -42,6 +42,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from datetime import datetime
 from enum import Enum
 
@@ -152,6 +153,7 @@ class CliTests:
         self.results: list[tuple[str, TestStatus]] = []
         self.phase_results: dict[str, list[tuple[str, TestStatus]]] = {}
         self.current_phase: str = ""
+        self.total_runtime_seconds: float = 0.0
 
         self.last_command: list[str] = []
         self.last_result: subprocess.CompletedProcess | None = None
@@ -1504,11 +1506,31 @@ class CliTests:
             sections.append("")
 
         sections.append("Legend: ✅ Pass · ❌ Fail · ⚠️ Blocked/NA · ⬜ Not run")
+        sections.append("")
+        sections.append(self.__runtime_line())
 
         with open(file=filename, mode="w", encoding="utf-8") as file:
             file.write("\n".join(sections) + "\n")
 
         self.logger.info("Markdown results report written to: %s", filename)
+
+    def __runtime_line(self) -> str:
+        """
+        Build the one-line total test runtime summary from the wall-clock duration recorded by
+        run().
+        """
+        total_seconds = self.total_runtime_seconds
+        minutes, seconds = divmod(total_seconds, 60)
+        hours, minutes = divmod(int(minutes), 60)
+
+        if hours:
+            duration = f"{hours}h {minutes:02d}m {seconds:04.1f}s"
+        elif minutes:
+            duration = f"{minutes}m {seconds:04.1f}s"
+        else:
+            duration = f"{seconds:.1f}s"
+
+        return f"Total test runtime: {duration}"
 
     def run(self) -> None:
         """
@@ -1516,8 +1538,12 @@ class CliTests:
         """
         self.logger.info("Starting the CLI test run.")
 
+        start_time = time.monotonic()
+
         self.run_no_hardware_phase()
         self.run_hardware_phase()
+
+        self.total_runtime_seconds = time.monotonic() - start_time
 
         self.__print_results_table()
         self.__print_phase_stats("Overall", self.results)
@@ -1525,6 +1551,7 @@ class CliTests:
 
         failures = sum(1 for _, status in self.results if status == TestStatus.FAIL)
         self.logger.info("CLI test run completed. Failed cases: %d", failures)
+        self.logger.info("%s", self.__runtime_line())
 
         if failures:
             sys.exit(1)
