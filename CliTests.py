@@ -449,15 +449,22 @@ class CliTests:
 
             print("Please answer P, F or S.")
 
-    def __run_socket_cycle(self, serial: str, expected_socket_count: int) -> list[str]:
+    def __run_socket_cycle(
+        self, serial: str, expected_socket_count: int, cli_type: str | None = None
+    ) -> list[str]:
         """
         Drive the addressed power strip fully through the CLI: switch all of its sockets off,
-        then all on, then toggle each of its sockets 1..N individually. Returns the list of
-        problems observed (empty when every operation matched the expectations).
+        then all on, then toggle each of its sockets 1..N individually. When cli_type is given
+        (e.g. "ethernet" for an EG-PMxx-LAN device), every command is restricted to that device
+        type via -t. Returns the list of problems observed (empty when every operation matched
+        the expectations).
         """
         problems: list[str] = []
+        selection = ["-t", cli_type] if cli_type else []
 
-        status = self.__run_cli(["power", "status", "-n", serial], test_device_number=None)
+        status = self.__run_cli(
+            ["power", "status", "-n", serial] + selection, test_device_number=None
+        )
         if status.returncode != 0:
             problems.append(
                 f"'power status -n {serial}' exited {status.returncode}; "
@@ -472,7 +479,9 @@ class CliTests:
                 f"{socket_count}"
             )
 
-        off = self.__run_cli(["power", "off", "-n", serial], test_device_number=None)
+        off = self.__run_cli(
+            ["power", "off", "-n", serial] + selection, test_device_number=None
+        )
         turned_off = self.__count_occurrences(off.stdout, "turned off.")
         if off.returncode != 0 or turned_off != socket_count:
             problems.append(
@@ -480,7 +489,9 @@ class CliTests:
                 f"line(s) but {socket_count} socket(s); stderr: {off.stderr!r}"
             )
 
-        on = self.__run_cli(["power", "on", "-n", serial], test_device_number=None)
+        on = self.__run_cli(
+            ["power", "on", "-n", serial] + selection, test_device_number=None
+        )
         turned_on = self.__count_occurrences(on.stdout, "turned on.")
         if on.returncode != 0 or turned_on != socket_count:
             problems.append(
@@ -490,7 +501,7 @@ class CliTests:
 
         for socket_index in range(1, socket_count + 1):
             toggle = self.__run_cli(
-                ["power", "toggle", "-n", serial, "-s", str(socket_index)],
+                ["power", "toggle", "-n", serial, "-s", str(socket_index)] + selection,
                 test_device_number=None,
             )
             if toggle.returncode != 0 or self.__count_occurrences(
@@ -552,16 +563,23 @@ class CliTests:
             print("Please answer P, F or S.")
 
     def __device_socket_cycle_case(
-        self, case_id: str, device_type: str, expected_sockets: int
+        self,
+        case_id: str,
+        device_type: str,
+        expected_sockets: int,
+        inventory: list[dict[str, str]] | None = None,
+        cli_type: str | None = None,
     ) -> TestStatus:
         """
-        Automate a device-specific TESTING.md case: locate the detected device of device_type,
-        address it by serial, switch all of its sockets off then on, toggle each of its sockets
-        1..N, and finally ask the operator to confirm that the correct power strip reacted and
-        that every operation visibly worked. The case fails only after operator feedback (or is
-        skipped when no feedback can be obtained).
+        Automate a device-specific TESTING.md case: locate the detected device of device_type in
+        inventory (USB by default; pass lan_inventory plus the matching cli_type for a network
+        device), address it by serial, switch all of its sockets off then on, toggle each of its
+        sockets 1..N, and finally ask the operator to confirm that the correct power strip
+        reacted and that every operation visibly worked. The case fails only after operator
+        feedback (or is skipped when no feedback can be obtained).
         """
-        devices = [device for device in self.usb_inventory if device["type"] == device_type]
+        source = inventory if inventory is not None else self.usb_inventory
+        devices = [device for device in source if device["type"] == device_type]
         if not devices:
             raise CaseBlocked(f"no {device_type} device is connected")
 
@@ -573,7 +591,7 @@ class CliTests:
             "individually. Observe which power strip physically reacts."
         )
 
-        problems = self.__run_socket_cycle(device["id"], expected_sockets)
+        problems = self.__run_socket_cycle(device["id"], expected_sockets, cli_type)
         verdict = self.__device_cycle_verdict(case_id, device, problems)
 
         if verdict == "fail":
@@ -1308,17 +1326,13 @@ class CliTests:
 
     def test_cli_hw_23(self) -> TestStatus:
         """
-        @brief CLI-HW-23: EG-PMxx-LAN discovery on the LAN, addressing by serial, toggling and
-        status read-back. Physical case.
+        @brief CLI-HW-23: Energenie EG-PMxx-LAN: the detected LAN device is addressed by serial,
+        then driven automatically (all 4 sockets off, all on, each of the 4 sockets toggled
+        individually with status read-back under an ethernet selection) and the operator confirms
+        the correct strip physically reacted.
         """
-        if not self.lan_inventory:
-            raise CaseBlocked("no Energenie EG-PMxx-LAN device is connected")
-
-        return self.__manual_verdict(
-            "CLI-HW-23",
-            "Discover the EG-PMxx-LAN device on the LAN; address it by serial; toggle each of "
-            "the 4 sockets; read the status back.",
-            "Detected via MAC/port; addressable by serial; 4 sockets switch; status echoed back.",
+        return self.__device_socket_cycle_case(
+            "CLI-HW-23", LAN_TYPE, 4, inventory=self.lan_inventory, cli_type="ethernet"
         )
 
     def test_cli_hw_24(self) -> TestStatus:
