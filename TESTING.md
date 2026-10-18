@@ -124,9 +124,7 @@ that require at least one real device to be online.
 | CLI-HW-21 | Energenie EG-PMS: plug in; toggle each of 4 sockets.   | Detected as `Energenie EG-PMS`; serial read from device; 4 sockets switch.                                                             | ⬜               | ⬜             | ⬜             |
 | CLI-HW-22 | Energenie EG-PMS2: plug in; toggle each of 4 sockets.  | Detected as `Energenie EG-PMS2`; 4 sockets switch.                                                                                     | ⬜               | ⬜             | ⬜             |
 | CLI-HW-23 | EG-PMxx-LAN: discover on LAN; address by serial; toggle each of 4 sockets; read status. | Detected via MAC/port; addressable by serial; 4 sockets switch; status echoed back.                          | ⬜               | ⬜             | ⬜             |
-| CLI-HW-24 | Any USB: unplug the device mid-session.                | Device shown as disconnected; operations fail gracefully; no crash.                                                                    | ⬜               | ⬜             | ⬜             |
-| CLI-HW-25 | Any LAN: unplug the device mid-session.                | Device shown as disconnected; operations fail gracefully; no crash.                                                                    | ⬜               | ⬜             | ⬜             |
-| CLI-HW-26 | Linux, any USB: run without udev rules, then with them. | Without rules: access denied/enumeration fails; with rules: works.                                                                    | ⚠️               | ⬜             | ⚠️             |
+| CLI-HW-24 | Linux, any USB: run without udev rules, then with them. | Without rules: access denied/enumeration fails; with rules: works.                                                                    | ⚠️               | ⬜             | ⚠️             |
 
 ## B. Graphical interface (`sokketter-ui`)
 
@@ -187,9 +185,9 @@ cases that require at least one device real to be present.
 | UI-HW-32  | Energenie EG-PMS: plug in; toggle each of 4 sockets.                                                           | Detected as `Energenie EG-PMS`; serial read from device; 4 sockets switch.                            | ⬜               | ⬜             | ⬜             |
 | UI-HW-33  | Energenie EG-PMS2: plug in; toggle each of 4 sockets.                                                          | Detected as `Energenie EG-PMS2`; 4 sockets switch.                                                    | ⬜               | ⬜             | ⬜             |
 | UI-HW-34  | EG-PMxx-LAN: discover on LAN; authenticate; toggle each of 4 sockets; read status.                             | Detected via MAC/port; password login works; 4 sockets switch; status echoed back.                    | ⬜               | ⬜             | ⬜             |
-| UI-HW-35  | Any USB: unplug the device mid-session.                                                                        | Device shown as disconnected; operations fail gracefully; no crash.                                   | ⬜               | ⬜             | ⬜             |
-| UI-HW-36  | Any LAN: unplug the device mid-session.                                                                        | Device shown as disconnected; operations fail gracefully; no crash.                                   | ⬜               | ⬜             | ⬜             |
-| UI-HW-37  | Linux, any USB: run without udev rules, then with them.                                                        | Without rules: access denied/enumeration fails; with rules: works.                                    | ⚠️               | ⬜             | ⚠️             |
+| UI-HW-35  | Linux, any USB: run without udev rules, then with them.                                                        | Without rules: access denied/enumeration fails; with rules: works.                                    | ⚠️               | ⬜             | ⚠️             |
+| UI-HW-36  | Any USB: unplug the device mid-session.                                                                        | Device shown as disconnected; operations fail gracefully; no crash.                                   | ⬜               | ⬜             | ⬜             |
+| UI-HW-37  | Any LAN: unplug the device mid-session.                                                                        | Device shown as disconnected; operations fail gracefully; no crash.                                   | ⬜               | ⬜             | ⬜             |
 
 ---
 

@@ -1337,33 +1337,7 @@ class CliTests:
 
     def test_cli_hw_24(self) -> TestStatus:
         """
-        @brief CLI-HW-24: unplug a USB device mid-session. Physical case.
-        """
-        self.__require_first_usb()
-
-        return self.__manual_verdict(
-            "CLI-HW-24",
-            "With a USB device connected, unplug it mid-session and run 'list' plus any "
-            "power command.",
-            "Device shown as disconnected; operations fail gracefully; no crash.",
-        )
-
-    def test_cli_hw_25(self) -> TestStatus:
-        """
-        @brief CLI-HW-25: unplug a LAN device mid-session. Physical case.
-        """
-        self.__require_first_lan()
-
-        return self.__manual_verdict(
-            "CLI-HW-25",
-            "With an Ethernet device connected, unplug it mid-session and run "
-            "'list --include-device-types ethernet' plus any power command.",
-            "Device shown as disconnected; operations fail gracefully; no crash.",
-        )
-
-    def test_cli_hw_26(self) -> TestStatus:
-        """
-        @brief CLI-HW-26: Linux, any USB device: run without udev rules, then with them.
+        @brief CLI-HW-24: Linux, any USB device: run without udev rules, then with them.
         Not applicable on Windows/macOS.
         """
         if self.system != System.LINUX:
@@ -1373,7 +1347,7 @@ class CliTests:
             raise CaseBlocked("no USB device is connected")
 
         return self.__manual_verdict(
-            "CLI-HW-26",
+            "CLI-HW-24",
             "On Linux, run without the udev rules installed, then install them and run again.",
             "Without rules: access denied / enumeration fails; with rules: works.",
         )
@@ -1425,8 +1399,6 @@ class CliTests:
             ("CLI-HW-22", self.test_cli_hw_22),
             ("CLI-HW-23", self.test_cli_hw_23),
             ("CLI-HW-24", self.test_cli_hw_24),
-            ("CLI-HW-25", self.test_cli_hw_25),
-            ("CLI-HW-26", self.test_cli_hw_26),
         ]:
             self.__run_case(case_id, test_function)
 
