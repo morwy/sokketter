@@ -709,16 +709,20 @@ class CliTests:
 
     def test_cli_prs_05(self) -> None:
         """
-        @brief CLI-PRS-05: "list power" / "power list". Exit 1; unexpected argument error.
+        @brief CLI-PRS-05: "list power" and "power list". Both exit 1, but with different errors:
+        "list power" reports an unexpected argument (list is a leaf), while "power list" reports
+        "A subcommand is required" (power is itself a command group needing a status/on/off/toggle
+        sub-subcommand).
         """
-        for arguments in (["list", "power"], ["power", "list"]):
-            result = self.__run_cli(arguments)
-            self.__expect_exit(result, 1, " ".join(arguments))
-            self.__expect_in(
-                result.stderr,
-                "The following argument was not expected",
-                " ".join(arguments),
-            )
+        result = self.__run_cli(["list", "power"])
+        self.__expect_exit(result, 1, "list power")
+        self.__expect_in(
+            result.stderr, "The following argument was not expected", "list power"
+        )
+
+        result = self.__run_cli(["power", "list"])
+        self.__expect_exit(result, 1, "power list")
+        self.__expect_in(result.stderr, "A subcommand is required", "power list")
 
     def test_cli_prs_06(self) -> None:
         """
