@@ -61,18 +61,15 @@ namespace {
         return nullptr;
     }
 
-    bool any_device_available(const sokketter::power_strip_type &included_types)
+    /**
+     * @brief mirrors the CLI's visible_devices(): enumerate through the library with the given
+     * filter, then apply the client-side visibility rule (TEST_DEVICE stays visible regardless).
+     */
+    std::vector<std::shared_ptr<sokketter::power_strip>> visible_devices_like_cli(
+        const sokketter::power_strip_type &included_types)
     {
         sokketter::device_filter filter;
         filter.included_types = included_types;
-
-        return !sokketter::devices(filter).empty();
-    }
-
-    std::string expected_list_output()
-    {
-        sokketter::device_filter filter;
-        filter.included_types = sokketter::power_strip_type::USB_DEVICES;
 
         std::vector<std::shared_ptr<sokketter::power_strip>> visible;
         for (const auto &device : sokketter::devices(filter))
@@ -82,6 +79,24 @@ namespace {
                 visible.push_back(device);
             }
         }
+
+        return visible;
+    }
+
+    bool any_device_available(const sokketter::power_strip_type &included_types)
+    {
+        return !visible_devices_like_cli(included_types).empty();
+    }
+
+    /**
+     * @brief builds the exact expected list output for the given type selection, mirroring the CLI
+     * filter semantics. The default matches the CLI's default USB-only display filter.
+     */
+    std::string expected_list_output(
+        const sokketter::power_strip_type &included_types =
+            sokketter::power_strip_type::USB_DEVICES)
+    {
+        const auto visible = visible_devices_like_cli(included_types);
 
         if (visible.empty())
         {
@@ -318,6 +333,8 @@ TEST(cli_subcommand_tests, list_include_device_types_is_case_insensitive)
 TEST(cli_subcommand_tests, list_include_ethernet_device_types_is_case_insensitive)
 {
     // MAN-CLI-19
+    set_test_device_number("2");
+
     std::vector<char *> args_lower = {(char *)"sokketter-cli", (char *)"list",
         (char *)"--include-device-types", (char *)"ethernet"};
 
@@ -340,21 +357,30 @@ TEST(cli_subcommand_tests, list_include_ethernet_device_types_is_case_insensitiv
     const auto out_upper = testing::internal::GetCapturedStdout();
     const auto err_upper = testing::internal::GetCapturedStderr();
 
-    if (!any_device_available(sokketter::power_strip_type::ALL_DEVICES))
-    {
-        GTEST_SKIP() << "no devices are available";
-    }
+    /**
+     * @attention fake devices stay visible under an ethernet-only selection (TEST_DEVICE bypass),
+     * so the expected content is deterministic; case-insensitivity is proven by asserting the
+     * exact content, not merely by lower/upper equality. The expectation must be built while the
+     * fake-device env var is still set, otherwise it reflects real persisted hardware.
+     */
+    const auto expected_output =
+        expected_list_output(sokketter::power_strip_type::ETHERNET_DEVICES);
+
+    unset_test_device_number();
 
     ASSERT_EQ(return_code_lower, EXIT_SUCCESS);
     ASSERT_EQ(return_code_upper, EXIT_SUCCESS);
-    EXPECT_EQ(return_code_lower, return_code_upper);
-    EXPECT_EQ(out_lower, out_upper);
-    EXPECT_EQ(err_lower, err_upper);
+    EXPECT_EQ(out_lower, expected_output);
+    EXPECT_EQ(out_upper, expected_output);
+    EXPECT_EQ(err_lower, "");
+    EXPECT_EQ(err_upper, "");
 }
 
 TEST(cli_subcommand_tests, list_include_lan_device_types_is_case_insensitive)
 {
     // MAN-CLI-20
+    set_test_device_number("2");
+
     std::vector<char *> args_lower = {
         (char *)"sokketter-cli", (char *)"list", (char *)"--include-device-types", (char *)"lan"};
 
@@ -377,16 +403,22 @@ TEST(cli_subcommand_tests, list_include_lan_device_types_is_case_insensitive)
     const auto out_upper = testing::internal::GetCapturedStdout();
     const auto err_upper = testing::internal::GetCapturedStderr();
 
-    if (!any_device_available(sokketter::power_strip_type::ALL_DEVICES))
-    {
-        GTEST_SKIP() << "no devices are available";
-    }
+    /**
+     * @attention the lan alias maps to the ethernet mask; fake devices stay visible under it, so
+     * the expected content is deterministic. The expectation must be built while the fake-device
+     * env var is still set, otherwise it reflects real persisted hardware.
+     */
+    const auto expected_output =
+        expected_list_output(sokketter::power_strip_type::ETHERNET_DEVICES);
+
+    unset_test_device_number();
 
     ASSERT_EQ(return_code_lower, EXIT_SUCCESS);
     ASSERT_EQ(return_code_upper, EXIT_SUCCESS);
-    EXPECT_EQ(return_code_lower, return_code_upper);
-    EXPECT_EQ(out_lower, out_upper);
-    EXPECT_EQ(err_lower, err_upper);
+    EXPECT_EQ(out_lower, expected_output);
+    EXPECT_EQ(out_upper, expected_output);
+    EXPECT_EQ(err_lower, "");
+    EXPECT_EQ(err_upper, "");
 }
 
 TEST(cli_subcommand_tests, list_include_device_types_rejects_unknown_type)
@@ -548,6 +580,15 @@ TEST(cli_subcommand_tests, test_power_status_no_device)
 TEST(cli_subcommand_tests, test_power_status_via_index)
 {
     // MAN-CLI-07
+    set_test_device_number("1");
+
+    const auto device = first_available_device();
+    if (device == nullptr)
+    {
+        unset_test_device_number();
+        GTEST_SKIP() << "no device is available";
+    }
+
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
         (char *)"--device-at-index", (char *)"1", (char *)"--sockets", (char *)"1"};
 
@@ -556,14 +597,10 @@ TEST(cli_subcommand_tests, test_power_status_via_index)
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
 
+    unset_test_device_number();
+
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
-
-    const auto device = first_available_device();
-    if (device == nullptr)
-    {
-        GTEST_SKIP() << "no device is available";
-    }
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_EQ(
@@ -573,7 +610,7 @@ TEST(cli_subcommand_tests, test_power_status_via_index)
 
 TEST(cli_subcommand_tests, test_power_zero_device_index)
 {
-    // MAN-CLI-16
+    // MAN-CLI-21
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
         (char *)"--device-at-index", (char *)"0", (char *)"--sockets", (char *)"1"};
 
@@ -593,8 +630,16 @@ TEST(cli_subcommand_tests, test_power_zero_device_index)
 TEST(cli_subcommand_tests, test_power_status_via_serial)
 {
     // MAN-CLI-08
+    set_test_device_number("1");
+
     const auto device = first_available_device();
-    std::string serial = device != nullptr ? device->configuration().id : "missing";
+    if (device == nullptr)
+    {
+        unset_test_device_number();
+        GTEST_SKIP() << "no device is available";
+    }
+
+    const std::string serial = device->configuration().id;
 
     std::vector<std::string> arguments = {
         "sokketter-cli", "power", "status", "--device-with-serial", serial, "--sockets", "1"};
@@ -610,13 +655,10 @@ TEST(cli_subcommand_tests, test_power_status_via_serial)
     const auto &return_code =
         cli_parser::parse_and_process(static_cast<int>(args.size()), args.data());
 
+    unset_test_device_number();
+
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
-
-    if (device == nullptr)
-    {
-        GTEST_SKIP() << "no device is available";
-    }
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
     ASSERT_EQ(
@@ -627,6 +669,8 @@ TEST(cli_subcommand_tests, test_power_status_via_serial)
 TEST(cli_subcommand_tests, test_power_on_specified_socket)
 {
     // MAN-CLI-13
+    set_test_device_number("1");
+
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"on",
         (char *)"--device-at-index", (char *)"1", (char *)"--sockets", (char *)"1"};
 
@@ -639,19 +683,20 @@ TEST(cli_subcommand_tests, test_power_on_specified_socket)
     const auto &err = testing::internal::GetCapturedStderr();
 
     const auto device = first_available_device();
-    if (device == nullptr)
-    {
-        GTEST_SKIP() << "no device is available";
-    }
+    const auto expected = expected_device_header(device)
+        + expected_selected_socket_action_output(device, {1}, "turned on.");
+
+    unset_test_device_number();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(out, expected_device_header(device) +
-                       expected_selected_socket_action_output(device, {1}, "turned on."));
+    ASSERT_EQ(out, expected);
     ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, test_power_off_specified_socket)
 {
+    set_test_device_number("1");
+
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"off",
         (char *)"--device-at-index", (char *)"1", (char *)"--sockets", (char *)"1"};
 
@@ -664,23 +709,20 @@ TEST(cli_subcommand_tests, test_power_off_specified_socket)
     const auto &err = testing::internal::GetCapturedStderr();
 
     const auto device = first_available_device();
-    if (device == nullptr)
-    {
-        ASSERT_EQ(return_code, EXIT_FAILURE);
-        ASSERT_EQ(out, "");
-        ASSERT_EQ(err, "Device index 1 is out of range (no devices are available).\n");
-    }
-    else
-    {
-        ASSERT_EQ(return_code, EXIT_SUCCESS);
-        ASSERT_EQ(out, expected_device_header(device) +
-                           expected_selected_socket_action_output(device, {1}, "turned off."));
-        ASSERT_EQ(err, "");
-    }
+    const auto expected = expected_device_header(device)
+        + expected_selected_socket_action_output(device, {1}, "turned off.");
+
+    unset_test_device_number();
+
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(out, expected);
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, test_power_toggle_specified_socket)
 {
+    set_test_device_number("1");
+
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"toggle",
         (char *)"--device-at-index", (char *)"1", (char *)"--sockets", (char *)"1"};
 
@@ -693,23 +735,20 @@ TEST(cli_subcommand_tests, test_power_toggle_specified_socket)
     const auto &err = testing::internal::GetCapturedStderr();
 
     const auto device = first_available_device();
-    if (device == nullptr)
-    {
-        ASSERT_EQ(return_code, EXIT_FAILURE);
-        ASSERT_EQ(out, "");
-        ASSERT_EQ(err, "Device index 1 is out of range (no devices are available).\n");
-    }
-    else
-    {
-        ASSERT_EQ(return_code, EXIT_SUCCESS);
-        ASSERT_EQ(out, expected_device_header(device) +
-                           expected_selected_socket_action_output(device, {1}, "toggled."));
-        ASSERT_EQ(err, "");
-    }
+    const auto expected = expected_device_header(device)
+        + expected_selected_socket_action_output(device, {1}, "toggled.");
+
+    unset_test_device_number();
+
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(out, expected);
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, test_power_status_all)
 {
+    set_test_device_number("1");
+
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"status",
         (char *)"--device-at-index", (char *)"1"};
 
@@ -722,23 +761,21 @@ TEST(cli_subcommand_tests, test_power_status_all)
     const auto &err = testing::internal::GetCapturedStderr();
 
     const auto device = first_available_device();
-    if (device == nullptr)
-    {
-        ASSERT_EQ(return_code, EXIT_FAILURE);
-        ASSERT_EQ(out, "");
-        ASSERT_EQ(err, "Device index 1 is out of range (no devices are available).\n");
-    }
-    else
-    {
-        ASSERT_EQ(return_code, EXIT_SUCCESS);
-        ASSERT_EQ(out, expected_device_header(device) + expected_socket_status_output(device));
-        ASSERT_EQ(err, "");
-    }
+    const auto expected =
+        expected_device_header(device) + expected_socket_status_output(device);
+
+    unset_test_device_number();
+
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(out, expected);
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, test_power_on_all)
 {
     // MAN-CLI-12
+    set_test_device_number("1");
+
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"on",
         (char *)"--device-at-index", (char *)"1"};
 
@@ -751,19 +788,20 @@ TEST(cli_subcommand_tests, test_power_on_all)
     const auto &err = testing::internal::GetCapturedStderr();
 
     const auto device = first_available_device();
-    if (device == nullptr)
-    {
-        GTEST_SKIP() << "no device is available";
-    }
+    const auto expected =
+        expected_device_header(device) + expected_socket_action_output(device, "turned on.");
+
+    unset_test_device_number();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(
-        out, expected_device_header(device) + expected_socket_action_output(device, "turned on."));
+    ASSERT_EQ(out, expected);
     ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, test_power_off_all)
 {
+    set_test_device_number("1");
+
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"off",
         (char *)"--device-at-index", (char *)"1"};
 
@@ -776,23 +814,20 @@ TEST(cli_subcommand_tests, test_power_off_all)
     const auto &err = testing::internal::GetCapturedStderr();
 
     const auto device = first_available_device();
-    if (device == nullptr)
-    {
-        ASSERT_EQ(return_code, EXIT_FAILURE);
-        ASSERT_EQ(out, "");
-        ASSERT_EQ(err, "Device index 1 is out of range (no devices are available).\n");
-    }
-    else
-    {
-        ASSERT_EQ(return_code, EXIT_SUCCESS);
-        ASSERT_EQ(out,
-            expected_device_header(device) + expected_socket_action_output(device, "turned off."));
-        ASSERT_EQ(err, "");
-    }
+    const auto expected =
+        expected_device_header(device) + expected_socket_action_output(device, "turned off.");
+
+    unset_test_device_number();
+
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(out, expected);
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, test_power_toggle_all)
 {
+    set_test_device_number("1");
+
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"toggle",
         (char *)"--device-at-index", (char *)"1"};
 
@@ -805,19 +840,14 @@ TEST(cli_subcommand_tests, test_power_toggle_all)
     const auto &err = testing::internal::GetCapturedStderr();
 
     const auto device = first_available_device();
-    if (device == nullptr)
-    {
-        ASSERT_EQ(return_code, EXIT_FAILURE);
-        ASSERT_EQ(out, "");
-        ASSERT_EQ(err, "Device index 1 is out of range (no devices are available).\n");
-    }
-    else
-    {
-        ASSERT_EQ(return_code, EXIT_SUCCESS);
-        ASSERT_EQ(out,
-            expected_device_header(device) + expected_socket_action_output(device, "toggled."));
-        ASSERT_EQ(err, "");
-    }
+    const auto expected =
+        expected_device_header(device) + expected_socket_action_output(device, "toggled.");
+
+    unset_test_device_number();
+
+    ASSERT_EQ(return_code, EXIT_SUCCESS);
+    ASSERT_EQ(out, expected);
+    ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, test_power_too_big_socket_index)
@@ -931,6 +961,8 @@ TEST(cli_subcommand_tests, test_power_on_random_subcommand)
 TEST(cli_subcommand_tests, test_power_off_multiple_sockets)
 {
     // MAN-CLI-14
+    set_test_device_number("1");
+
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"power", (char *)"off",
         (char *)"--device-at-index", (char *)"1", (char *)"--sockets", (char *)"1", (char *)"2"};
 
@@ -943,23 +975,23 @@ TEST(cli_subcommand_tests, test_power_off_multiple_sockets)
     const auto &err = testing::internal::GetCapturedStderr();
 
     const auto device = first_available_device();
-    if (device == nullptr)
-    {
-        GTEST_SKIP() << "no device is available";
-    }
+    const auto expected = expected_device_header(device)
+        + expected_selected_socket_action_output(device, {1, 2}, "turned off.");
+
+    unset_test_device_number();
 
     ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(out, expected_device_header(device) +
-                       expected_selected_socket_action_output(device, {1, 2}, "turned off."));
+    ASSERT_EQ(out, expected);
     ASSERT_EQ(err, "");
 }
 
 TEST(cli_subcommand_tests, test_power_toggle_double_restores_state)
 {
     // MAN-CLI-15
+    set_test_device_number("1");
+
     const auto device = first_available_device();
-    const std::string initial_status =
-        device != nullptr ? expected_selected_socket_status_output(device, {1}) : "";
+    const std::string initial_status = expected_selected_socket_status_output(device, {1});
 
     std::vector<char *> toggle_args = {(char *)"sokketter-cli", (char *)"power", (char *)"toggle",
         (char *)"--device-at-index", (char *)"1", (char *)"--sockets", (char *)"1"};
@@ -971,11 +1003,6 @@ TEST(cli_subcommand_tests, test_power_toggle_double_restores_state)
         const auto &rc = cli_parser::parse_and_process(toggle_args.size(), toggle_args.data());
         testing::internal::GetCapturedStdout();
         testing::internal::GetCapturedStderr();
-        if (device == nullptr)
-        {
-            ASSERT_EQ(rc, EXIT_FAILURE);
-            return;
-        }
         ASSERT_EQ(rc, EXIT_SUCCESS);
     }
 
@@ -987,6 +1014,8 @@ TEST(cli_subcommand_tests, test_power_toggle_double_restores_state)
     const auto &rc = cli_parser::parse_and_process(status_args.size(), status_args.data());
     const auto &out = testing::internal::GetCapturedStdout();
     testing::internal::GetCapturedStderr();
+
+    unset_test_device_number();
 
     ASSERT_EQ(rc, EXIT_SUCCESS);
     ASSERT_EQ(out, expected_device_header(device) + initial_status);
@@ -1518,8 +1547,8 @@ TEST(cli_subcommand_tests, power_sockets_missing_value_error)
 
     ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, "");
-    ASSERT_THAT(err, StartsWith("--sockets"));
-    ASSERT_THAT(err, HasSubstr("Run with --help for more information."));
+    ASSERT_EQ(err,
+        "--sockets: 1 required UINT missing\nRun with --help for more information.\n");
 }
 
 TEST(cli_subcommand_tests, list_include_device_types_short_flag)
@@ -1582,7 +1611,8 @@ TEST(cli_subcommand_tests, list_include_ethernet_device_types_with_fake_devices)
     testing::internal::CaptureStderr();
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
-    const auto &expected_output = expected_list_output();
+    const auto &expected_output =
+        expected_list_output(sokketter::power_strip_type::ETHERNET_DEVICES);
 
     unset_test_device_number();
 
@@ -1606,7 +1636,8 @@ TEST(cli_subcommand_tests, list_include_lan_device_types_with_fake_devices)
     testing::internal::CaptureStderr();
 
     const auto &return_code = cli_parser::parse_and_process(args.size(), args.data());
-    const auto &expected_output = expected_list_output();
+    const auto &expected_output =
+        expected_list_output(sokketter::power_strip_type::ETHERNET_DEVICES);
 
     unset_test_device_number();
 
