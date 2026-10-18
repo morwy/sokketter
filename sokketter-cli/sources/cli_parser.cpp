@@ -495,7 +495,7 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
              * to a device outside it is reported as not found, mirroring how the index path cannot
              * reach such devices. TEST_DEVICE stays addressable regardless of the selection.
              */
-            sokketter::devices();
+            sokketter::devices(filter);
             device = sokketter::device(device_serial);
 
             if (device != nullptr && option_power_device_types->count() > 0 &&
