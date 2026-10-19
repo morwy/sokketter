@@ -55,6 +55,65 @@ auto power_strip_factory::supported_devices(const sokketter::device_filter &filt
     return identifications;
 }
 
+auto power_strip_factory::targeted_identifications(
+    const std::vector<std::shared_ptr<sokketter::power_strip>> &database,
+    const sokketter::device_filter &filter)
+    -> const std::vector<kommpot::device_identification>
+{
+    std::vector<kommpot::device_identification> identifications;
+
+    const auto is_allowed = [&filter](const sokketter::power_strip_type &type) -> bool {
+        using underlying = std::underlying_type_t<sokketter::power_strip_type>;
+        return (static_cast<underlying>(filter.included_types) & static_cast<underlying>(type)) !=
+               0;
+    };
+
+    for (const auto &device : database)
+    {
+        if (device == nullptr)
+        {
+            continue;
+        }
+
+        const auto &configuration = device->configuration();
+
+        if (!is_allowed(configuration.type))
+        {
+            continue;
+        }
+
+        /**
+         * @brief a targeted probe needs both the last known address and the MAC identity to
+         * verify the answer against.
+         */
+        if (configuration.address.empty() || configuration.id.empty())
+        {
+            continue;
+        }
+
+        switch (configuration.type)
+        {
+        /**
+         * Energenie EG-PMXX-LAN.
+         */
+        case sokketter::power_strip_type::ENERGENIE_EG_PMXX_LAN: {
+            kommpot::http_device_identification identification;
+            identification.address = configuration.address;
+            identification.port = energenie_eg_pmxx_lan::identification().port;
+            identification.mac = "*";
+
+            identifications.push_back(identification);
+            break;
+        }
+        default: {
+            break;
+        }
+        }
+    }
+
+    return identifications;
+}
+
 auto power_strip_factory::create(std::shared_ptr<kommpot::device_communication> communication)
     -> std::shared_ptr<sokketter::power_strip>
 {
