@@ -55,12 +55,12 @@ auto power_strip_factory::supported_devices(const sokketter::device_filter &filt
     return identifications;
 }
 
-auto power_strip_factory::targeted_identifications(
+auto power_strip_factory::targeted_probes(
     const std::vector<std::shared_ptr<sokketter::power_strip>> &database,
     const sokketter::device_filter &filter)
-    -> const std::vector<kommpot::device_identification>
+    -> const std::vector<targeted_probe>
 {
-    std::vector<kommpot::device_identification> identifications;
+    std::vector<targeted_probe> probes;
 
     const auto is_allowed = [&filter](const sokketter::power_strip_type &type) -> bool {
         using underlying = std::underlying_type_t<sokketter::power_strip_type>;
@@ -97,12 +97,15 @@ auto power_strip_factory::targeted_identifications(
          * Energenie EG-PMXX-LAN.
          */
         case sokketter::power_strip_type::ENERGENIE_EG_PMXX_LAN: {
-            kommpot::http_device_identification identification;
-            identification.address = configuration.address;
-            identification.port = energenie_eg_pmxx_lan::identification().port;
-            identification.mac = "*";
+            targeted_probe probe;
+            probe.identification.address = configuration.address;
+            probe.identification.port = energenie_eg_pmxx_lan::identification().port;
+            // MAC is probed as a wildcard; the caller compares the answered MAC against the
+            // stored id, which is carried in probe.device.
+            probe.identification.mac = "*";
+            probe.device = device;
 
-            identifications.push_back(identification);
+            probes.push_back(probe);
             break;
         }
         default: {
@@ -111,7 +114,7 @@ auto power_strip_factory::targeted_identifications(
         }
     }
 
-    return identifications;
+    return probes;
 }
 
 auto power_strip_factory::create(std::shared_ptr<kommpot::device_communication> communication)
