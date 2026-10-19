@@ -11,6 +11,8 @@
 
 #include <atomic>
 #include <mutex>
+#include <set>
+#include <string>
 #include <thread>
 
 constexpr auto LOGGER_NAME = "sokketter";
@@ -92,9 +94,34 @@ private:
 
     auto logging_callback(const kommpot::callback_response_structure &response) -> void;
 
+    /**
+     * @brief probes the last known addresses of the stored network devices before the regular
+     * network search.
+     *
+     * Every communication that answers is associated with a stored device by identity (MAC), so a
+     * device is only re-attached when its MAC address still matches. A host with a foreign
+     * identity at a probed address is ignored here; the regular search picks it up if it is a
+     * supported device, while the stored device itself is searched for again. A stored device that
+     * answers at an address different from its stored one (moved device or kommpot address
+     * normalization) adopts the new address.
+     *
+     * @param filter stating which device types are being enumerated.
+     * @param handled_ids receives the identities re-attached during the probe.
+     * @return true when the database must be saved (a device adopted a new address), false
+     * otherwise.
+     */
+    auto probe_last_known_addresses(
+        const sokketter::device_filter &filter, std::set<std::string> &handled_ids) -> bool;
+
     auto new_devices_received(
         std::vector<std::shared_ptr<kommpot::device_communication>> communications) -> void;
     auto new_status_received(kommpot::enumeration_status status) -> void;
+
+    /**
+     * @brief identities re-attached via their last known address during the ongoing
+     * asynchronous enumeration, used to skip the duplicate communication of the regular search.
+     */
+    std::set<std::string> m_handled_ids;
 };
 
 #endif // CORE_H

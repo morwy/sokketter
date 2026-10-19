@@ -354,6 +354,9 @@ namespace sokketter {
         /**
          * @brief Address of the power strip in format "USB:x" or "IP:IP_ADDRESS".
          * @attention Read-only, populated internally by the library, not to be set by the user.
+         * @attention For LAN devices this is also persisted and reused between sessions as the
+         * last known address: the device is probed there first and only re-attached if its
+         * identity (MAC) still matches, otherwise the device is searched for again.
          */
         std::string address = "";
     };

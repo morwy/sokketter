@@ -61,6 +61,7 @@ namespace sokketter {
             {"name", ps.configuration().name}, {"description", ps.configuration().description},
             {"authentication-type", ps.configuration().authentication.type},
             {"authentication-password", ps.configuration().authentication.password},
+            {"address", ps.configuration().address},
             {"sockets", sockets}};
     }
 
@@ -72,6 +73,7 @@ namespace sokketter {
         configuration.id = j.value("id", "");
         configuration.name = j.value("name", "");
         configuration.description = j.value("description", "");
+        configuration.address = j.value("address", "");
         configuration.authentication.type =
             j.value("authentication-type", sokketter::power_strip_authentication_type::UNKNOWN);
         configuration.authentication.password = j.value("authentication-password", "");
