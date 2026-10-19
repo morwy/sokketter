@@ -30,7 +30,7 @@ NEVER try to build the project by calling CMake directly, as Build.py handles pl
 
 Power strips use an inheritance chain: public `sokketter::power_strip` → internal `power_strip_base` → `energenie_eg_base` → concrete devices (`gembird_*`, `energenie_*`) in [libsokketter/sources/devices/](libsokketter/sources/devices). Devices are matched to classes in [power_strip_factory.cpp](libsokketter/sources/devices/power_strip_factory.cpp) by USB VID/PID or Ethernet identity.
 
-Device configuration is persisted as JSON (nlohmann) to `devices.json` under the platform storage path (`C:\ProgramData\sokketter`, `/Users/Shared/sokketter`, `~/.local/share/sokketter`) via [database_storage.cpp](libsokketter/sources/database_storage.cpp).
+Device configuration is persisted as JSON (nlohmann) to `devices.json` under the platform storage path (`C:\ProgramData\sokketter`, `/Users/Shared/sokketter`, `~/.local/share/sokketter`) via [database_storage.cpp](libsokketter/sources/database_storage.cpp). LAN devices also persist their last known address (`address` field): on enumeration they are probed there first and only reattached if the answering host's MAC still matches the stored identity, otherwise (no answer, or foreign MAC) the device is searched for again via the regular network search.
 
 **Adding a supported device** touches several places consistently:
 
