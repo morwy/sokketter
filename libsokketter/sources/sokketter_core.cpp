@@ -778,20 +778,30 @@ auto sokketter_core::probe_last_known_addresses(
 {
     auto &database = m_database.get();
 
-    const auto targeted_identifications =
-        power_strip_factory::targeted_identifications(database, filter);
-    if (targeted_identifications.empty())
+    const auto probes = power_strip_factory::targeted_probes(database, filter);
+    if (probes.empty())
     {
         return false;
     }
 
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Probing {} last known address(es) of stored devices.",
-        targeted_identifications.size());
+        probes.size());
 
-    const auto communications = kommpot::devices(targeted_identifications);
+    std::vector<kommpot::device_identification> identifications;
+    identifications.reserve(probes.size());
+    for (const auto &probe : probes)
+    {
+        identifications.push_back(probe.identification);
+    }
+
+    const auto communications = kommpot::devices(identifications);
 
     bool needs_save = false;
-    std::set<std::string> answered_addresses;
+    /**
+     * @brief identities of stored devices whose last known address was answered by a host with
+     * an unexpected identity and is already reported.
+     */
+    std::set<std::string> taken_over_ids;
 
     for (const auto &communication : communications)
     {
@@ -808,85 +818,99 @@ auto sokketter_core::probe_last_known_addresses(
             continue;
         }
 
-        answered_addresses.insert(identification->address);
-
         /**
-         * @brief the communication answers the probe of the stored device with this address.
+         * @brief the host that answered is associated with a stored probe by identity (MAC)
+         * rather than by the probed address: kommpot normalizes addresses, so the answering
+         * address may differ in form from the stored one, and the device may have moved to an
+         * address that belongs to another stored device's probe.
          */
-        auto it = std::find_if(database.begin(), database.end(),
-            [&](const std::shared_ptr<sokketter::power_strip> &item) {
-                return item && item->configuration().address == identification->address;
+        auto it = std::find_if(probes.begin(), probes.end(),
+            [&](const power_strip_factory::targeted_probe &probe) {
+                return probe.device && probe.device->configuration().id == identification->mac;
             });
-        if (it == database.end())
+        if (it == probes.end())
         {
+            /**
+             * @brief a host with an unexpected identity answers at a probed address, so that
+             * address has been taken over; the stored device is not reattached here and has to
+             * be searched for again by the regular search.
+             */
+            auto taken_it = std::find_if(probes.begin(), probes.end(),
+                [&](const power_strip_factory::targeted_probe &probe) {
+                    return probe.identification.address == identification->address;
+                });
+            if (taken_it != probes.end() && taken_it->device != nullptr)
+            {
+                SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER,
+                    "{}: the host at the last known address '{}' has an unexpected identity '{}', "
+                    "searching for the device again.",
+                    taken_it->device->to_string(), identification->address, identification->mac);
+                taken_over_ids.insert(taken_it->device->configuration().id);
+            }
+            else
+            {
+                SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER,
+                    "a host with the unexpected identity '{}' answered at the probed address "
+                    "'{}', searching for the stored devices again.",
+                    identification->mac, identification->address);
+            }
             continue;
         }
 
-        /**
-         * @brief the identity of the host that answered must match the identity of the stored
-         * device, otherwise the address has been taken over by another host and the stored device
-         * has to be searched for again.
-         */
-        if ((*it)->configuration().id != identification->mac)
-        {
-            SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER,
-                "{}: the host at the last known address '{}' has an unexpected identity '{}', "
-                "searching for the device again.",
-                (*it)->to_string(), identification->address, identification->mac);
-            continue;
-        }
+        const auto &device = it->device;
 
-        auto *base_device = dynamic_cast<power_strip_base *>((*it).get());
+        auto *base_device = dynamic_cast<power_strip_base *>(device.get());
         if (base_device == nullptr)
         {
             SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
-                "{}: failed casting the device to power_strip_base!", (*it)->to_string());
+                "{}: failed casting the device to power_strip_base!", device->to_string());
             continue;
         }
 
-        const auto saved_address = (*it)->configuration().address;
+        const auto saved_address = device->configuration().address;
         if (!base_device->initialize(communication))
         {
             SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "{}: failed reattaching the communication!",
-                (*it)->to_string());
+                device->to_string());
             continue;
         }
 
-        handled_ids.insert((*it)->configuration().id);
+        handled_ids.insert(device->configuration().id);
 
-        if ((*it)->configuration().address != saved_address)
+        /**
+         * @brief initialize() adopts the address the host answered at, which kommpot may report
+         * in a normalized form or which may be a new address the device moved to; persist the
+         * changed last known address.
+         */
+        if (device->configuration().address != saved_address)
         {
             needs_save = true;
-        }
 
-        SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
-            "{}: device answered at its last known address '{}'.", (*it)->to_string(),
-            identification->address);
+            SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
+                "{}: the last known address was updated from '{}' to '{}'.", device->to_string(),
+                saved_address, device->configuration().address);
+        }
+        else
+        {
+            SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
+                "{}: device answered at its last known address '{}'.", device->to_string(),
+                identification->address);
+        }
     }
 
     /**
-     * @brief stored devices that did not answer at their last known address are searched for by
-     * the regular search that follows the probe.
+     * @brief stored devices that were not reattached during the probe are searched for by the
+     * regular search that follows it.
      */
-    for (const auto &identification_variant : targeted_identifications)
+    for (const auto &probe : probes)
     {
-        const auto *identification =
-            std::get_if<kommpot::http_device_identification>(&identification_variant);
-        if (identification == nullptr)
+        if (probe.device == nullptr)
         {
             continue;
         }
 
-        if (answered_addresses.count(identification->address) != 0)
-        {
-            continue;
-        }
-
-        auto it = std::find_if(database.begin(), database.end(),
-            [&](const std::shared_ptr<sokketter::power_strip> &item) {
-                return item && item->configuration().address == identification->address;
-            });
-        if (it == database.end())
+        const auto &id = probe.device->configuration().id;
+        if (handled_ids.count(id) != 0 || taken_over_ids.count(id) != 0)
         {
             continue;
         }
@@ -894,7 +918,7 @@ auto sokketter_core::probe_last_known_addresses(
         SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER,
             "{}: device did not answer at its last known address '{}', searching for the device "
             "again.",
-            (*it)->to_string(), identification->address);
+            probe.device->to_string(), probe.identification.address);
     }
 
     return needs_save;
