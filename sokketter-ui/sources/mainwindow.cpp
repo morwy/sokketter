@@ -1259,8 +1259,6 @@ auto MainWindow::event(QEvent *event) -> bool
 
 auto MainWindow::resizeEvent(QResizeEvent *event) -> void
 {
-    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Detected resize event.");
-
     QMainWindow::resizeEvent(event);
 
     redraw_device_list();
