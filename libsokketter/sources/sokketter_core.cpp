@@ -340,6 +340,17 @@ auto sokketter_core::devices(const sokketter::device_filter &filter,
                     m_database.save();
                 }
 
+                /**
+                 * @brief stored devices that answered at their last known addresses are already
+                 * reattached and connected; report the updated database immediately so that they
+                 * show as online right away, instead of only after the (slow) full ethernet
+                 * search below completes.
+                 */
+                if (m_device_cb)
+                {
+                    m_device_cb(m_database.get());
+                }
+
                 const auto supported_eth_devices =
                     power_strip_factory::supported_devices(eth_filter);
 
