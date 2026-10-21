@@ -220,10 +220,14 @@ auto MainWindow::onNewPowerStripReceived(
 {
     SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Repopulating power strip list.");
 
-    while (m_ui->power_strip_list_widget->count() > 0)
-    {
-        m_ui->power_strip_list_widget->takeItem(0);
-    }
+    /**
+     * @brief suppress updates for the whole rebuild; addItem/setItemWidget/setSizeHint each
+     * trigger a viewport relayout and repaint, which without coalescing freezes the GUI thread
+     * for seconds when every item hosts a widget.
+     */
+    m_ui->power_strip_list_widget->setUpdatesEnabled(false);
+
+    m_ui->power_strip_list_widget->clear();
 
     int visible_width = m_ui->power_strip_list_widget->width();
     if (m_ui->power_strip_list_widget->verticalScrollBar()->isVisible())
@@ -266,6 +270,8 @@ auto MainWindow::onNewPowerStripReceived(
     }
 
     redraw_device_list();
+
+    m_ui->power_strip_list_widget->setUpdatesEnabled(true);
 }
 
 auto MainWindow::onNewStatusReceived(sokketter::enumeration_status status) -> void
