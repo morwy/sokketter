@@ -80,6 +80,15 @@ private:
     sokketter::device_callback m_device_cb = nullptr;
     sokketter::status_callback m_status_cb = nullptr;
 
+    /**
+     * @brief worker thread running the blocking device enumeration (last known address probe and
+     * the kommpot search), so that the calling thread (e.g. the Qt GUI thread) returns
+     * immediately.
+     */
+    std::mutex m_search_thread_mutex;
+    std::thread m_search_thread;
+    std::atomic_bool m_search_running = false;
+
     sokketter_core() = default;
     ~sokketter_core() = default;
 
