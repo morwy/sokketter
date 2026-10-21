@@ -282,6 +282,10 @@ auto MainWindow::onNewStatusReceived(sokketter::enumeration_status status) -> vo
         m_ui->power_strip_enumeration_status_label->setText("Enumerating Ethernet devices...");
         break;
     }
+    case sokketter::enumeration_status::PROBING_KNOWN_DEVICES: {
+        m_ui->power_strip_enumeration_status_label->setText("Probing known devices...");
+        break;
+    }
     case sokketter::enumeration_status::UNKNOWN:
     case sokketter::enumeration_status::COMPLETED: {
         m_ui->power_strip_enumeration_status_label->clear();
