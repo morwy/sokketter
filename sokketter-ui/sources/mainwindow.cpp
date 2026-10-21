@@ -270,8 +270,6 @@ auto MainWindow::onNewPowerStripReceived(
 
 auto MainWindow::onNewStatusReceived(sokketter::enumeration_status status) -> void
 {
-    SPDLOG_LOGGER_INFO(
-        APP_LOGGER, "New status: {}.", sokketter::enumeration_status_to_string(status));
     switch (status)
     {
     case sokketter::enumeration_status::ENUMERATING_USB_DEVICES: {
