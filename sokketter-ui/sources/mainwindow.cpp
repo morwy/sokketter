@@ -276,18 +276,21 @@ auto MainWindow::onNewPowerStripReceived(
 
 auto MainWindow::onNewStatusReceived(sokketter::enumeration_status status) -> void
 {
+    SPDLOG_LOGGER_INFO(
+        APP_LOGGER, "New status: {}.", sokketter::enumeration_status_to_string(status));
+
     switch (status)
     {
     case sokketter::enumeration_status::ENUMERATING_USB_DEVICES: {
         m_ui->power_strip_enumeration_status_label->setText("Enumerating USB devices...");
         break;
     }
-    case sokketter::enumeration_status::ENUMERATING_ETHERNET_DEVICES: {
-        m_ui->power_strip_enumeration_status_label->setText("Enumerating Ethernet devices...");
-        break;
-    }
     case sokketter::enumeration_status::PROBING_KNOWN_DEVICES: {
         m_ui->power_strip_enumeration_status_label->setText("Probing known devices...");
+        break;
+    }
+    case sokketter::enumeration_status::ENUMERATING_ETHERNET_DEVICES: {
+        m_ui->power_strip_enumeration_status_label->setText("Enumerating Ethernet devices...");
         break;
     }
     case sokketter::enumeration_status::UNKNOWN:
