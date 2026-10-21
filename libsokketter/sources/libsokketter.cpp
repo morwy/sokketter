@@ -445,6 +445,9 @@ auto sokketter::enumeration_status_to_string(const enumeration_status &status) n
     case enumeration_status::ENUMERATING_USB_DEVICES: {
         return "Enumerating USB devices";
     }
+    case enumeration_status::PROBING_KNOWN_DEVICES: {
+        return "Probing known devices";
+    }
     case enumeration_status::ENUMERATING_ETHERNET_DEVICES: {
         return "Enumerating Ethernet devices";
     }
