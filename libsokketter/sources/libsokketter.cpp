@@ -374,8 +374,8 @@ auto sokketter::devices(
             devices.push_back(std::make_shared<test_device>(device_index));
         }
 
-        status_cb(enumeration_status::ENUMERATING_USB_DEVICES);
-        status_cb(enumeration_status::ENUMERATING_ETHERNET_DEVICES);
+        status_cb(enumeration_status::LOOKING_FOR_NEW_USB_DEVICES);
+        status_cb(enumeration_status::LOOKING_FOR_NEW_ETHERNET_DEVICES);
 
         device_cb(devices);
 
@@ -442,14 +442,14 @@ auto sokketter::enumeration_status_to_string(const enumeration_status &status) n
     case enumeration_status::UNKNOWN: {
         return "Unknown";
     }
-    case enumeration_status::ENUMERATING_USB_DEVICES: {
-        return "Enumerating USB devices";
+    case enumeration_status::LOOKING_FOR_NEW_USB_DEVICES: {
+        return "Looking for the new USB devices";
     }
-    case enumeration_status::PROBING_KNOWN_DEVICES: {
-        return "Probing known devices";
+    case enumeration_status::LOOKING_FOR_KNOWN_ETHERNET_DEVICES: {
+        return "Looking for the known Ethernet devices";
     }
-    case enumeration_status::ENUMERATING_ETHERNET_DEVICES: {
-        return "Enumerating Ethernet devices";
+    case enumeration_status::LOOKING_FOR_NEW_ETHERNET_DEVICES: {
+        return "Looking for the new Ethernet devices";
     }
     case enumeration_status::COMPLETED: {
         return "Completed";

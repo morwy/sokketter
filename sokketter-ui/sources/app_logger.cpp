@@ -58,7 +58,7 @@ auto initialize_app_logger() -> void
     auto logger = spdlog::daily_logger_mt(LOGGER_NAME, filepath.string(), 0, 0, false, 30);
     APP_LOGGER->sinks().insert(logger->sinks().end(), new_sinks.begin(), new_sinks.end());
 
-    APP_LOGGER->set_level(spdlog::level::trace);
+    APP_LOGGER->set_level(spdlog::level::info);
     APP_LOGGER->set_pattern("%Y-%m-%d %T.%e - %l - %s:%# - %v");
 
     sokketter::settings_structure settings;

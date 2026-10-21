@@ -461,9 +461,9 @@ namespace sokketter {
     enum class enumeration_status
     {
         UNKNOWN = 0,
-        ENUMERATING_USB_DEVICES = 1,
-        PROBING_KNOWN_DEVICES = 2,
-        ENUMERATING_ETHERNET_DEVICES = 3,
+        LOOKING_FOR_NEW_USB_DEVICES = 1,
+        LOOKING_FOR_KNOWN_ETHERNET_DEVICES = 2,
+        LOOKING_FOR_NEW_ETHERNET_DEVICES = 3,
         COMPLETED = 4,
     };
 

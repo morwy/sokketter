@@ -11,7 +11,6 @@
 #include <chrono>
 #include <cstdlib>
 #include <ctime>
-#include <thread>
 #include <iomanip>
 #include <json/json.hpp>
 #include <spdlog/sinks/callback_sink.h>
@@ -19,6 +18,7 @@
 #include <spdlog/spdlog.h>
 #include <sstream>
 #include <third-party/kommpot/libkommpot/include/libkommpot.h>
+#include <thread>
 
 #ifdef _WIN32
 #    include <spdlog/sinks/msvc_sink.h>
@@ -294,35 +294,67 @@ auto sokketter_core::devices(const sokketter::device_filter &filter,
         m_search_running = true;
 
         m_search_thread = std::thread([this, filter]() {
-            /**
-             * @brief report that the enumeration started before the (potentially slow) last known
-             * address probe, so that the caller shows feedback immediately instead of only after
-             * the probe times out. This is sokketter's own status (not a kommpot one), emitted
-             * directly on the sokketter callback.
-             */
-            if (m_status_cb)
+            using underlying = std::underlying_type_t<sokketter::power_strip_type>;
+            if ((static_cast<underlying>(filter.included_types) &
+                    static_cast<underlying>(sokketter::power_strip_type::USB_DEVICES)) != 0)
             {
-                m_status_cb(sokketter::enumeration_status::PROBING_KNOWN_DEVICES);
+                if (m_status_cb)
+                {
+                    m_status_cb(sokketter::enumeration_status::LOOKING_FOR_NEW_USB_DEVICES);
+                }
+
+                sokketter::device_filter usb_filter;
+                usb_filter.included_types = sokketter::power_strip_type::USB_DEVICES;
+
+                const auto supported_usb_devices =
+                    power_strip_factory::supported_devices(usb_filter);
+
+                const auto usb_devices = kommpot::devices(supported_usb_devices);
+                new_devices_received(usb_devices);
             }
 
-            /**
-             * @brief stored network devices answer first at their last known addresses, the
-             * regular search is performed regardless so that new devices are always discovered.
-             */
-            m_handled_ids.clear();
-            if (probe_last_known_addresses(filter, m_handled_ids))
+            if ((static_cast<underlying>(filter.included_types) &
+                    static_cast<underlying>(sokketter::power_strip_type::ETHERNET_DEVICES)) != 0)
             {
-                m_database.save();
+                /**
+                 * @brief report that the enumeration started before the (potentially slow) last
+                 * known address probe, so that the caller shows feedback immediately instead of
+                 * only after the probe times out. This is sokketter's own status (not a kommpot
+                 * one), emitted directly on the sokketter callback.
+                 */
+                if (m_status_cb)
+                {
+                    m_status_cb(sokketter::enumeration_status::LOOKING_FOR_KNOWN_ETHERNET_DEVICES);
+                }
+
+                sokketter::device_filter eth_filter;
+                eth_filter.included_types = sokketter::power_strip_type::ETHERNET_DEVICES;
+
+                /**
+                 * @brief stored network devices answer first at their last known addresses, the
+                 * regular search is performed regardless so that new devices are always discovered.
+                 */
+                m_handled_ids.clear();
+                if (probe_last_known_addresses(eth_filter, m_handled_ids))
+                {
+                    m_database.save();
+                }
+
+                const auto supported_eth_devices =
+                    power_strip_factory::supported_devices(eth_filter);
+
+                SPDLOG_LOGGER_DEBUG(
+                    SOKKETTER_LOGGER, "Supported devices: {}.", supported_eth_devices.size());
+
+                if (m_status_cb)
+                {
+                    m_status_cb(sokketter::enumeration_status::LOOKING_FOR_NEW_ETHERNET_DEVICES);
+                }
+
+                kommpot::devices(supported_eth_devices,
+                    std::bind(&sokketter_core::new_devices_received, this, std::placeholders::_1),
+                    std::bind(&sokketter_core::new_status_received, this, std::placeholders::_1));
             }
-
-            const auto supported_devices = power_strip_factory::supported_devices(filter);
-
-            SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Supported devices: {}.",
-                supported_devices.size());
-
-            kommpot::devices(supported_devices,
-                std::bind(&sokketter_core::new_devices_received, this, std::placeholders::_1),
-                std::bind(&sokketter_core::new_status_received, this, std::placeholders::_1));
 
             m_search_running = false;
         });
@@ -842,8 +874,8 @@ auto sokketter_core::probe_last_known_addresses(
         return false;
     }
 
-    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Probing {} last known address(es) of stored devices.",
-        probes.size());
+    SPDLOG_LOGGER_DEBUG(
+        SOKKETTER_LOGGER, "Probing {} last known address(es) of stored devices.", probes.size());
 
     std::vector<kommpot::device_identification> identifications;
     identifications.reserve(probes.size());
@@ -882,8 +914,8 @@ auto sokketter_core::probe_last_known_addresses(
          * address may differ in form from the stored one, and the device may have moved to an
          * address that belongs to another stored device's probe.
          */
-        auto it = std::find_if(probes.begin(), probes.end(),
-            [&](const power_strip_factory::targeted_probe &probe) {
+        auto it = std::find_if(
+            probes.begin(), probes.end(), [&](const power_strip_factory::targeted_probe &probe) {
                 return probe.device && probe.device->configuration().id == identification->mac;
             });
         if (it == probes.end())
@@ -928,8 +960,8 @@ auto sokketter_core::probe_last_known_addresses(
         const auto saved_address = device->configuration().address;
         if (!base_device->initialize(communication))
         {
-            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "{}: failed reattaching the communication!",
-                device->to_string());
+            SPDLOG_LOGGER_ERROR(
+                SOKKETTER_LOGGER, "{}: failed reattaching the communication!", device->to_string());
             continue;
         }
 
@@ -984,5 +1016,27 @@ auto sokketter_core::probe_last_known_addresses(
 
 auto sokketter_core::new_status_received(kommpot::enumeration_status status) -> void
 {
-    m_status_cb(static_cast<sokketter::enumeration_status>(status));
+    switch (status)
+    {
+    case kommpot::enumeration_status::ENUMERATING_USB_DEVICES: {
+        m_status_cb(sokketter::enumeration_status::LOOKING_FOR_NEW_USB_DEVICES);
+        break;
+    }
+    case kommpot::enumeration_status::ENUMERATING_ETHERNET_DEVICES: {
+        m_status_cb(sokketter::enumeration_status::LOOKING_FOR_NEW_ETHERNET_DEVICES);
+        break;
+    }
+    case kommpot::enumeration_status::ENUMERATING_HTTP_DEVICES: {
+        m_status_cb(sokketter::enumeration_status::LOOKING_FOR_NEW_ETHERNET_DEVICES);
+        break;
+    }
+    case kommpot::enumeration_status::COMPLETED: {
+        m_status_cb(sokketter::enumeration_status::COMPLETED);
+        break;
+    }
+    case kommpot::enumeration_status::UNKNOWN:
+    default: {
+        break;
+    }
+    }
 }

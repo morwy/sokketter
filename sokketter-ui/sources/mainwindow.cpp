@@ -281,16 +281,18 @@ auto MainWindow::onNewStatusReceived(sokketter::enumeration_status status) -> vo
 
     switch (status)
     {
-    case sokketter::enumeration_status::ENUMERATING_USB_DEVICES: {
-        m_ui->power_strip_enumeration_status_label->setText("Enumerating USB devices...");
+    case sokketter::enumeration_status::LOOKING_FOR_NEW_USB_DEVICES: {
+        m_ui->power_strip_enumeration_status_label->setText("Looking for the new USB devices...");
         break;
     }
-    case sokketter::enumeration_status::PROBING_KNOWN_DEVICES: {
-        m_ui->power_strip_enumeration_status_label->setText("Probing known devices...");
+    case sokketter::enumeration_status::LOOKING_FOR_KNOWN_ETHERNET_DEVICES: {
+        m_ui->power_strip_enumeration_status_label->setText(
+            "Looking for the known Ethernet devices...");
         break;
     }
-    case sokketter::enumeration_status::ENUMERATING_ETHERNET_DEVICES: {
-        m_ui->power_strip_enumeration_status_label->setText("Enumerating Ethernet devices...");
+    case sokketter::enumeration_status::LOOKING_FOR_NEW_ETHERNET_DEVICES: {
+        m_ui->power_strip_enumeration_status_label->setText(
+            "Looking for the new Ethernet devices...");
         break;
     }
     case sokketter::enumeration_status::UNKNOWN:
