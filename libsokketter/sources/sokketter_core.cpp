@@ -11,6 +11,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <ctime>
+#include <thread>
 #include <iomanip>
 #include <json/json.hpp>
 #include <spdlog/sinks/callback_sink.h>
@@ -86,6 +87,14 @@ auto sokketter_core::deinitialize() -> bool
         if (m_update_check_thread.joinable())
         {
             m_update_check_thread.join();
+        }
+    }
+
+    {
+        const std::lock_guard<std::mutex> lock(m_search_thread_mutex);
+        if (m_search_thread.joinable())
+        {
+            m_search_thread.join();
         }
     }
 
@@ -253,22 +262,71 @@ auto sokketter_core::devices(const sokketter::device_filter &filter,
     m_status_cb = status_cb;
 
     /**
-     * @brief stored network devices answer first at their last known addresses, the regular
-     * search is performed regardless so that new devices are always discovered.
+     * @brief the enumeration (probing last known addresses and the kommpot search) performs
+     * blocking network I/O with multi-second timeouts, so it runs on a dedicated worker thread;
+     * the calling thread (e.g. the Qt GUI thread) returns immediately and results are delivered
+     * through the registered callbacks.
      */
-    m_handled_ids.clear();
-    if (probe_last_known_addresses(filter, m_handled_ids))
     {
-        m_database.save();
+        const std::lock_guard<std::mutex> lock(m_search_thread_mutex);
+
+        /**
+         * @brief only one enumeration is allowed at a time; a new request arriving while one is
+         * running is skipped instead of joining the ongoing one, so that the calling thread is
+         * never blocked (the ongoing enumeration already reports the current device state).
+         */
+        if (m_search_running)
+        {
+            SPDLOG_LOGGER_WARN(
+                SOKKETTER_LOGGER, "Device enumeration is already running, skipping the request.");
+            return;
+        }
+
+        /**
+         * @brief the previous enumeration has already finished, so joining its thread is
+         * immediate and only reclaims the thread object.
+         */
+        if (m_search_thread.joinable())
+        {
+            m_search_thread.join();
+        }
+
+        m_search_running = true;
+
+        m_search_thread = std::thread([this, filter]() {
+            /**
+             * @brief report that the enumeration started before the (potentially slow) last known
+             * address probe, so that the caller shows feedback immediately instead of only after
+             * the probe times out. This is sokketter's own status (not a kommpot one), emitted
+             * directly on the sokketter callback.
+             */
+            if (m_status_cb)
+            {
+                m_status_cb(sokketter::enumeration_status::PROBING_KNOWN_DEVICES);
+            }
+
+            /**
+             * @brief stored network devices answer first at their last known addresses, the
+             * regular search is performed regardless so that new devices are always discovered.
+             */
+            m_handled_ids.clear();
+            if (probe_last_known_addresses(filter, m_handled_ids))
+            {
+                m_database.save();
+            }
+
+            const auto supported_devices = power_strip_factory::supported_devices(filter);
+
+            SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Supported devices: {}.",
+                supported_devices.size());
+
+            kommpot::devices(supported_devices,
+                std::bind(&sokketter_core::new_devices_received, this, std::placeholders::_1),
+                std::bind(&sokketter_core::new_status_received, this, std::placeholders::_1));
+
+            m_search_running = false;
+        });
     }
-
-    const auto supported_devices = power_strip_factory::supported_devices(filter);
-
-    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Supported devices: {}.", supported_devices.size());
-
-    kommpot::devices(supported_devices,
-        std::bind(&sokketter_core::new_devices_received, this, std::placeholders::_1),
-        std::bind(&sokketter_core::new_status_received, this, std::placeholders::_1));
 }
 
 auto sokketter_core::device(const size_t &index) -> std::shared_ptr<sokketter::power_strip>
