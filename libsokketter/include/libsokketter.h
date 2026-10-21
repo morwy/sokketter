@@ -462,8 +462,9 @@ namespace sokketter {
     {
         UNKNOWN = 0,
         ENUMERATING_USB_DEVICES = 1,
-        ENUMERATING_ETHERNET_DEVICES = 2,
-        COMPLETED = 3
+        PROBING_KNOWN_DEVICES = 2,
+        ENUMERATING_ETHERNET_DEVICES = 3,
+        COMPLETED = 4,
     };
 
     /**
