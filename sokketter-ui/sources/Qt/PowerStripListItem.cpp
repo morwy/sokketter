@@ -59,6 +59,13 @@ auto PowerStripListItem::configuration() const -> const sokketter::power_strip_c
 
 void PowerStripListItem::set_state(const bool is_on) const
 {
+    if (m_state.has_value() && m_state.value() == is_on)
+    {
+        return;
+    }
+
+    m_state = is_on;
+
     m_ui->status_label->setState(is_on);
     m_ui->status_label->setToolTip(is_on ? tr("connected") : tr("disconnected"));
 }
