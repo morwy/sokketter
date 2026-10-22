@@ -220,42 +220,114 @@ auto MainWindow::onNewPowerStripReceived(
 {
     SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Repopulating power strip list.");
 
+    auto *list_widget = m_ui->power_strip_list_widget;
+
     /**
-     * @brief suppress updates for the whole rebuild; addItem/setItemWidget/setSizeHint each
-     * trigger a viewport relayout and repaint, which without coalescing freezes the GUI thread
-     * for seconds when every item hosts a widget.
+     * @brief suppress updates for the whole update; item changes each trigger a viewport relayout
+     * and repaint, which without coalescing freezes the GUI thread when every item hosts a widget.
      */
-    m_ui->power_strip_list_widget->setUpdatesEnabled(false);
+    list_widget->setUpdatesEnabled(false);
 
-    m_ui->power_strip_list_widget->clear();
-
-    int visible_width = m_ui->power_strip_list_widget->width();
-    if (m_ui->power_strip_list_widget->verticalScrollBar()->isVisible())
+    int visible_width = list_widget->width();
+    if (list_widget->verticalScrollBar()->isVisible())
     {
-        visible_width -= (m_ui->power_strip_list_widget->verticalScrollBar()->width() * 2);
+        visible_width -= (list_widget->verticalScrollBar()->width() * 2);
     }
 
-    int visible_height = m_ui->power_strip_list_widget->height();
-    if (m_ui->power_strip_list_widget->horizontalScrollBar()->isVisible())
+    int visible_height = list_widget->height();
+    if (list_widget->horizontalScrollBar()->isVisible())
     {
-        visible_height -= (m_ui->power_strip_list_widget->horizontalScrollBar()->height() * 2);
+        visible_height -= (list_widget->horizontalScrollBar()->height() * 2);
     }
 
-    for (const auto &power_strip : power_strips)
+    /**
+     * @brief update the list in place instead of tearing it down and rebuilding it: the full
+     * clear + recreate cycle pays its real cost in deferred polish/layout/paint events for every
+     * freshly created hosted widget, which freezes the UI thread long after this slot returned.
+     * Rows are kept for devices whose identity matches at the same position (the library delivers
+     * the list sorted by name), existing items are updated in place and only genuinely new or
+     * removed rows are created or deleted.
+     */
+    auto *placeholder_item = list_widget->count() > 0
+        ? dynamic_cast<EmptyPowerStripListItem *>(list_widget->itemWidget(list_widget->item(0)))
+        : nullptr;
+
+    /**
+     * @brief an empty-list placeholder is no longer needed once real devices arrived.
+     */
+    if (placeholder_item != nullptr && !power_strips.empty())
     {
-        auto *power_strip_item = new PowerStripListItem(power_strip->configuration());
-        power_strip_item->setMaximumWidth(visible_width);
-        power_strip_item->set_state(power_strip->is_connected());
-
-        auto *item = new QListWidgetItem();
-        const auto &size_hint = power_strip_item->sizeHint();
-        item->setSizeHint(QSize(std::max(size_hint.width(), visible_width), size_hint.height()));
-
-        m_ui->power_strip_list_widget->addItem(item);
-        m_ui->power_strip_list_widget->setItemWidget(item, power_strip_item);
+        delete list_widget->takeItem(0);
+        delete placeholder_item;
     }
 
-    if (power_strips.empty())
+    /**
+     * @brief drop the rows that exceed the new device count (devices disappeared).
+     */
+    while (list_widget->count() > static_cast<int>(power_strips.size()))
+    {
+        auto *stale_item = list_widget->takeItem(list_widget->count() - 1);
+        if (auto *stale_widget = list_widget->itemWidget(stale_item))
+        {
+            delete stale_widget;
+        }
+        delete stale_item;
+    }
+
+    for (int row = 0; row < static_cast<int>(power_strips.size()); ++row)
+    {
+        const auto &power_strip = power_strips[static_cast<size_t>(row)];
+
+        auto *row_item = list_widget->item(row);
+        auto *hosted_widget = row_item != nullptr ? list_widget->itemWidget(row_item) : nullptr;
+        auto *existing_item = dynamic_cast<PowerStripListItem *>(hosted_widget);
+
+        if (existing_item != nullptr
+            && existing_item->configuration().id == power_strip->configuration().id)
+        {
+            /**
+             * @brief same device at the same row: update the displayed fields and connectivity
+             * without touching the widget structure.
+             */
+            existing_item->configure(power_strip->configuration());
+            existing_item->set_state(power_strip->is_connected());
+            existing_item->setMaximumWidth(visible_width);
+
+            const auto &size_hint = existing_item->sizeHint();
+            row_item->setSizeHint(
+                QSize(std::max(size_hint.width(), visible_width), size_hint.height()));
+        }
+        else
+        {
+            /**
+             * @brief identity mismatch (or a new row): drop the old row content and create a
+             * fresh item widget.
+             */
+            if (row_item != nullptr)
+            {
+                list_widget->takeItem(row);
+                if (hosted_widget != nullptr)
+                {
+                    delete hosted_widget;
+                }
+                delete row_item;
+            }
+
+            auto *power_strip_item = new PowerStripListItem(power_strip->configuration());
+            power_strip_item->setMaximumWidth(visible_width);
+            power_strip_item->set_state(power_strip->is_connected());
+
+            auto *item = new QListWidgetItem();
+            const auto &size_hint = power_strip_item->sizeHint();
+            item->setSizeHint(
+                QSize(std::max(size_hint.width(), visible_width), size_hint.height()));
+
+            list_widget->insertItem(row, item);
+            list_widget->setItemWidget(item, power_strip_item);
+        }
+    }
+
+    if (power_strips.empty() && placeholder_item == nullptr)
     {
         auto *empty_item = new EmptyPowerStripListItem();
         empty_item->setMaximumHeight(visible_height);
@@ -265,13 +337,13 @@ auto MainWindow::onNewPowerStripReceived(
         item->setFlags(Qt::NoItemFlags);
         item->setSizeHint(QSize(visible_width, visible_height));
 
-        m_ui->power_strip_list_widget->addItem(item);
-        m_ui->power_strip_list_widget->setItemWidget(item, empty_item);
+        list_widget->addItem(item);
+        list_widget->setItemWidget(item, empty_item);
     }
 
     redraw_device_list();
 
-    m_ui->power_strip_list_widget->setUpdatesEnabled(true);
+    list_widget->setUpdatesEnabled(true);
 }
 
 auto MainWindow::onNewStatusReceived(sokketter::enumeration_status status) -> void
