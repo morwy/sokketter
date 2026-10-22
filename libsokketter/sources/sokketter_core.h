@@ -84,6 +84,10 @@ private:
      * @brief worker thread running the blocking device enumeration (last known address probe and
      * the kommpot search), so that the calling thread (e.g. the Qt GUI thread) returns
      * immediately.
+     *
+     * The search thread exits as soon as the asynchronous kommpot search is scheduled, while the
+     * enumeration itself keeps running on a kommpot thread; therefore m_search_running covers the
+     * whole enumeration and is only cleared when kommpot reports completion.
      */
     std::mutex m_search_thread_mutex;
     std::thread m_search_thread;
@@ -122,15 +126,20 @@ private:
     auto probe_last_known_addresses(
         const sokketter::device_filter &filter, std::set<std::string> &handled_ids) -> bool;
 
-    auto new_devices_received(
-        std::vector<std::shared_ptr<kommpot::device_communication>> communications) -> void;
-    auto new_status_received(kommpot::enumeration_status status) -> void;
-
     /**
-     * @brief identities re-attached via their last known address during the ongoing
-     * asynchronous enumeration, used to skip the duplicate communication of the regular search.
+     * @brief processes the communications reported by an enumeration.
+     *
+     * @param communications the communications found by the enumeration.
+     * @param handled_ids the identities re-attached via their last known address during this
+     * enumeration run, used to skip the duplicate communication of the regular search. Owned by
+     * the enumeration run (not by the object), so that the set of a finished run cannot race
+     * with the one of a new run.
      */
-    std::set<std::string> m_handled_ids;
+    auto new_devices_received(
+        std::vector<std::shared_ptr<kommpot::device_communication>> communications,
+        const std::set<std::string> &handled_ids) -> void;
+
+    auto new_status_received(kommpot::enumeration_status status) -> void;
 };
 
 #endif // CORE_H

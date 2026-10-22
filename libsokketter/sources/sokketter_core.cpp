@@ -295,6 +295,21 @@ auto sokketter_core::devices(const sokketter::device_filter &filter,
 
         m_search_thread = std::thread([this, filter]() {
             using underlying = std::underlying_type_t<sokketter::power_strip_type>;
+
+            /**
+             * @brief identities re-attached via their last known address during this enumeration
+             * run; kept per-run and shared with the kommpot callbacks, so that the set of a new
+             * run cannot race with the one of a previous run whose kommpot enumeration thread may
+             * still be executing.
+             */
+            const auto handled_ids = std::make_shared<std::set<std::string>>();
+
+            /**
+             * @brief whether the asynchronous kommpot search was scheduled; in that case the
+             * search thread exits while the enumeration keeps running on kommpot's side, so
+             * m_search_running is cleared by the COMPLETED status callback instead.
+             */
+            bool async_enumeration_scheduled = false;
             if ((static_cast<underlying>(filter.included_types) &
                     static_cast<underlying>(sokketter::power_strip_type::USB_DEVICES)) != 0)
             {
@@ -310,7 +325,7 @@ auto sokketter_core::devices(const sokketter::device_filter &filter,
                     power_strip_factory::supported_devices(usb_filter);
 
                 const auto usb_devices = kommpot::devices(supported_usb_devices);
-                new_devices_received(usb_devices);
+                new_devices_received(usb_devices, *handled_ids);
             }
 
             if ((static_cast<underlying>(filter.included_types) &
@@ -334,8 +349,7 @@ auto sokketter_core::devices(const sokketter::device_filter &filter,
                  * @brief stored network devices answer first at their last known addresses, the
                  * regular search is performed regardless so that new devices are always discovered.
                  */
-                m_handled_ids.clear();
-                if (probe_last_known_addresses(eth_filter, m_handled_ids))
+                if (probe_last_known_addresses(eth_filter, *handled_ids))
                 {
                     m_database.save();
                 }
@@ -363,11 +377,35 @@ auto sokketter_core::devices(const sokketter::device_filter &filter,
                 }
 
                 kommpot::devices(supported_eth_devices,
-                    std::bind(&sokketter_core::new_devices_received, this, std::placeholders::_1),
-                    std::bind(&sokketter_core::new_status_received, this, std::placeholders::_1));
+                    [this, handled_ids](auto communications) {
+                        new_devices_received(communications, *handled_ids);
+                    },
+                    [this](kommpot::enumeration_status status) {
+                        new_status_received(status);
+
+                        /**
+                         * @brief the asynchronous kommpot enumeration runs on kommpot's own
+                         * thread, so the search thread exited long before the enumeration
+                         * finished; only when kommpot reports it completed is the whole
+                         * enumeration over and may a new one start.
+                         */
+                        if (status == kommpot::enumeration_status::COMPLETED)
+                        {
+                            m_search_running = false;
+                        }
+                    });
+
+                async_enumeration_scheduled = true;
             }
 
-            m_search_running = false;
+            /**
+             * @brief when no asynchronous kommpot enumeration was scheduled, the enumeration is
+             * over as soon as the search thread exits.
+             */
+            if (!async_enumeration_scheduled)
+            {
+                m_search_running = false;
+            }
         });
     }
 }
@@ -768,7 +806,8 @@ auto sokketter_core::logging_callback(const kommpot::callback_response_structure
 }
 
 auto sokketter_core::new_devices_received(
-    std::vector<std::shared_ptr<kommpot::device_communication>> communications) -> void
+    std::vector<std::shared_ptr<kommpot::device_communication>> communications,
+    const std::set<std::string> &handled_ids) -> void
 {
     auto &database = sokketter_core::instance().database().get();
 
@@ -807,7 +846,7 @@ auto sokketter_core::new_devices_received(
              * @brief the device already answered at its last known address and was reattached
              * there, the communication found by the search is skipped.
              */
-            if (m_handled_ids.count(device->configuration().id) != 0)
+            if (handled_ids.count(device->configuration().id) != 0)
             {
                 continue;
             }
