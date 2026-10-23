@@ -44,4 +44,4 @@ private:
     auto setThemeAccordingToMode() -> void;
 };
 
-#endif // PowerStripListItem_H
+#endif // POWER_STRIP_LIST_ITEM_H

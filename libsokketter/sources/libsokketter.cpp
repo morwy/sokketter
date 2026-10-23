@@ -285,7 +285,7 @@ auto sokketter::power_strip::configure(const power_strip_configuration &configur
 
 auto sokketter::power_strip::save() const -> void
 {
-    sokketter_core::instance().database().save();
+    sokketter_core::instance().save_database();
 }
 
 auto sokketter::power_strip::try_authenticate() -> bool
@@ -461,6 +461,5 @@ auto sokketter::enumeration_status_to_string(const enumeration_status &status) n
 
 auto sokketter::forget_device(std::shared_ptr<power_strip> &device) -> void
 {
-    sokketter_core::instance().database().remove(device);
-    sokketter_core::instance().database().save();
+    sokketter_core::instance().remove_device(device);
 }

@@ -26,6 +26,7 @@
 #include <QFutureWatcher>
 #include <QLabel>
 #include <QLineEdit>
+#include <QListWidget>
 #include <QListWidgetItem>
 #include <QMessageBox>
 #include <QPointer>
@@ -33,6 +34,36 @@
 #include <QTimer>
 #include <QUrl>
 #include <QtConcurrent>
+
+namespace {
+/**
+ * @brief Qt reports the scroll bar margin on both sides of the list; empirically double the
+ * scroll bar size must be subtracted from the list size to obtain the area the hosted item
+ * widgets can occupy.
+ */
+constexpr int SCROLLBAR_MARGIN_FACTOR = 2;
+
+/**
+ * @brief computes the area of a list widget that hosted items can occupy, compensating for
+ * its currently visible scroll bars.
+ */
+auto visible_area(const QListWidget *list_widget) -> QSize
+{
+    int visible_width = list_widget->width();
+    if (list_widget->verticalScrollBar()->isVisible())
+    {
+        visible_width -= list_widget->verticalScrollBar()->width() * SCROLLBAR_MARGIN_FACTOR;
+    }
+
+    int visible_height = list_widget->height();
+    if (list_widget->horizontalScrollBar()->isVisible())
+    {
+        visible_height -= list_widget->horizontalScrollBar()->height() * SCROLLBAR_MARGIN_FACTOR;
+    }
+
+    return QSize(visible_width, visible_height);
+}
+} // namespace
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -182,7 +213,13 @@ MainWindow::MainWindow(QWidget *parent)
 
     sokketter::check_for_update_async();
 
-    QTimer::singleShot(25, [this]() { repopulate_device_list(); });
+    /**
+     * @brief defer the first enumeration until after the window is shown, so the enumeration
+     * status label has a laid-out place to appear in.
+     */
+    constexpr int INITIAL_REFRESH_DELAY_MSEC = 25;
+
+    QTimer::singleShot(INITIAL_REFRESH_DELAY_MSEC, [this]() { repopulate_device_list(); });
 }
 
 MainWindow::~MainWindow()
@@ -228,17 +265,9 @@ auto MainWindow::onNewPowerStripReceived(
      */
     list_widget->setUpdatesEnabled(false);
 
-    int visible_width = list_widget->width();
-    if (list_widget->verticalScrollBar()->isVisible())
-    {
-        visible_width -= (list_widget->verticalScrollBar()->width() * 2);
-    }
-
-    int visible_height = list_widget->height();
-    if (list_widget->horizontalScrollBar()->isVisible())
-    {
-        visible_height -= (list_widget->horizontalScrollBar()->height() * 2);
-    }
+    const auto visible_size = visible_area(list_widget);
+    const int visible_width = visible_size.width();
+    const int visible_height = visible_size.height();
 
     /**
      * @brief update the list in place instead of tearing it down and rebuilding it: the full
@@ -259,12 +288,15 @@ auto MainWindow::onNewPowerStripReceived(
     {
         delete list_widget->takeItem(0);
         delete placeholder_item;
+        placeholder_item = nullptr;
     }
 
     /**
-     * @brief drop the rows that exceed the new device count (devices disappeared).
+     * @brief drop the rows that exceed the new device count (devices disappeared); a still
+     * present placeholder row is excluded from the trim and managed separately below.
      */
-    while (list_widget->count() > static_cast<int>(power_strips.size()))
+    while (list_widget->count()
+        > static_cast<int>(power_strips.size()) + (placeholder_item != nullptr ? 1 : 0))
     {
         auto *stale_item = list_widget->takeItem(list_widget->count() - 1);
         if (auto *stale_widget = list_widget->itemWidget(stale_item))
@@ -280,7 +312,7 @@ auto MainWindow::onNewPowerStripReceived(
 
         auto *row_item = list_widget->item(row);
         auto *hosted_widget = row_item != nullptr ? list_widget->itemWidget(row_item) : nullptr;
-        auto *existing_item = dynamic_cast<PowerStripListItem *>(hosted_widget);
+        auto *existing_item = qobject_cast<PowerStripListItem *>(hosted_widget);
 
         if (existing_item != nullptr
             && existing_item->configuration().id == power_strip->configuration().id)
@@ -327,7 +359,11 @@ auto MainWindow::onNewPowerStripReceived(
         }
     }
 
-    if (power_strips.empty() && placeholder_item == nullptr)
+    /**
+     * @brief an empty list must keep its placeholder; check the widget state rather than the
+     * possibly stale placeholder pointer found at the start of the update.
+     */
+    if (power_strips.empty() && list_widget->count() == 0)
     {
         auto *empty_item = new EmptyPowerStripListItem();
         empty_item->setMaximumHeight(visible_height);
@@ -407,17 +443,9 @@ auto MainWindow::redraw_device_list() -> void
     {
         SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Re-drawing power strip list.");
 
-        int visible_width = m_ui->power_strip_list_widget->width();
-        if (m_ui->power_strip_list_widget->verticalScrollBar()->isVisible())
-        {
-            visible_width -= (m_ui->power_strip_list_widget->verticalScrollBar()->width() * 2);
-        }
-
-        int visible_height = m_ui->power_strip_list_widget->height();
-        if (m_ui->power_strip_list_widget->horizontalScrollBar()->isVisible())
-        {
-            visible_height -= (m_ui->power_strip_list_widget->horizontalScrollBar()->height() * 2);
-        }
+        const auto visible_size = visible_area(m_ui->power_strip_list_widget);
+        const int visible_width = visible_size.width();
+        const int visible_height = visible_size.height();
 
         const int &item_count = m_ui->power_strip_list_widget->count();
         for (int item_index = 0; item_index < item_count; ++item_index)
@@ -579,11 +607,7 @@ auto MainWindow::redraw_socket_list() -> void
     {
         SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Re-drawing socket list.");
 
-        int visible_width = m_ui->socket_list_widget->width();
-        if (m_ui->socket_list_widget->verticalScrollBar()->isVisible())
-        {
-            visible_width -= (m_ui->socket_list_widget->verticalScrollBar()->width() * 2);
-        }
+        const int visible_width = visible_area(m_ui->socket_list_widget).width();
 
         const int &item_count = m_ui->socket_list_widget->count();
         for (int item_index = 0; item_index < item_count; ++item_index)
@@ -667,11 +691,7 @@ auto MainWindow::redraw_configure_list() -> void
     {
         SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Re-drawing device configuration list.");
 
-        int visible_width = m_ui->configure_socket_list_widget->width();
-        if (m_ui->configure_socket_list_widget->verticalScrollBar()->isVisible())
-        {
-            visible_width -= (m_ui->configure_socket_list_widget->verticalScrollBar()->width() * 2);
-        }
+        const int visible_width = visible_area(m_ui->configure_socket_list_widget).width();
 
         const int &item_count = m_ui->configure_socket_list_widget->count();
         for (int item_index = 0; item_index < item_count; ++item_index)
@@ -816,8 +836,15 @@ auto MainWindow::populate_authentication_page(PowerStripListItem *item) -> void
          * @brief authentication is blocking device I/O, so it runs on the worker pool to keep
          * the UI responsive.
          */
+        /**
+         * @brief the in-place list refresh deletes and recreates row widgets on identity
+         * mismatch, so guard the list item and only mutate it on the GUI thread, from the
+         * completion callback.
+         */
+        QPointer<PowerStripListItem> guard(item);
+
         run_device_task(
-            [device, _configuration, item]() -> bool {
+            [device, _configuration]() -> bool {
                 device->configure(_configuration);
 
                 if (!device->try_authenticate())
@@ -830,14 +857,18 @@ auto MainWindow::populate_authentication_page(PowerStripListItem *item) -> void
                  */
                 device->save();
 
-                /**
-                 * Inject new configuration into existing power strip list item.
-                 */
-                item->configure(_configuration);
-
                 return true;
             },
-            [this, device](bool success) {
+            [this, device, guard, _configuration](bool success) {
+                if (success && guard != nullptr)
+                {
+                    /**
+                     * Inject new configuration into existing power strip list item; the widget
+                     * may have been dropped by a concurrent list refresh, hence the guard check.
+                     */
+                    guard->configure(_configuration);
+                }
+
                 if (m_device != device)
                 {
                     return;
@@ -1120,7 +1151,13 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
         m_device = nullptr;
     }
 
-    auto *list_item = dynamic_cast<PowerStripListItem *>(widget);
+    auto *list_item = qobject_cast<PowerStripListItem *>(widget);
+    if (list_item == nullptr)
+    {
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "Clicked item is not a power strip item!");
+        return;
+    }
+
     const auto &configuration = list_item->configuration();
 
     m_device = sokketter::device(configuration.id);
@@ -1149,11 +1186,19 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
     }
     else
     {
+        auto device = m_device;
+
+        /**
+         * @brief the in-place list refresh deletes and recreates row widgets on identity
+         * mismatch, so the list item may be gone by the time the completion callback runs.
+         */
+        QPointer<PowerStripListItem> guard(list_item);
+
         run_device_task(
-            [this]() -> bool {
-                if (m_device->is_connected())
+            [device]() -> bool {
+                if (device->is_connected())
                 {
-                    return m_device->try_authenticate();
+                    return device->try_authenticate();
                 }
 
                 /**
@@ -1164,7 +1209,7 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
                  */
                 return true;
             },
-            [this, list_item](bool state) {
+            [this, guard](bool state) {
                 if (state)
                 {
                     const int &index = m_ui->stackedWidget->indexOf(m_ui->socket_list_page);
@@ -1176,12 +1221,16 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
                 {
                     /**
                      * Redirect to authentication page in case if previously stored credentials
-                     * stopped working.
+                     * stopped working. The clicked row may have been dropped by a concurrent
+                     * list refresh, hence the guard check.
                      */
                     SPDLOG_LOGGER_DEBUG(APP_LOGGER,
                         "Device authentication failed. Redirecting to authentication page.");
 
-                    populate_authentication_page(list_item);
+                    if (guard != nullptr)
+                    {
+                        populate_authentication_page(guard);
+                    }
 
                     const int &index =
                         m_ui->stackedWidget->indexOf(m_ui->device_authentication_page);
