@@ -152,6 +152,11 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     QObject::connect(m_ui->configure_delete_label, &ClickableLabel::clicked, [this]() {
+        if (m_device == nullptr)
+        {
+            return;
+        }
+
         const auto reply = QMessageBox::warning(this, "Warning",
             "This action will remove currently selected device from the list of saved devices.\nDo "
             "you want to continue?",
