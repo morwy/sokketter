@@ -67,7 +67,10 @@ auto energenie_eg_pmxx_lan::initialize(std::shared_ptr<kommpot::device_communica
     configuration.timeout_ms = HTTP_TIMEOUT_MSECS;
     communication->set_configuration(configuration);
 
-    m_serial_number = identification->mac;
+    {
+        const std::lock_guard<std::mutex> state_lock(m_state_mutex);
+        m_serial_number = identification->mac;
+    }
 
     update_configuration([&identification](sokketter::power_strip_configuration &configuration) {
         configuration.id = identification->mac;

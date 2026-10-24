@@ -33,8 +33,11 @@ protected:
     std::shared_ptr<kommpot::device_communication> m_communication = nullptr;
 
     /**
-     * @brief serializes the mutable device state (the communication and the configuration), which
-     * the enumeration thread mutates while the GUI and worker threads read it.
+     * @brief serializes the mutable device state, which the enumeration thread mutates while the
+     * GUI and worker threads read it.
+     * @attention guarded members: the communication (@ref m_communication), the configuration
+     * (@ref m_configuration), and the serial number (@ref energenie_eg_base::m_serial_number,
+     * written by the derived device classes).
      * @attention lock order: the device-specific communication mutexes are taken before this
      * mutex, never the other way around.
      */
