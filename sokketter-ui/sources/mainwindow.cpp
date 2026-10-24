@@ -1216,7 +1216,18 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
                  */
                 return true;
             },
-            [this, guard](bool state) {
+            [this, device, guard](bool state) {
+                /**
+                 * The user may have selected (or deleted) another device while the task was
+                 * running; a completion for a stale selection must not navigate pages or
+                 * repopulate lists for the current one.
+                 */
+                if (m_device != device)
+                {
+                    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Ignoring stale device-click completion.");
+                    return;
+                }
+
                 if (state)
                 {
                     const int &index = m_ui->stackedWidget->indexOf(m_ui->socket_list_page);
