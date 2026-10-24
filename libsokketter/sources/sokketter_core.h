@@ -52,8 +52,9 @@ public:
     /**
      * @brief blocking enumeration: probes last known addresses, runs a full kommpot search and
      * integrates the results into the database, exactly like the asynchronous path but executed
-     * on the caller's thread. The database mutex is never held across the blocking network I/O;
-     * the probe runs against a snapshot and mutations take the mutex only briefly.
+     * on the caller's thread. The database mutex is never held across blocking network or device
+     * I/O; the probe and the device creation/reattachment run against snapshots and the database
+     * mutations take the mutex only briefly.
      * @return the whole database sorted by name, as a copy of the device pointers that stays
      * valid independently of any concurrent enumeration.
      */
@@ -104,11 +105,13 @@ private:
      * concurrent iteration (e.g. the UI thread resolving a device by serial number on a
      * click).
      *
-     * The private helpers reattach_or_add_device and the direct m_database.load()/save()
-     * calls expect the mutex to already be held by their caller; the public entry points and
-     * the enumeration integration points acquire it themselves. The mutex is never held while
-     * acquiring any other lock of this class, and lookups return copies of the shared pointers
-     * under the lock, so callers keep the device objects alive through the shared pointers.
+     * The private helper add_new_device and the direct m_database.load()/save() calls expect
+     * the mutex to already be held by their caller; the public entry points and the enumeration
+     * integration points acquire it themselves. The mutex is never held while acquiring any
+     * other lock of this class and never held across blocking device I/O (create_and_reattach
+     * reaches the stored devices through a snapshot instead), and lookups return copies of the
+     * shared pointers under the lock, so callers keep the device objects alive through the
+     * shared pointers.
      */
     std::mutex m_database_mutex;
 
@@ -230,22 +233,39 @@ private:
         const sokketter::device_filter &filter, std::set<std::string> &handled_ids) -> bool;
 
     /**
-     * @brief creates a device out of a communication reported by an enumeration and integrates it
-     * into the database: a stored device is reattached to its new communication (adopting the new
-     * last known address when it moved), a communication of a device that was already reattached
-     * at its last known address during this enumeration run is skipped, and a first-time device
-     * is appended to the database and persisted immediately.
+     * @brief turns the communications reported by an enumeration into devices without touching
+     * the structure of the database: a fresh device is created through the factory (which opens
+     * the communication and performs the device I/O), a communication of a device that was
+     * already reattached at its last known address during this enumeration run is skipped, and
+     * the communication of an already stored device reattaches that stored device (adopting the
+     * new last known address when it moved). The devices that were not stored before are
+     * collected in new_devices for the caller to integrate under the database mutex.
      *
-     * @param communication the communication reported by the enumeration.
+     * @param communications the communications found by the enumeration.
      * @param handled_ids the identities re-attached via their last known address during this
      * enumeration run.
+     * @param new_devices receives the freshly created devices that are not yet in the database.
      * @return true when a reattached stored device adopted a new address, meaning the database
-     * must be saved again, false otherwise.
-     * @attention expects m_database_mutex to already be held by the caller: it reads, appends
-     * to and persists the database.
+     * must be saved, false otherwise.
+     * @attention performs blocking device I/O, so it must not be called while holding
+     * m_database_mutex: it takes the mutex only briefly to snapshot the stored devices, and each
+     * device object serializes access to its own mutable state through its state mutex.
      */
-    auto reattach_or_add_device(std::shared_ptr<kommpot::device_communication> communication,
-        const std::set<std::string> &handled_ids) -> bool;
+    auto create_and_reattach(
+        const std::vector<std::shared_ptr<kommpot::device_communication>> &communications,
+        const std::set<std::string> &handled_ids,
+        std::vector<std::shared_ptr<sokketter::power_strip>> &new_devices) -> bool;
+
+    /**
+     * @brief appends a freshly created device to the database when its identity is not present
+     * yet, without persisting it; the caller saves the database at most once per enumeration run.
+     *
+     * @param device a device created by create_and_reattach.
+     * @return true when the device was appended, false when it was already present (integrated
+     * concurrently by another enumeration run).
+     * @attention expects m_database_mutex to already be held by the caller; performs no I/O.
+     */
+    auto add_new_device(std::shared_ptr<sokketter::power_strip> device) -> bool;
 
     /**
      * @brief processes the communications reported by an enumeration.
