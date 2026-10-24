@@ -361,9 +361,8 @@ auto sokketter::devices(
     auto requested_test_device_number = get_requested_test_device_number();
     if (requested_test_device_number != LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET)
     {
-        static std::vector<std::shared_ptr<sokketter::power_strip>> devices;
-
-        devices.clear();
+        std::vector<std::shared_ptr<sokketter::power_strip>> devices;
+        devices.reserve(requested_test_device_number);
 
         SPDLOG_LOGGER_DEBUG(
             SOKKETTER_LOGGER, "Requested debug devices: {}.", requested_test_device_number);
