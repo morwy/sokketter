@@ -363,6 +363,14 @@ namespace sokketter {
 
     /**
      * @brief the class for controlling and configuring the power strip.
+     * @attention thread-safety contract: every built-in device class shipped by the library
+     * (both the factory-detected devices returned by sokketter::devices()/sokketter::device()
+     * and the test devices) guards its configuration and connection state internally, so
+     * configuration()/configure()/is_connected() may be called concurrently with a background
+     * enumeration on such devices. Custom device classes implemented outside the library do not
+     * inherit this guarantee and must document their own thread-safety behavior.
+     * @attention sockets() returns by reference instead of by copy and that reference is never
+     * synchronized; see its own documentation for the conditions under which it stays valid.
      */
     class EXPORTED power_strip
     {
@@ -416,6 +424,8 @@ namespace sokketter {
          * @attention the socket vector is only mutated while the device is constructed or
          * restored from the storage; a background enumeration never adds or removes sockets, so
          * the returned reference stays valid across enumeration.
+         * @attention the reference itself is not synchronized: socket configuration changes made
+         * while iterating it from another thread must be externally synchronized by the caller.
          */
         [[nodiscard]] virtual auto sockets() -> std::vector<socket> &;
 
