@@ -833,8 +833,18 @@ auto MainWindow::populate_authentication_page(PowerStripListItem *item) -> void
         auto device = m_device;
 
         /**
+         * @brief apply the new configuration (including the new password) on the GUI thread
+         * before the hand-off, so that the pool thread never mutates the shared device object,
+         * whose state a concurrent enumeration also touches. try_authenticate() reads the
+         * stored password from the device state, hence the configuration must be in place
+         * before the worker starts.
+         */
+        device->configure(_configuration);
+
+        /**
          * @brief authentication is blocking device I/O, so it runs on the worker pool to keep
-         * the UI responsive.
+         * the UI responsive. The worker performs device I/O only; the shared device object is
+         * never mutated from the pool thread.
          */
         /**
          * @brief the in-place list refresh deletes and recreates row widgets on identity
@@ -844,22 +854,19 @@ auto MainWindow::populate_authentication_page(PowerStripListItem *item) -> void
         QPointer<PowerStripListItem> guard(item);
 
         run_device_task(
-            [device, _configuration]() -> bool {
-                device->configure(_configuration);
-
-                if (!device->try_authenticate())
-                {
-                    return false;
-                }
-
-                /**
-                 * Save the configuration and password in case of success.
-                 */
-                device->save();
-
-                return true;
+            [device]() -> bool {
+                return device->try_authenticate();
             },
             [this, device, guard, _configuration](bool success) {
+                if (success)
+                {
+                    /**
+                     * Save the configuration and password in case of success, on the GUI thread
+                     * (the underlying database write is itself mutex-guarded).
+                     */
+                    device->save();
+                }
+
                 if (success && guard != nullptr)
                 {
                     /**
