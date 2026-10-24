@@ -43,10 +43,12 @@ namespace sokketter {
 
     void to_json(nlohmann::json &j, const sokketter::power_strip &ps)
     {
+        const auto configuration = ps.configuration();
+
         /**
          * @attention skip saving test devices.
          */
-        if (ps.configuration().type == sokketter::power_strip_type::TEST_DEVICE)
+        if (configuration.type == sokketter::power_strip_type::TEST_DEVICE)
         {
             return;
         }
@@ -57,11 +59,11 @@ namespace sokketter {
             sockets.push_back(socket.configuration());
         }
 
-        j = nlohmann::json{{"type", ps.configuration().type}, {"id", ps.configuration().id},
-            {"name", ps.configuration().name}, {"description", ps.configuration().description},
-            {"authentication-type", ps.configuration().authentication.type},
-            {"authentication-password", ps.configuration().authentication.password},
-            {"address", ps.configuration().address},
+        j = nlohmann::json{{"type", configuration.type}, {"id", configuration.id},
+            {"name", configuration.name}, {"description", configuration.description},
+            {"authentication-type", configuration.authentication.type},
+            {"authentication-password", configuration.authentication.password},
+            {"address", configuration.address},
             {"sockets", sockets}};
     }
 

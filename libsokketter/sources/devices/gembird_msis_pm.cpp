@@ -53,8 +53,10 @@ auto gembird_msis_pm::initialize(std::shared_ptr<kommpot::device_communication> 
         return false;
     }
 
-    m_configuration.id = m_serial_number;
-    m_configuration.address = std::string("USB:") + identification->port;
+    update_configuration([this, identification](sokketter::power_strip_configuration &configuration) {
+        configuration.id = m_serial_number;
+        configuration.address = std::string("USB:") + identification->port;
+    });
 
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: initialization.", this->to_string());
 

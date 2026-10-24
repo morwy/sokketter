@@ -496,7 +496,7 @@ auto MainWindow::repopulate_socket_list() -> void
         m_ui->socket_list_widget->takeItem(0);
     }
 
-    const auto &device_configuration = m_device->configuration();
+    const auto device_configuration = m_device->configuration();
 
     m_ui->socket_list_device_label->setText(
         "of " + QString::fromStdString(device_configuration.name));

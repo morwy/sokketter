@@ -273,7 +273,7 @@ auto sokketter::power_strip_authentication::is_valid() const -> bool
     }
 }
 
-auto sokketter::power_strip::configuration() const noexcept -> const power_strip_configuration &
+auto sokketter::power_strip::configuration() const -> power_strip_configuration
 {
     return m_configuration;
 }
@@ -316,17 +316,18 @@ auto sokketter::power_strip::socket(const size_t &index)
 
 auto sokketter::power_strip::to_string() const noexcept -> std::string
 {
-    std::string text = this->configuration().name + " (" +
-                       power_strip_type_to_string(this->configuration().type) + ", " +
-                       this->configuration().id;
+    const auto configuration = this->configuration();
 
-    if (this->configuration().address.empty())
+    std::string text = configuration.name + " (" + power_strip_type_to_string(configuration.type) +
+                       ", " + configuration.id;
+
+    if (configuration.address.empty())
     {
         text += ", disconnected)";
     }
     else
     {
-        text += ", available at " + this->configuration().address + ")";
+        text += ", available at " + configuration.address + ")";
     }
 
     return text;

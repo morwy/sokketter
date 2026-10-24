@@ -10,6 +10,8 @@ bool power_strip_base::initialize(std::shared_ptr<kommpot::device_communication>
         return false;
     }
 
+    const std::lock_guard<std::mutex> state_lock(m_state_mutex);
+
     m_communication = communication;
 
     return true;
@@ -27,7 +29,7 @@ bool power_strip_base::copyFrom(const power_strip &other)
     if (other_configuration.authentication.type ==
         sokketter::power_strip_authentication_type::UNKNOWN)
     {
-        other_configuration.authentication.type = m_configuration.authentication.type;
+        other_configuration.authentication.type = this->configuration().authentication.type;
     }
 
     configure(other_configuration);
@@ -58,5 +60,29 @@ auto power_strip_base::socket(const size_t &index)
 
 auto power_strip_base::is_connected() const -> bool
 {
+    const std::lock_guard<std::mutex> state_lock(m_state_mutex);
+
     return m_communication != nullptr;
+}
+
+auto power_strip_base::configuration() const -> sokketter::power_strip_configuration
+{
+    const std::lock_guard<std::mutex> state_lock(m_state_mutex);
+
+    return m_configuration;
+}
+
+auto power_strip_base::configure(const sokketter::power_strip_configuration &configuration) -> void
+{
+    const std::lock_guard<std::mutex> state_lock(m_state_mutex);
+
+    m_configuration = configuration;
+}
+
+auto power_strip_base::update_configuration(
+    const std::function<void(sokketter::power_strip_configuration &)> &update) -> void
+{
+    const std::lock_guard<std::mutex> state_lock(m_state_mutex);
+
+    update(m_configuration);
 }

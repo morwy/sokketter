@@ -1166,7 +1166,7 @@ auto sokketter_core::probe_last_known_addresses(
             continue;
         }
 
-        const auto &id = probe.device->configuration().id;
+        const auto id = probe.device->configuration().id;
         if (handled_ids.count(id) != 0 || taken_over_ids.count(id) != 0)
         {
             continue;

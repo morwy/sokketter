@@ -378,15 +378,19 @@ namespace sokketter {
 
         /**
          * @brief gets current configuration of the power strip.
-         * @return power strip configuration structure.
+         * @return power strip configuration structure as a copy.
+         * @attention returns a copy so that the returned structure stays valid and stable even
+         * when the device is concurrently (re)initialized by a background enumeration.
          */
-        [[nodiscard]] auto configuration() const noexcept -> const power_strip_configuration &;
+        [[nodiscard]] virtual auto configuration() const -> power_strip_configuration;
 
         /**
          * @brief sets a new configuration of the power strip.
          * @param configuration of the power strip.
+         * @attention safe to call concurrently with a background enumeration on the built-in
+         * device classes, which guard their state internally.
          */
-        auto configure(const power_strip_configuration &configuration) -> void;
+        virtual auto configure(const power_strip_configuration &configuration) -> void;
 
         /**
          * @brief saves current configuration of the power strip to the storage.
@@ -409,12 +413,16 @@ namespace sokketter {
         /**
          * @brief gets list of sockets controlled by the power strip.
          * @return vector of socket objects.
+         * @attention the socket vector is only mutated while the device is constructed or
+         * restored from the storage; a background enumeration never adds or removes sockets, so
+         * the returned reference stays valid across enumeration.
          */
         [[nodiscard]] virtual auto sockets() -> std::vector<socket> &;
 
         /**
          * @brief gets list of sockets controlled by the power strip.
          * @return vector of socket objects.
+         * @attention see the non-const overload regarding the lifetime of the returned reference.
          */
         [[nodiscard]] virtual auto sockets() const -> const std::vector<socket> &;
 
