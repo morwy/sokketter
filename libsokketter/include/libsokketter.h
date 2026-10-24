@@ -451,12 +451,12 @@ namespace sokketter {
      * @param filter settings stating which devices to list.
      * @return vector of power_strip objects.
      * @attention blocking call.
-     * @attention the returned vector is owned by the library and is mutated by device
-     * enumeration, so the reference remains valid only while no other thread runs an
-     * enumeration; copy the shared pointers out if they must be retained across a refresh.
+     * @attention returns a private copy of the device pointers (the same snapshot discipline as
+     * the asynchronous overload's device callback), so the returned vector stays valid
+     * regardless of any enumeration that runs concurrently or afterwards.
      */
     auto EXPORTED devices(const device_filter &filter = {})
-        -> const std::vector<std::shared_ptr<sokketter::power_strip>> &;
+        -> std::vector<std::shared_ptr<sokketter::power_strip>>;
 
     /**
      * @brief the enum specifying the status of device enumeration.

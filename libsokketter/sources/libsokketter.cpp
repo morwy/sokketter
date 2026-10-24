@@ -333,14 +333,12 @@ auto sokketter::power_strip::to_string() const noexcept -> std::string
 }
 
 auto sokketter::devices(const device_filter &filter)
-    -> const std::vector<std::shared_ptr<sokketter::power_strip>> &
+    -> std::vector<std::shared_ptr<sokketter::power_strip>>
 {
     auto requested_test_device_number = get_requested_test_device_number();
     if (requested_test_device_number != LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET)
     {
-        static std::vector<std::shared_ptr<sokketter::power_strip>> devices;
-
-        devices.clear();
+        std::vector<std::shared_ptr<sokketter::power_strip>> devices;
 
         SPDLOG_LOGGER_DEBUG(
             SOKKETTER_LOGGER, "Requested debug devices: {}.", requested_test_device_number);

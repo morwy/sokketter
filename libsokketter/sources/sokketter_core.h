@@ -49,8 +49,16 @@ public:
      */
     auto remove_device(std::shared_ptr<sokketter::power_strip> &device) -> void;
 
+    /**
+     * @brief blocking enumeration: probes last known addresses, runs a full kommpot search and
+     * integrates the results into the database, exactly like the asynchronous path but executed
+     * on the caller's thread. The database mutex is never held across the blocking network I/O;
+     * the probe runs against a snapshot and mutations take the mutex only briefly.
+     * @return the whole database sorted by name, as a copy of the device pointers that stays
+     * valid independently of any concurrent enumeration.
+     */
     auto devices(const sokketter::device_filter &filter = {})
-        -> const std::vector<std::shared_ptr<sokketter::power_strip>> &;
+        -> std::vector<std::shared_ptr<sokketter::power_strip>>;
 
     auto devices(const sokketter::device_filter &filter, sokketter::device_callback device_cb,
         sokketter::status_callback status_cb) -> void;

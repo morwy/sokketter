@@ -172,24 +172,35 @@ auto sokketter_core::remove_device(std::shared_ptr<sokketter::power_strip> &devi
 }
 
 auto sokketter_core::devices(const sokketter::device_filter &filter)
-    -> const std::vector<std::shared_ptr<sokketter::power_strip>> &
+    -> std::vector<std::shared_ptr<sokketter::power_strip>>
 {
     /**
-     * @brief the database is probed, mutated, sorted and handed back through a reference here,
-     * so the database mutex is held for the whole call: a concurrent lookup from another
-     * thread cannot iterate the vector while it is being modified. This call is blocking
-     * anyway; the returned reference stays valid only while no other thread enumerates.
+     * @brief mirrors the asynchronous path's snapshot discipline: the (blocking, multi-second)
+     * network I/O runs without the database mutex held, and the mutex is taken only to read a
+     * snapshot, to integrate discovered devices, and to copy the result out. Concurrent
+     * lookups therefore never queue behind a network operation, and the database mutex is never
+     * nested above a device's communication mutex while the network I/O runs.
      */
-    const std::lock_guard<std::mutex> database_lock(m_database_mutex);
-
-    auto &database = m_database.get();
+    std::vector<std::shared_ptr<sokketter::power_strip>> database_snapshot;
+    {
+        const std::lock_guard<std::mutex> database_lock(m_database_mutex);
+        database_snapshot = m_database.get();
+    }
 
     /**
      * @brief stored network devices answer first at their last known addresses, the regular
-     * search below is performed regardless so that new devices are always discovered.
+     * search below is performed regardless so that new devices are always discovered. The
+     * probe runs against the snapshot: it only calls into the shared device objects, without
+     * touching the database vector itself.
      */
     std::set<std::string> handled_ids;
-    bool needs_save = probe_last_known_addresses(database, filter, handled_ids);
+    const bool probe_changed = probe_last_known_addresses(database_snapshot, filter, handled_ids);
+
+    if (probe_changed)
+    {
+        const std::lock_guard<std::mutex> database_lock(m_database_mutex);
+        m_database.save();
+    }
 
     const auto supported_devices = power_strip_factory::supported_devices(filter);
 
@@ -199,28 +210,43 @@ auto sokketter_core::devices(const sokketter::device_filter &filter)
 
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Connected devices: {}.", communications.size());
 
-    for (auto &communication : communications)
+    std::vector<std::shared_ptr<sokketter::power_strip>> result;
     {
-        needs_save |= reattach_or_add_device(communication, handled_ids);
+        /**
+         * @brief integrating the discovered communications mutates the database vector, so it
+         * runs under the mutex; reattach_or_add_device expects the mutex to already be held,
+         * the same contract as on the enumeration path.
+         */
+        const std::lock_guard<std::mutex> database_lock(m_database_mutex);
+
+        auto &database = m_database.get();
+
+        bool integration_changed = false;
+        for (auto &communication : communications)
+        {
+            integration_changed |= reattach_or_add_device(communication, handled_ids);
+        }
+
+        if (integration_changed)
+        {
+            m_database.save();
+        }
+
+        /**
+         * Sort the database by device name.
+         */
+        std::sort(database.begin(), database.end(),
+            [](const std::shared_ptr<sokketter::power_strip> &a,
+                const std::shared_ptr<sokketter::power_strip> &b) {
+                return a->configuration().name < b->configuration().name;
+            });
+
+        SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Created devices: {}.", database.size());
+
+        result = database;
     }
 
-    if (needs_save)
-    {
-        m_database.save();
-    }
-
-    /**
-     * Sort the database by device name.
-     */
-    std::sort(database.begin(), database.end(),
-        [](const std::shared_ptr<sokketter::power_strip> &a,
-            const std::shared_ptr<sokketter::power_strip> &b) {
-            return a->configuration().name < b->configuration().name;
-        });
-
-    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Created devices: {}.", database.size());
-
-    return database;
+    return result;
 }
 
 auto sokketter_core::devices(const sokketter::device_filter &filter,
