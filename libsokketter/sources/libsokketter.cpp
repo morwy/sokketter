@@ -359,7 +359,7 @@ auto sokketter::devices(
     const device_filter &filter, device_callback device_cb, status_callback status_cb) -> void
 {
     auto requested_test_device_number = get_requested_test_device_number();
-    if (get_requested_test_device_number() != LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET)
+    if (requested_test_device_number != LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET)
     {
         static std::vector<std::shared_ptr<sokketter::power_strip>> devices;
 
