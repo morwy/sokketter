@@ -161,10 +161,18 @@ private:
      * The search thread blocks on m_enumeration_completion_cv until the current run's status
      * callback reports COMPLETED, so that it cannot finish (and clear m_search_running) while
      * kommpot is still enumerating.
+     *
+     * Completions are tagged with a generation: every run claims a new m_enumeration_generation
+     * before scheduling its kommpot search, and that search's COMPLETED callback records the
+     * generation into m_completed_generation. A late completion from a run whose wait was
+     * abandoned (by the timeout or a shutdown abort) is therefore inert: it cannot make a later
+     * run believe its own enumeration finished when that later run's kommpot search was rejected
+     * by kommpot's overlapping-enumeration guard and never reports completion of its own.
      */
     std::mutex m_enumeration_completion_mutex;
     std::condition_variable m_enumeration_completion_cv;
-    bool m_enumeration_completed = false;
+    uint64_t m_enumeration_generation = 0;
+    uint64_t m_completed_generation = 0;
 
     /**
      * @brief set by deinitialize() to make the search thread give up waiting for a kommpot

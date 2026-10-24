@@ -434,26 +434,28 @@ auto sokketter_core::run_enumeration(
         }
 
         /**
-         * @brief reset the completion signal before scheduling the asynchronous kommpot search,
-         * so that the wait below observes the completion of this run only.
+         * @brief claim a new completion generation before scheduling the asynchronous kommpot
+         * search, so that the wait below observes the completion of this run only, and a late
+         * completion from a previous run whose wait was abandoned cannot complete this run early.
          */
+        uint64_t generation = 0;
         {
             const std::lock_guard<std::mutex> completion_lock(m_enumeration_completion_mutex);
-            m_enumeration_completed = false;
+            generation = ++m_enumeration_generation;
         }
 
         kommpot::devices(supported_eth_devices,
             [this, request, handled_ids](auto communications) {
                 new_devices_received(communications, *handled_ids, request->device_cb);
             },
-            [this, request](kommpot::enumeration_status status) {
+            [this, request, generation](kommpot::enumeration_status status) {
                 new_status_received(status, request->status_cb);
 
                 if (status == kommpot::enumeration_status::COMPLETED)
                 {
                     const std::lock_guard<std::mutex> completion_lock(
                         m_enumeration_completion_mutex);
-                    m_enumeration_completed = true;
+                    m_completed_generation = generation;
                     m_enumeration_completion_cv.notify_all();
                 }
             });
@@ -472,12 +474,17 @@ auto sokketter_core::run_enumeration(
          * The wait is cut short when the core is being deinitialized, since the communication
          * layers are about to be torn down and the completion might never arrive. The timeout is
          * a last-resort safety net, so that an enumeration that never reports completion cannot
-         * wedge every later one.
+         * wedge every later one. A wait abandoned by the timeout leaves the kommpot enumeration
+         * running as a zombie whose eventual completion carries the abandoned run's generation
+         * and is therefore inert for any later run; the zombie's device callback still
+         * integrates safely under the database mutex.
          */
         std::unique_lock<std::mutex> completion_lock(m_enumeration_completion_mutex);
         if (!m_enumeration_completion_cv.wait_for(completion_lock,
                 std::chrono::milliseconds(ENUMERATION_COMPLETION_TIMEOUT_MSECS),
-                [this]() { return m_enumeration_completed || m_search_thread_abort; }))
+                [this, generation]() {
+                    return m_completed_generation == generation || m_search_thread_abort;
+                }))
         {
             SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
                 "The kommpot enumeration did not report completion within {} ms, abandoning the "
