@@ -278,7 +278,7 @@ auto MainWindow::onNewPowerStripReceived(
      * removed rows are created or deleted.
      */
     auto *placeholder_item = list_widget->count() > 0
-        ? dynamic_cast<EmptyPowerStripListItem *>(list_widget->itemWidget(list_widget->item(0)))
+        ? qobject_cast<EmptyPowerStripListItem *>(list_widget->itemWidget(list_widget->item(0)))
         : nullptr;
 
     /**
@@ -1244,7 +1244,7 @@ auto MainWindow::onSocketClicked(QListWidgetItem *item) -> void
 {
     SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Detected onSocketClicked() signal.");
 
-    auto socket_item = dynamic_cast<SocketListItem *>(m_ui->socket_list_widget->itemWidget(item));
+    auto *socket_item = qobject_cast<SocketListItem *>(m_ui->socket_list_widget->itemWidget(item));
     if (socket_item == nullptr)
     {
         SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed getting a socket from the UI list!");

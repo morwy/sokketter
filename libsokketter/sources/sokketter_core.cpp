@@ -932,14 +932,6 @@ auto sokketter_core::reattach_or_add_device(
         return false;
     }
 
-    auto baseDevice = dynamic_cast<sokketter::power_strip *>(device.get());
-    if (baseDevice == nullptr)
-    {
-        SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
-            "{}: failed casting the device to power_strip_base!", device->to_string());
-        return false;
-    }
-
     /**
      * @brief look for saved configuration of this device.
      */
@@ -972,11 +964,15 @@ auto sokketter_core::reattach_or_add_device(
         return false;
     }
 
-    auto baseIt = dynamic_cast<power_strip_base *>(it->get());
+    /**
+     * @brief the check is done right before initialize() so its error message matches the
+     * operation it guards; the stored device may be a type that is not a power_strip_base.
+     */
+    auto *baseIt = dynamic_cast<power_strip_base *>(it->get());
     if (baseIt == nullptr)
     {
         SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
-            "{}: failed casting the device to power_strip_base!", device->to_string());
+            "{}: failed casting the stored device to power_strip_base!", device->to_string());
         return false;
     }
 
