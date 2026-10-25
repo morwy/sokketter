@@ -962,6 +962,11 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
             return EXIT_FAILURE;
         }
 
+        /**
+         * @attention the success message below asserts persistence, but save() cannot report a
+         * failed write (void today; see the @todo on power_strip::save()): with an unwritable
+         * storage path the credentials survive only in memory and the message is optimistic.
+         */
         device->save();
 
         std::cout << "Authenticated successfully." << std::endl;
@@ -1032,6 +1037,11 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
         auto new_configuration = device->configuration();
         new_configuration.authentication.password.clear();
         device->configure(new_configuration);
+        /**
+         * @attention same caveat as login: save() cannot report a failed write, so this message
+         * asserts persistence the library does not yet guarantee (see the @todo on
+         * power_strip::save()).
+         */
         device->save();
 
         std::cout << "Stored credentials removed." << std::endl;

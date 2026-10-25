@@ -402,6 +402,12 @@ namespace sokketter {
 
         /**
          * @brief saves current configuration of the power strip to the storage.
+         *
+         * @attention best-effort: a storage write failure is not reported to the caller, so
+         * callers that promise persistence cannot verify the write.
+         * @todo change the signature to @c [[nodiscard]] @c auto @c save() @c const @c -> @c bool
+         * so callers such as the CLI's login/logout can report a failed write instead of
+         * printing an unconditional success message (review finding N8).
          */
         auto save() const -> void;
 
