@@ -893,7 +893,8 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
         const auto previous_configuration = device->configuration();
 
         auto candidate_configuration = previous_configuration;
-        candidate_configuration.authentication.type = requested_type;
+        // authentication.type is owned by the library: the pre-check above already proved the
+        // device advertises requested_type, so only the secret is supplied here.
         candidate_configuration.authentication.password = authentication_password;
         device->configure(candidate_configuration);
 
