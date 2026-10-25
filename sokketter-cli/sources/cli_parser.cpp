@@ -979,8 +979,13 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
             return EXIT_FAILURE;
         }
 
-        if (configuration.authentication.password.empty())
+        if (!configuration.authentication.is_valid())
         {
+            /**
+             * @attention deliberate: logout reports a no-op as a failure, so "credentials are
+             * gone" is never reported for a device that never had them. Idempotent teardown must
+             * be expressed by the caller checking the message, not the exit code.
+             */
             std::cerr << "No credentials are stored for this device." << std::endl;
             return EXIT_FAILURE;
         }
