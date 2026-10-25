@@ -885,17 +885,22 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
 
         std::cout << device->to_string() << std::endl;
 
-        auto new_configuration = device->configuration();
-        new_configuration.authentication.type = requested_type;
-        new_configuration.authentication.password = authentication_password;
-        device->configure(new_configuration);
+        /**
+         * @attention the candidate credentials are applied, tested, and rolled back on failure: the
+         * device object is the one held by the library database, and deinitialize() persists that
+         * database, so a rejected password must not survive this subcommand in memory either.
+         */
+        const auto previous_configuration = device->configuration();
+
+        auto candidate_configuration = previous_configuration;
+        candidate_configuration.authentication.type = requested_type;
+        candidate_configuration.authentication.password = authentication_password;
+        device->configure(candidate_configuration);
 
         if (!device->try_authenticate())
         {
-            /**
-             * @attention failed authentication is not persisted: the previously stored
-             * credentials stay in effect.
-             */
+            device->configure(previous_configuration);
+
             std::cerr << "Authentication failed." << std::endl;
             return EXIT_FAILURE;
         }
