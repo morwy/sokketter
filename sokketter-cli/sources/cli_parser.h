@@ -113,6 +113,10 @@ public:
         help << "    --password TEXT\t\tThe password used for the PASSWORD authentication "
                 "type. Required for that type."
              << std::endl;
+        help << "    @warning a password given on the command line is visible to other local "
+                "users via the process list and is kept in the shell history. Prefer a dedicated "
+                "mechanism where that matters."
+             << std::endl;
         help << std::endl;
 
         help << "  logout\t\tRemoves the stored authentication credentials of the "
