@@ -875,7 +875,10 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
             return EXIT_FAILURE;
         }
 
-        if (device->configuration().authentication.type != requested_type)
+        // one snapshot, reused for both the check and the update below
+        const auto configuration = device->configuration();
+
+        if (configuration.authentication.type != requested_type)
         {
             std::cerr << "Device does not require authentication." << std::endl;
             return EXIT_FAILURE;
@@ -890,9 +893,7 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
          * device object is the one held by the library database, and deinitialize() persists that
          * database, so a rejected password must not survive this subcommand in memory either.
          */
-        const auto previous_configuration = device->configuration();
-
-        auto candidate_configuration = previous_configuration;
+        auto candidate_configuration = configuration;
         // authentication.type is owned by the library: the pre-check above already proved the
         // device advertises requested_type, so only the secret is supplied here.
         candidate_configuration.authentication.password = authentication_password;
@@ -900,7 +901,7 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
 
         if (!device->try_authenticate())
         {
-            device->configure(previous_configuration);
+            device->configure(configuration);
 
             std::cerr << "Authentication failed." << std::endl;
             return EXIT_FAILURE;
@@ -942,16 +943,18 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
             return EXIT_FAILURE;
         }
 
-        if (device->configuration().authentication.type ==
-                sokketter::power_strip_authentication_type::NONE ||
-            device->configuration().authentication.type ==
+        // one snapshot, reused for both the checks and the update below
+        const auto configuration = device->configuration();
+
+        if (configuration.authentication.type == sokketter::power_strip_authentication_type::NONE ||
+            configuration.authentication.type ==
                 sokketter::power_strip_authentication_type::UNKNOWN)
         {
             std::cerr << "Device does not require authentication." << std::endl;
             return EXIT_FAILURE;
         }
 
-        if (device->configuration().authentication.password.empty())
+        if (configuration.authentication.password.empty())
         {
             std::cerr << "No credentials are stored for this device." << std::endl;
             return EXIT_FAILURE;
@@ -961,7 +964,7 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
 
         std::cout << device->to_string() << std::endl;
 
-        auto new_configuration = device->configuration();
+        auto new_configuration = configuration;
         new_configuration.authentication.password.clear();
         device->configure(new_configuration);
         device->save();
