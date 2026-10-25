@@ -888,6 +888,12 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
 
         std::cout << device->to_string() << std::endl;
 
+        if (!device->is_connected())
+        {
+            std::cerr << "Device is not reachable (is it connected?)." << std::endl;
+            return EXIT_FAILURE;
+        }
+
         /**
          * @attention the candidate credentials are applied, tested, and rolled back on failure: the
          * device object is the one held by the library database, and deinitialize() persists that
@@ -903,7 +909,7 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
         {
             device->configure(configuration);
 
-            std::cerr << "Authentication failed." << std::endl;
+            std::cerr << "Authentication failed: the device rejected the credentials." << std::endl;
             return EXIT_FAILURE;
         }
 

@@ -293,7 +293,7 @@ TEST(cli_authentication_tests, login_with_wrong_password_fails)
 
     ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, expected_device_header(device));
-    ASSERT_EQ(err, "Authentication failed.\n");
+    ASSERT_EQ(err, "Authentication failed: the device rejected the credentials.\n");
 }
 
 TEST(cli_authentication_tests, login_with_correct_password_succeeds)
