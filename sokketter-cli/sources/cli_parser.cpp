@@ -847,6 +847,11 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
         /**
          * @attention the authentication options are validated before the device is resolved, so
          * malformed credentials input is reported even when no matching device is attached.
+         *
+         * @attention --authentication-type is required even though it must match the device's
+         * advertised mechanism: it forces the caller to name the mechanism it believes it is
+         * speaking, so a device that turns out to require something else is reported instead of
+         * silently mis-handled once a second mechanism exists.
          */
         if (option_authentication_type->count() == 0)
         {
