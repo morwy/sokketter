@@ -919,7 +919,14 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
 
         if (!device->try_authenticate())
         {
-            device->configure(configuration);
+            /**
+             * @attention re-read rather than reuse the pre-call snapshot: only the secret supplied
+             * by this invocation is rolled back, so a concurrent library-side update to any other
+             * configuration field survives.
+             */
+            auto rollback_configuration = device->configuration();
+            rollback_configuration.authentication.password = configuration.authentication.password;
+            device->configure(rollback_configuration);
 
             std::cerr << "Authentication failed: the device rejected the credentials." << std::endl;
             return EXIT_FAILURE;
@@ -982,7 +989,12 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
 
         std::cout << device->to_string() << std::endl;
 
-        auto new_configuration = configuration;
+        /**
+         * @attention re-read rather than reuse the pre-call snapshot: only the field the CLI owns
+         * is cleared, so a concurrent library-side update to any other configuration field
+         * survives.
+         */
+        auto new_configuration = device->configuration();
         new_configuration.authentication.password.clear();
         device->configure(new_configuration);
         device->save();
