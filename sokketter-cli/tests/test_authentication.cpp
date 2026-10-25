@@ -181,7 +181,7 @@ TEST(cli_authentication_tests, login_with_unknown_authentication_type)
     // MAN-CLI-34
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"login",
         (char *)"--device-at-index", (char *)"1", (char *)"--authentication-type",
-        (char *)"certificate", (char *)"--password", (char *)"secret"};
+        (char *)"Certificate", (char *)"--password", (char *)"secret"};
 
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
@@ -194,8 +194,9 @@ TEST(cli_authentication_tests, login_with_unknown_authentication_type)
 
     ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, "");
+    // the diagnostic echoes the caller's spelling rather than the lower-cased token
     ASSERT_EQ(err,
-        "Unknown authentication type: certificate." + authentication_type_error_suffix() + "\n");
+        "Unknown authentication type: Certificate." + authentication_type_error_suffix() + "\n");
 }
 
 TEST(cli_authentication_tests, login_password_type_without_password_option)

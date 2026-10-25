@@ -213,7 +213,11 @@ namespace {
             return true;
         }
 
-        std::cerr << "Unknown authentication type: " << token << "."
+        /**
+         * @attention the diagnostic echoes the caller's raw spelling, not the normalised token:
+         * quoting something the user did not type invites confusion about what was actually read.
+         */
+        std::cerr << "Unknown authentication type: " << raw_value << "."
                   << authentication_type_error_suffix() << std::endl;
         return false;
     }
