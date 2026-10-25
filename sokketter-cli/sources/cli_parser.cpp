@@ -110,10 +110,31 @@ namespace {
     }
 
     /**
+     * @brief trims leading and trailing whitespace from an option value token.
+     *
+     * @attention trimming (not stripping): interior whitespace is kept so that malformed values
+     * such as "PASS WORD" are rejected with a diagnostic that echoes what was actually typed,
+     * rather than silently repaired into a valid one.
+     */
+    auto trim_option_token(const std::string &token) -> std::string
+    {
+        const auto first = std::find_if_not(token.begin(), token.end(),
+            [](unsigned char character) { return std::isspace(character) != 0; });
+        const auto last = std::find_if_not(token.rbegin(), token.rend(),
+            [](unsigned char character) { return std::isspace(character) != 0; }).base();
+
+        /**
+         * @attention an all-whitespace token leaves first at end() and last at begin(), i.e. a
+         * reversed range, which std::string would reject; such a token trims to empty.
+         */
+        return first >= last ? std::string() : std::string(first, last);
+    }
+
+    /**
      * @brief parses the comma-separated --include-device-types value shared by the list and power
      * subcommands into a bit-flag mask.
      *
-     * @attention tokens are split on comma, whitespace-stripped and matched case-insensitively;
+     * @attention tokens are split on comma, whitespace-trimmed and matched case-insensitively;
      * empty tokens (including a trailing comma) and unknown tokens are rejected with identical
      * error text on stderr, so both subcommands report the same diagnostics.
      * @attention returns false when the value is malformed; selected_types is then unspecified.
@@ -127,10 +148,7 @@ namespace {
         std::string token;
         while (std::getline(token_stream, token, ','))
         {
-            token.erase(
-                std::remove_if(token.begin(), token.end(),
-                    [](unsigned char character) { return std::isspace(character) != 0; }),
-                token.end());
+            token = trim_option_token(token);
 
             std::transform(
                 token.begin(), token.end(), token.begin(), [](unsigned char character) {
@@ -189,19 +207,26 @@ namespace {
     /**
      * @brief parses the --authentication-type value of the login subcommand.
      *
-     * @attention the value is whitespace-stripped and matched case-insensitively; only PASSWORD
+     * @attention the value is whitespace-trimmed and matched case-insensitively; only PASSWORD
      * is currently supported, so anything else is rejected with a fixed diagnostic listing the
      * available types.
+     * @attention empty or whitespace-containing values (after trimming) are rejected explicitly:
+     * silently stripping interior whitespace would accept malformed values such as "PASS WORD".
      * @attention returns false when the value is malformed; selected_type is then unspecified.
      */
     auto parse_authentication_type(const std::string &raw_value,
         sokketter::power_strip_authentication_type &selected_type) -> bool
     {
-        std::string token = raw_value;
-        token.erase(
-            std::remove_if(token.begin(), token.end(),
-                [](unsigned char character) { return std::isspace(character) != 0; }),
-            token.end());
+        std::string token = trim_option_token(raw_value);
+
+        const auto has_whitespace = std::any_of(token.begin(), token.end(),
+            [](unsigned char character) { return std::isspace(character) != 0; });
+        if (token.empty() || has_whitespace)
+        {
+            std::cerr << "The --authentication-type value may not be empty or contain whitespace."
+                      << authentication_type_error_suffix() << std::endl;
+            return false;
+        }
 
         std::transform(token.begin(), token.end(), token.begin(), [](unsigned char character) {
             return static_cast<char>(std::tolower(character));
