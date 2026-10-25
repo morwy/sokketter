@@ -8,6 +8,24 @@
 
 #include <cli11/CLI11.hpp>
 
+/**
+ * @brief the authentication types accepted by the login subcommand, as the single source of truth
+ * for the parser diagnostics, the help text, and the tests.
+ */
+inline auto supported_authentication_type_names() -> std::string
+{
+    return "PASSWORD";
+}
+
+/**
+ * @brief the "Available types are: ..." sentence appended by the authentication-type diagnostics,
+ * derived from supported_authentication_type_names().
+ */
+inline auto authentication_type_error_suffix() -> std::string
+{
+    return " Available types are: " + supported_authentication_type_names() + ".";
+}
+
 class overridden_help_formatter : public CLI::Formatter
 {
 public:
@@ -89,7 +107,8 @@ public:
         help << "    -t,--include-device-types TEXT\tSame as for the power subcommand."
              << std::endl;
         help << "    --authentication-type TEXT\tStates the authentication mechanism of the "
-                "device. Case-insensitive. Available types are: PASSWORD. Required."
+                "device. Case-insensitive. Available types are: "
+             << supported_authentication_type_names() << ". Required."
              << std::endl;
         help << "    --password TEXT\t\tThe password used for the PASSWORD authentication "
                 "type. Required for that type."

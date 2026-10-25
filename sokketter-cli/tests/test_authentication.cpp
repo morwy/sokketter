@@ -172,8 +172,8 @@ TEST(cli_authentication_tests, login_without_authentication_type)
 
     ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, "");
-    ASSERT_EQ(err, "The --authentication-type option is required for the login subcommand. "
-                   "Available types are: PASSWORD.\n");
+    ASSERT_EQ(err, "The --authentication-type option is required for the login subcommand."
+                       + authentication_type_error_suffix() + "\n");
 }
 
 TEST(cli_authentication_tests, login_with_unknown_authentication_type)
@@ -194,7 +194,8 @@ TEST(cli_authentication_tests, login_with_unknown_authentication_type)
 
     ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, "");
-    ASSERT_EQ(err, "Unknown authentication type: certificate. Available types are: PASSWORD.\n");
+    ASSERT_EQ(err,
+        "Unknown authentication type: certificate." + authentication_type_error_suffix() + "\n");
 }
 
 TEST(cli_authentication_tests, login_password_type_without_password_option)

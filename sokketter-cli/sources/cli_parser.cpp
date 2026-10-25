@@ -213,8 +213,8 @@ namespace {
             return true;
         }
 
-        std::cerr << "Unknown authentication type: " << token
-                  << ". Available types are: PASSWORD." << std::endl;
+        std::cerr << "Unknown authentication type: " << token << "."
+                  << authentication_type_error_suffix() << std::endl;
         return false;
     }
 
@@ -846,9 +846,8 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
          */
         if (option_authentication_type->count() == 0)
         {
-            std::cerr << "The --authentication-type option is required for the login subcommand. "
-                         "Available types are: PASSWORD."
-                      << std::endl;
+            std::cerr << "The --authentication-type option is required for the login subcommand."
+                      << authentication_type_error_suffix() << std::endl;
             return EXIT_FAILURE;
         }
 
