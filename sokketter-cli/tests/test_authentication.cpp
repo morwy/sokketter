@@ -355,16 +355,15 @@ TEST(cli_authentication_tests, login_via_serial_succeeds)
     ASSERT_EQ(err, "");
 }
 
-TEST(cli_authentication_tests, logout_on_authenticated_device_succeeds)
+/**
+ * @attention a fake device with the opt-in LIBSOKKETTER_TEST_DEVICE_PASSWORD advertises
+ * PASSWORD_ONLY but carries no stored credential in its configuration, so logout must report that
+ * there is nothing to remove instead of falsely claiming a revocation.
+ */
+TEST(cli_authentication_tests, logout_on_device_without_stored_credentials_is_rejected)
 {
     // MAN-CLI-41
     const fake_authentication_scope scope("1", "secret");
-
-    const auto device = first_available_device();
-    if (device == nullptr)
-    {
-        GTEST_SKIP() << "no device is available";
-    }
 
     std::vector<char *> args = {(char *)"sokketter-cli", (char *)"logout",
         (char *)"--device-at-index", (char *)"1"};
@@ -378,9 +377,9 @@ TEST(cli_authentication_tests, logout_on_authenticated_device_succeeds)
     const auto &out = testing::internal::GetCapturedStdout();
     const auto &err = testing::internal::GetCapturedStderr();
 
-    ASSERT_EQ(return_code, EXIT_SUCCESS);
-    ASSERT_EQ(out, expected_device_header(device) + "Stored credentials removed.\n");
-    ASSERT_EQ(err, "");
+    ASSERT_EQ(return_code, EXIT_FAILURE);
+    ASSERT_EQ(out, "");
+    ASSERT_EQ(err, "No credentials are stored for this device.\n");
 }
 
 TEST(cli_authentication_tests, login_help_takes_precedence)

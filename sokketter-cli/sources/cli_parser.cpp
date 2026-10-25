@@ -951,6 +951,12 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
             return EXIT_FAILURE;
         }
 
+        if (device->configuration().authentication.password.empty())
+        {
+            std::cerr << "No credentials are stored for this device." << std::endl;
+            return EXIT_FAILURE;
+        }
+
         run_update_check();
 
         std::cout << device->to_string() << std::endl;
