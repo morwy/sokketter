@@ -74,6 +74,44 @@ public:
              << std::endl;
         help << std::endl;
 
+        help << "  login\t\tAuthenticates the device with the provided credentials and stores "
+                "them on success."
+             << std::endl;
+        help << std::endl;
+
+        help << "  Options:" << std::endl;
+        help << "    -i,--device-at-index UINT\t\tSame as for the power subcommand. "
+                "Excludes --device-with-serial option."
+             << std::endl;
+        help << "    -n,--device-with-serial TEXT\tSame as for the power subcommand. "
+                "Excludes --device-at-index option."
+             << std::endl;
+        help << "    -t,--include-device-types TEXT\tSame as for the power subcommand."
+             << std::endl;
+        help << "    --authentication-type TEXT\tStates the authentication mechanism of the "
+                "device. Case-insensitive. Available types are: PASSWORD. Required."
+             << std::endl;
+        help << "    --password TEXT\t\tThe password used for the PASSWORD authentication "
+                "type. Required for that type."
+             << std::endl;
+        help << std::endl;
+
+        help << "  logout\t\tRemoves the stored authentication credentials of the "
+                "device."
+             << std::endl;
+        help << std::endl;
+
+        help << "  Options:" << std::endl;
+        help << "    -i,--device-at-index UINT\t\tSame as for the power subcommand. "
+                "Excludes --device-with-serial option."
+             << std::endl;
+        help << "    -n,--device-with-serial TEXT\tSame as for the power subcommand. "
+                "Excludes --device-at-index option."
+             << std::endl;
+        help << "    -t,--include-device-types TEXT\tSame as for the power subcommand."
+             << std::endl;
+        help << std::endl;
+
         help << "Exit codes:" << std::endl;
         help << "  0\t\tThe command completed successfully." << std::endl;
         help << "  1\t\tThe command failed." << std::endl;
@@ -83,6 +121,10 @@ public:
         help << "  sokketter-cli list" << std::endl;
         help << "  sokketter-cli power on --sockets 1 --device-at-index 1" << std::endl;
         help << "  sokketter-cli power status --device-with-serial 01:02:03:04:05" << std::endl;
+        help << "  sokketter-cli login --device-at-index 1 --authentication-type PASSWORD "
+                "--password secret"
+             << std::endl;
+        help << "  sokketter-cli logout --device-with-serial 01:02:03:04:05" << std::endl;
         help << std::endl;
 
         return help.str();

@@ -185,6 +185,206 @@ namespace {
 
         return true;
     }
+
+    /**
+     * @brief parses the --authentication-type value of the login subcommand.
+     *
+     * @attention the value is whitespace-stripped and matched case-insensitively; only PASSWORD
+     * is currently supported, so anything else is rejected with a fixed diagnostic listing the
+     * available types.
+     * @attention returns false when the value is malformed; selected_type is then unspecified.
+     */
+    auto parse_authentication_type(const std::string &raw_value,
+        sokketter::power_strip_authentication_type &selected_type) -> bool
+    {
+        std::string token = raw_value;
+        token.erase(
+            std::remove_if(token.begin(), token.end(),
+                [](unsigned char character) { return std::isspace(character) != 0; }),
+            token.end());
+
+        std::transform(token.begin(), token.end(), token.begin(), [](unsigned char character) {
+            return static_cast<char>(std::tolower(character));
+        });
+
+        if (token == "password")
+        {
+            selected_type = sokketter::power_strip_authentication_type::PASSWORD_ONLY;
+            return true;
+        }
+
+        std::cerr << "Unknown authentication type: " << token
+                  << ". Available types are: PASSWORD." << std::endl;
+        return false;
+    }
+
+    /**
+     * @brief the device-addressing option pair attached to every subcommand that selects a single
+     * device (power, login, logout).
+     */
+    struct device_access_options
+    {
+        CLI::Option *index = nullptr;
+        CLI::Option *serial = nullptr;
+    };
+
+    /**
+     * @brief registers the --device-at-index / --device-with-serial option group on the given
+     * subcommand, backed by the provided shared storage.
+     *
+     * @attention all subcommands with device access get identical groups so the addressing
+     * contract (mutual exclusion, underscore aliases, group help handling) is defined once.
+     */
+    auto add_device_options(CLI::App &command, size_t &device_index, std::string &device_serial)
+        -> device_access_options
+    {
+        auto device_group =
+            command.add_option_group("--device-at-index or --device-with-serial");
+
+        auto option_device_index = device_group->add_option("--device-at-index,-i", device_index);
+        auto option_device_serial =
+            device_group->add_option("--device-with-serial,-n", device_serial);
+
+        option_device_index->ignore_underscore();
+        option_device_serial->ignore_underscore();
+        option_device_index->excludes(option_device_serial);
+        option_device_serial->excludes(option_device_index);
+
+        /**
+         * @warning option groups are nameless subcommands and inherit a help flag from the parent.
+         * That flag captures --help before it can fall through to the application level, which
+         * breaks help precedence (e.g. "power --help" fails the required subcommand check instead
+         * of showing help). Removing it lets --help fall through to the application-level help
+         * flag.
+         */
+        device_group->set_help_flag();
+        device_group->set_help_all_flag();
+
+        return {option_device_index, option_device_serial};
+    }
+
+    /**
+     * @brief checks that one of the device-addressing options was provided and reports the
+     * standard diagnostic when neither was.
+     *
+     * @warning stating device access group as required via CLI11 functionality does not work as
+     * expected. It has a higher precedence than following subcommands, thus it displays the wrong
+     * error message. Checking it manually.
+     */
+    auto require_device_group(const device_access_options &options) -> bool
+    {
+        if (options.index->count() == 0 && options.serial->count() == 0)
+        {
+            std::cerr << "[Option Group: --device-at-index or --device-with-serial] is "
+                         "required."
+                      << std::endl
+                      << "Run with --help for more information." << std::endl;
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * @brief applies the optional --include-device-types selection of a subcommand onto the given
+     * filter, leaving the default untouched when the option was not provided.
+     *
+     * @attention returns false when the value is malformed; parse_device_types reports the
+     * diagnostic.
+     */
+    auto apply_device_type_selection(const CLI::Option *types_option,
+        const std::string &raw_value, sokketter::device_filter &filter) -> bool
+    {
+        if (types_option->count() == 0)
+        {
+            return true;
+        }
+
+        sokketter::power_strip_type selected_types = sokketter::power_strip_type::UNKNOWN;
+        if (!parse_device_types(raw_value, selected_types))
+        {
+            return false;
+        }
+
+        filter.included_types = selected_types;
+        return true;
+    }
+
+    /**
+     * @brief resolves the device addressed by exactly one of the device-addressing options,
+     * printing the standard diagnostics and returning nullptr when no device answers.
+     *
+     * @attention shared by the power, login and logout subcommands so that index resolution,
+     * serial lookup and type restriction behavior are identical for every subcommand.
+     * @attention --device-at-index is 1-based and resolves positionally against the same filtered
+     * vector the list subcommand prints (with its default filter, or with the selection given via
+     * --include-device-types), so index N always addresses the device printed as N by the matching
+     * list invocation. The library's sokketter::device(index) indexes the unfiltered database and
+     * must not be used here.
+     * @attention visible_devices() performs the enumeration itself on the index path; the serial
+     * path consults the persisted database, so it enumerates first to bind live communication
+     * handles.
+     * @attention when --include-device-types restricts the selection, a serial resolving to a
+     * device outside it is reported as not found, mirroring how the index path cannot reach such
+     * devices. TEST_DEVICE stays addressable regardless of the selection.
+     */
+    auto resolve_device(const device_access_options &options, const size_t &device_index,
+        const std::string &device_serial, const sokketter::device_filter &filter,
+        bool types_restricted) -> std::shared_ptr<sokketter::power_strip>
+    {
+        std::shared_ptr<sokketter::power_strip> device;
+
+        if (options.index->count() > 0)
+        {
+            if (device_index == 0)
+            {
+                std::cerr << "Device index 0 is out of range (valid range starts from 1)."
+                          << std::endl;
+                return nullptr;
+            }
+
+            const auto visible = visible_devices(filter);
+
+            if (visible.empty())
+            {
+                std::cerr << "Device index " << device_index
+                          << " is out of range (no devices are available)." << std::endl;
+                return nullptr;
+            }
+
+            if (device_index > visible.size())
+            {
+                std::cerr << "Device index " << device_index << " is out of range (valid range: 1-"
+                          << visible.size() << ")." << std::endl;
+                return nullptr;
+            }
+
+            device = visible[device_index - 1];
+        }
+        else if (options.serial->count() > 0)
+        {
+            sokketter::devices(filter);
+            device = sokketter::device(device_serial);
+
+            if (device != nullptr && types_restricted &&
+                device->configuration().type != sokketter::power_strip_type::TEST_DEVICE &&
+                !type_matches(device->configuration().type, filter.included_types))
+            {
+                device = nullptr;
+            }
+        }
+
+        if (device == nullptr)
+        {
+            std::cerr << "No device was found for "
+                      << (options.index->count() > 0
+                                 ? "index " + std::to_string(device_index) + "."
+                                 : "serial \"" + device_serial + "\".")
+                      << std::endl;
+        }
+
+        return device;
+    }
 } // namespace
 
 auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
@@ -242,39 +442,48 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
     auto subcommand_power_toggle = subcommand_power->add_subcommand("toggle");
 
     /**
+     * @brief adding login and logout subcommands.
+     *
+     * @attention login authenticates a device with credentials provided on the command line and
+     * persists them on success; logout removes the stored credentials of a device that has an
+     * authentication mechanism.
+     */
+    auto subcommand_login = application.add_subcommand("login");
+    subcommand_login->ignore_underscore();
+
+    auto subcommand_logout = application.add_subcommand("logout");
+    subcommand_logout->ignore_underscore();
+
+    /**
      * @brief adding device and socket access options.
      */
     std::vector<size_t> socket_indices;
     subcommand_power->add_option("--sockets,-s", socket_indices)->ignore_underscore();
 
-    auto device_group =
-        subcommand_power->add_option_group("--device-at-index or --device-with-serial");
-
-    size_t device_index = 0;
-    auto option_device_index = device_group->add_option("--device-at-index,-i", device_index);
-
-    std::string device_serial;
-    auto option_device_serial = device_group->add_option("--device-with-serial,-n", device_serial);
-
-    option_device_index->ignore_underscore();
-    option_device_serial->ignore_underscore();
-    option_device_index->excludes(option_device_serial);
-    option_device_serial->excludes(option_device_index);
-
     /**
-     * @warning option groups are nameless subcommands and inherit a help flag from the parent.
-     * That flag captures --help before it can fall through to the application level, which breaks
-     * help precedence (e.g. "power --help" fails the required subcommand check instead of showing
-     * help). Removing it lets --help fall through to the application-level help flag.
+     * @brief adding the device-addressing option group to the power, login and logout
+     * subcommands.
+     *
+     * @attention the subcommands are mutually exclusive (require_subcommand(1, 1)), so a single
+     * shared storage backs the index and serial options of every subcommand; presence is tracked
+     * per option pointer via the returned device_access_options.
      */
-    device_group->set_help_flag();
-    device_group->set_help_all_flag();
+    size_t device_index = 0;
+    std::string device_serial;
+
+    const auto power_device_options =
+        add_device_options(*subcommand_power, device_index, device_serial);
+    const auto login_device_options =
+        add_device_options(*subcommand_login, device_index, device_serial);
+    const auto logout_device_options =
+        add_device_options(*subcommand_logout, device_index, device_serial);
 
     /**
      * @attention overwriting the default help to show the same text for all subcommands.
      */
     const auto commands = {subcommand_list, subcommand_power, subcommand_power_status,
-        subcommand_power_on, subcommand_power_off, subcommand_power_toggle};
+        subcommand_power_on, subcommand_power_off, subcommand_power_toggle, subcommand_login,
+        subcommand_logout};
     for (const auto &command : commands)
     {
         command->set_help_flag();
@@ -283,10 +492,10 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
     }
 
     /**
-     * @brief adding an option to select which device types (USB/ETHERNET) are included by the list
-     * and power subcommands.
+     * @brief adding an option to select which device types (USB/ETHERNET) are included by the
+     * list, power, login and logout subcommands.
      *
-     * @attention the two options share one storage since the subcommands are mutually exclusive
+     * @attention the options share one storage since the subcommands are mutually exclusive
      * (require_subcommand(1, 1)); presence is tracked per option via the returned pointers.
      */
     std::string included_device_types;
@@ -297,6 +506,32 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
     auto option_power_device_types =
         subcommand_power->add_option("--include-device-types,-t", included_device_types);
     option_power_device_types->ignore_underscore();
+
+    auto option_login_device_types =
+        subcommand_login->add_option("--include-device-types,-t", included_device_types);
+    option_login_device_types->ignore_underscore();
+
+    auto option_logout_device_types =
+        subcommand_logout->add_option("--include-device-types,-t", included_device_types);
+    option_logout_device_types->ignore_underscore();
+
+    /**
+     * @brief adding authentication options to the login subcommand.
+     *
+     * @attention the options are intentionally not registered on the logout subcommand: logout
+     * only clears the stored credentials, so any authentication material supplied to it is
+     * rejected by CLI11 as an unexpected option.
+     */
+    std::string authentication_type;
+    std::string authentication_password;
+
+    auto option_authentication_type =
+        subcommand_login->add_option("--authentication-type", authentication_type);
+    option_authentication_type->ignore_underscore();
+
+    auto option_authentication_password =
+        subcommand_login->add_option("--password", authentication_password);
+    option_authentication_password->ignore_underscore();
 
     /** ************************************************************************
      *
@@ -416,17 +651,8 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
      ** ***********************************************************************/
     else if (subcommand_power->parsed())
     {
-        /**
-         * @warning stating device access group as required via CLI11 functionality
-         * does not work as expected. It has a higher precedence than following subcommands,
-         * thus it displays the wrong error message. Checking it manually.
-         */
-        if (option_device_index->count() == 0 && option_device_serial->count() == 0)
+        if (!require_device_group(power_device_options))
         {
-            std::cerr << "[Option Group: --device-at-index or --device-with-serial] is "
-                         "required."
-                      << std::endl
-                      << "Run with --help for more information." << std::endl;
             return EXIT_FAILURE;
         }
 
@@ -437,82 +663,16 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
          * "list --include-device-types <same selection>" prints as N.
          */
         auto filter = default_display_filter();
-        if (option_power_device_types->count() > 0)
+        if (!apply_device_type_selection(option_power_device_types, included_device_types, filter))
         {
-            sokketter::power_strip_type selected_types = sokketter::power_strip_type::UNKNOWN;
-            if (!parse_device_types(included_device_types, selected_types))
-            {
-                return EXIT_FAILURE;
-            }
-
-            filter.included_types = selected_types;
+            return EXIT_FAILURE;
         }
 
-        std::shared_ptr<sokketter::power_strip> device;
-
-        if (option_device_index->count() > 0)
-        {
-            if (device_index == 0)
-            {
-                std::cerr << "Device index 0 is out of range (valid range starts from 1)."
-                          << std::endl;
-                return EXIT_FAILURE;
-            }
-
-            /**
-             * @attention --device-at-index is 1-based and resolves positionally against the same
-             * filtered vector the list subcommand prints (with its default filter, or with the
-             * selection given via --include-device-types), so index N always addresses the device
-             * printed as N by the matching list invocation. The library's sokketter::device(index)
-             * indexes the unfiltered database and must not be used here.
-             * @attention visible_devices() performs the enumeration itself, so no separate
-             * sokketter::devices() call is needed on this path.
-             */
-            const auto visible = visible_devices(filter);
-
-            if (visible.empty())
-            {
-                std::cerr << "Device index " << device_index
-                          << " is out of range (no devices are available)." << std::endl;
-                return EXIT_FAILURE;
-            }
-
-            if (device_index > visible.size())
-            {
-                std::cerr << "Device index " << device_index << " is out of range (valid range: 1-"
-                          << visible.size() << ")." << std::endl;
-                return EXIT_FAILURE;
-            }
-
-            device = visible[device_index - 1];
-        }
-        else if (option_device_serial->count() > 0)
-        {
-            /**
-             * @attention serial lookup consults the persisted database, so enumerate first to bind
-             * live communication handles.
-             * @attention when --include-device-types restricts the selection, a serial resolving
-             * to a device outside it is reported as not found, mirroring how the index path cannot
-             * reach such devices. TEST_DEVICE stays addressable regardless of the selection.
-             */
-            sokketter::devices(filter);
-            device = sokketter::device(device_serial);
-
-            if (device != nullptr && option_power_device_types->count() > 0 &&
-                device->configuration().type != sokketter::power_strip_type::TEST_DEVICE &&
-                !type_matches(device->configuration().type, filter.included_types))
-            {
-                device = nullptr;
-            }
-        }
+        const auto device = resolve_device(power_device_options, device_index, device_serial,
+            filter, option_power_device_types->count() > 0);
 
         if (device == nullptr)
         {
-            std::cerr << "No device was found for "
-                      << (option_device_index->count() > 0
-                                 ? "index " + std::to_string(device_index) + "."
-                                 : "serial \"" + device_serial + "\".")
-                      << std::endl;
             return EXIT_FAILURE;
         }
 
@@ -660,6 +820,142 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
         }
 
         return all_succeeded ? EXIT_SUCCESS : EXIT_FAILURE;
+    }
+
+    /** ************************************************************************
+     *
+     * @brief login processing section.
+     *
+     ** ***********************************************************************/
+    else if (subcommand_login->parsed())
+    {
+        if (!require_device_group(login_device_options))
+        {
+            return EXIT_FAILURE;
+        }
+
+        auto filter = default_display_filter();
+        if (!apply_device_type_selection(option_login_device_types, included_device_types, filter))
+        {
+            return EXIT_FAILURE;
+        }
+
+        /**
+         * @attention the authentication options are validated before the device is resolved, so
+         * malformed credentials input is reported even when no matching device is attached.
+         */
+        if (option_authentication_type->count() == 0)
+        {
+            std::cerr << "The --authentication-type option is required for the login subcommand. "
+                         "Available types are: PASSWORD."
+                      << std::endl;
+            return EXIT_FAILURE;
+        }
+
+        sokketter::power_strip_authentication_type requested_type =
+            sokketter::power_strip_authentication_type::UNKNOWN;
+        if (!parse_authentication_type(authentication_type, requested_type))
+        {
+            return EXIT_FAILURE;
+        }
+
+        if (requested_type == sokketter::power_strip_authentication_type::PASSWORD_ONLY &&
+            option_authentication_password->count() == 0)
+        {
+            std::cerr << "The --password option is required for the PASSWORD authentication type."
+                      << std::endl;
+            return EXIT_FAILURE;
+        }
+
+        const auto device = resolve_device(login_device_options, device_index, device_serial,
+            filter, option_login_device_types->count() > 0);
+
+        if (device == nullptr)
+        {
+            return EXIT_FAILURE;
+        }
+
+        if (device->configuration().authentication.type != requested_type)
+        {
+            std::cerr << "Device does not require authentication." << std::endl;
+            return EXIT_FAILURE;
+        }
+
+        run_update_check();
+
+        std::cout << device->to_string() << std::endl;
+
+        auto new_configuration = device->configuration();
+        new_configuration.authentication.type = requested_type;
+        new_configuration.authentication.password = authentication_password;
+        device->configure(new_configuration);
+
+        if (!device->try_authenticate())
+        {
+            /**
+             * @attention failed authentication is not persisted: the previously stored
+             * credentials stay in effect.
+             */
+            std::cerr << "Authentication failed." << std::endl;
+            return EXIT_FAILURE;
+        }
+
+        device->save();
+
+        std::cout << "Authenticated successfully." << std::endl;
+        return EXIT_SUCCESS;
+    }
+
+    /** ************************************************************************
+     *
+     * @brief logout processing section.
+     *
+     * @attention logout clears the stored credentials of the device configuration and persists
+     * the change; it does not terminate a session, since the library opens and closes an
+     * authenticated session per operation.
+     *
+     ** ***********************************************************************/
+    else if (subcommand_logout->parsed())
+    {
+        if (!require_device_group(logout_device_options))
+        {
+            return EXIT_FAILURE;
+        }
+
+        auto filter = default_display_filter();
+        if (!apply_device_type_selection(option_logout_device_types, included_device_types, filter))
+        {
+            return EXIT_FAILURE;
+        }
+
+        const auto device = resolve_device(logout_device_options, device_index, device_serial,
+            filter, option_logout_device_types->count() > 0);
+
+        if (device == nullptr)
+        {
+            return EXIT_FAILURE;
+        }
+
+        if (device->configuration().authentication.type ==
+                sokketter::power_strip_authentication_type::NONE ||
+            device->configuration().authentication.type ==
+                sokketter::power_strip_authentication_type::UNKNOWN)
+        {
+            std::cerr << "Device does not require authentication." << std::endl;
+            return EXIT_FAILURE;
+        }
+
+        run_update_check();
+
+        std::cout << device->to_string() << std::endl;
+
+        auto new_configuration = device->configuration();
+        new_configuration.authentication.password.clear();
+        device->configure(new_configuration);
+        device->save();
+
+        std::cout << "Stored credentials removed." << std::endl;
+        return EXIT_SUCCESS;
     }
 
     // LCOV_EXCL_START
