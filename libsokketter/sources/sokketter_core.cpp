@@ -367,6 +367,22 @@ auto sokketter_core::run_enumeration(
 
         const auto usb_devices = kommpot::devices(supported_usb_devices);
         new_devices_received(usb_devices, *handled_ids, request->device_cb);
+
+        /**
+         * @brief the blocking kommpot USB search reports no statuses of its own, and the
+         * asynchronous ethernet path below is the only place that forwards a COMPLETED status.
+         * When the ethernet enumeration is not part of this request, report the completion here,
+         * so that the caller stops showing the enumeration feedback instead of staying stuck on
+         * the USB lookup status.
+         */
+        const bool ethernet_enumeration_follows =
+            (static_cast<underlying>(request->filter.included_types) &
+                static_cast<underlying>(sokketter::power_strip_type::ETHERNET_DEVICES)) != 0;
+
+        if (!ethernet_enumeration_follows && request->status_cb)
+        {
+            request->status_cb(sokketter::enumeration_status::COMPLETED);
+        }
     }
 
     if ((static_cast<underlying>(request->filter.included_types) &
