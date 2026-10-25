@@ -296,6 +296,17 @@ TEST(cli_authentication_tests, login_with_wrong_password_fails)
     ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, expected_device_header(device));
     ASSERT_EQ(err, "Authentication failed: the device rejected the credentials.\n");
+
+    /**
+     * @attention the rejected secret must not remain in the device configuration: this is the
+     * state post-condition the login rollback exists to guarantee.
+     * @attention fake test devices are recreated per enumeration and never live in the library
+     * database, so within the unit suite this documents the contract on the device model rather
+     * than inspecting the object the subcommand mutated; "the wrong password is not persisted"
+     * is covered against real hardware by the CLI-HW-25 and CLI-HW-28 rows.
+     */
+    ASSERT_EQ(device->configuration().authentication.password, "")
+        << "a rejected password must not remain in the device configuration";
 }
 
 TEST(cli_authentication_tests, login_with_correct_password_succeeds)
@@ -382,6 +393,23 @@ TEST(cli_authentication_tests, logout_on_device_without_stored_credentials_is_re
     ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, "");
     ASSERT_EQ(err, "No credentials are stored for this device.\n");
+
+    const auto device = first_available_device();
+    if (device == nullptr)
+    {
+        GTEST_SKIP() << "no device is available";
+    }
+
+    /**
+     * @attention the rejected logout must leave the device untouched: it keeps advertising the
+     * PASSWORD_ONLY mechanism and stays credential-less.
+     * @attention same fake-device caveat as the login tests: this re-enumeration checks the
+     * device model's contract after the rejection path ran in the same process.
+     */
+    ASSERT_EQ(device->configuration().authentication.type,
+        sokketter::power_strip_authentication_type::PASSWORD_ONLY);
+    ASSERT_EQ(device->configuration().authentication.password, "")
+        << "a rejected logout must not mutate the device configuration";
 }
 
 TEST(cli_authentication_tests, login_help_takes_precedence)
