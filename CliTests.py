@@ -1622,7 +1622,8 @@ class CliTests:
     def test_cli_hw_27(self) -> None:
         """
         @brief CLI-HW-27: login/logout on a USB device (no authentication mechanism). Exit 1;
-        stderr "Device does not require authentication." for both subcommands.
+        login reports the authentication-mechanism mismatch, logout reports that the device does
+        not require authentication.
         """
         device = self.__require_first_usb()
 
@@ -1635,7 +1636,10 @@ class CliTests:
             self.__expect_exit(result, 1, f"{subcommand} on unauthenticated USB device")
             self.__expect_in(
                 result.stderr,
-                "Device does not require authentication.",
+                "The device's authentication mechanism (None) does not match "
+                "--authentication-type PASSWORD."
+                if subcommand == "login"
+                else "Device does not require authentication.",
                 f"{subcommand} on unauthenticated USB device",
             )
 

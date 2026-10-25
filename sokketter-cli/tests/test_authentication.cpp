@@ -243,7 +243,8 @@ TEST(cli_authentication_tests, login_on_device_without_authentication_is_rejecte
 
     ASSERT_EQ(return_code, EXIT_FAILURE);
     ASSERT_EQ(out, "");
-    ASSERT_EQ(err, "Device does not require authentication.\n");
+    ASSERT_EQ(err, "The device's authentication mechanism (Unknown) does not match "
+                   "--authentication-type password.\n");
 }
 
 TEST(cli_authentication_tests, logout_on_device_without_authentication_is_rejected)

@@ -879,7 +879,16 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
 
         if (configuration.authentication.type != requested_type)
         {
-            std::cerr << "Device does not require authentication." << std::endl;
+            /**
+             * @attention wording deliberately differs from the logout diagnostic, which reports the
+             * genuinely no-authentication case: this branch also covers a device that requires
+             * authentication of a type the CLI cannot speak.
+             */
+            std::cerr << "The device's authentication mechanism ("
+                      << sokketter::power_strip_authentication_type_to_string(
+                             configuration.authentication.type)
+                      << ") does not match --authentication-type " << authentication_type << "."
+                      << std::endl;
             return EXIT_FAILURE;
         }
 
