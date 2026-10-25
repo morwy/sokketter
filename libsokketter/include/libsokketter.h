@@ -363,6 +363,14 @@ namespace sokketter {
 
     /**
      * @brief the class for controlling and configuring the power strip.
+     * @attention thread-safety contract: every built-in device class shipped by the library
+     * (both the factory-detected devices returned by sokketter::devices()/sokketter::device()
+     * and the test devices) guards its configuration and connection state internally, so
+     * configuration()/configure()/is_connected() may be called concurrently with a background
+     * enumeration on such devices. Custom device classes implemented outside the library do not
+     * inherit this guarantee and must document their own thread-safety behavior.
+     * @attention sockets() returns by reference instead of by copy and that reference is never
+     * synchronized; see its own documentation for the conditions under which it stays valid.
      */
     class EXPORTED power_strip
     {
@@ -378,15 +386,19 @@ namespace sokketter {
 
         /**
          * @brief gets current configuration of the power strip.
-         * @return power strip configuration structure.
+         * @return power strip configuration structure as a copy.
+         * @attention returns a copy so that the returned structure stays valid and stable even
+         * when the device is concurrently (re)initialized by a background enumeration.
          */
-        [[nodiscard]] auto configuration() const noexcept -> const power_strip_configuration &;
+        [[nodiscard]] virtual auto configuration() const -> power_strip_configuration;
 
         /**
          * @brief sets a new configuration of the power strip.
          * @param configuration of the power strip.
+         * @attention safe to call concurrently with a background enumeration on the built-in
+         * device classes, which guard their state internally.
          */
-        auto configure(const power_strip_configuration &configuration) -> void;
+        virtual auto configure(const power_strip_configuration &configuration) -> void;
 
         /**
          * @brief saves current configuration of the power strip to the storage.
@@ -409,12 +421,18 @@ namespace sokketter {
         /**
          * @brief gets list of sockets controlled by the power strip.
          * @return vector of socket objects.
+         * @attention the socket vector is only mutated while the device is constructed or
+         * restored from the storage; a background enumeration never adds or removes sockets, so
+         * the returned reference stays valid across enumeration.
+         * @attention the reference itself is not synchronized: socket configuration changes made
+         * while iterating it from another thread must be externally synchronized by the caller.
          */
         [[nodiscard]] virtual auto sockets() -> std::vector<socket> &;
 
         /**
          * @brief gets list of sockets controlled by the power strip.
          * @return vector of socket objects.
+         * @attention see the non-const overload regarding the lifetime of the returned reference.
          */
         [[nodiscard]] virtual auto sockets() const -> const std::vector<socket> &;
 
@@ -451,9 +469,12 @@ namespace sokketter {
      * @param filter settings stating which devices to list.
      * @return vector of power_strip objects.
      * @attention blocking call.
+     * @attention returns a private copy of the device pointers (the same snapshot discipline as
+     * the asynchronous overload's device callback), so the returned vector stays valid
+     * regardless of any enumeration that runs concurrently or afterwards.
      */
     auto EXPORTED devices(const device_filter &filter = {})
-        -> const std::vector<std::shared_ptr<sokketter::power_strip>> &;
+        -> std::vector<std::shared_ptr<sokketter::power_strip>>;
 
     /**
      * @brief the enum specifying the status of device enumeration.
@@ -461,9 +482,10 @@ namespace sokketter {
     enum class enumeration_status
     {
         UNKNOWN = 0,
-        ENUMERATING_USB_DEVICES = 1,
-        ENUMERATING_ETHERNET_DEVICES = 2,
-        COMPLETED = 3
+        LOOKING_FOR_NEW_USB_DEVICES = 1,
+        LOOKING_FOR_KNOWN_ETHERNET_DEVICES = 2,
+        LOOKING_FOR_NEW_ETHERNET_DEVICES = 3,
+        COMPLETED = 4,
     };
 
     /**
@@ -476,6 +498,8 @@ namespace sokketter {
 
     /**
      * @brief type alias for the device callback function.
+     * @attention invoked on an enumeration thread with a private copy of the current device
+     * list, so it is safe to hold or iterate without racing with a concurrent enumeration.
      */
     using device_callback =
         std::function<void(std::vector<std::shared_ptr<sokketter::power_strip>> &)>;

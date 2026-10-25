@@ -1,6 +1,10 @@
 #include "libsokketter.h"
 
+#include <charconv>
 #include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -48,29 +52,30 @@ auto sokketter::logs_path() -> std::filesystem::path
     return storage_path() / "logs";
 }
 
-static constexpr size_t LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET = -1;
+// The upper bound on the number of fake test devices that may be requested through the
+// LIBSOKKETTER_TEST_DEVICE_NUMBER environment variable. Keeps the reserve() call in
+// sokketter::devices() provably bounded.
+static constexpr size_t LIBSOKKETTER_MAX_TEST_DEVICE_NUMBER = 1000;
 
-auto get_requested_test_device_number() -> size_t
+auto get_requested_test_device_number() -> std::optional<size_t>
 {
-    const std::string &name = "LIBSOKKETTER_TEST_DEVICE_NUMBER";
-    const char *value = std::getenv(name.c_str());
+    const char *value = std::getenv("LIBSOKKETTER_TEST_DEVICE_NUMBER");
     if (value == nullptr)
     {
-        return LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET;
+        return std::nullopt;
     }
 
-    try
+    size_t number = 0;
+    const auto *end = value + std::strlen(value);
+    const auto [ptr, ec] = std::from_chars(value, end, number);
+    if (ec != std::errc{} || ptr != end || number > LIBSOKKETTER_MAX_TEST_DEVICE_NUMBER)
     {
-        return std::stoul(value);
+        SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER,
+            "Ignoring invalid LIBSOKKETTER_TEST_DEVICE_NUMBER value: {}.", value);
+        return std::nullopt;
     }
-    catch (const std::invalid_argument &)
-    {
-        return LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET;
-    }
-    catch (const std::out_of_range &)
-    {
-        return LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET;
-    }
+
+    return number;
 }
 
 sokketter::version_information::version_information(const uint8_t major, const uint8_t minor,
@@ -273,7 +278,7 @@ auto sokketter::power_strip_authentication::is_valid() const -> bool
     }
 }
 
-auto sokketter::power_strip::configuration() const noexcept -> const power_strip_configuration &
+auto sokketter::power_strip::configuration() const -> power_strip_configuration
 {
     return m_configuration;
 }
@@ -285,7 +290,7 @@ auto sokketter::power_strip::configure(const power_strip_configuration &configur
 
 auto sokketter::power_strip::save() const -> void
 {
-    sokketter_core::instance().database().save();
+    sokketter_core::instance().save_database();
 }
 
 auto sokketter::power_strip::try_authenticate() -> bool
@@ -316,36 +321,36 @@ auto sokketter::power_strip::socket(const size_t &index)
 
 auto sokketter::power_strip::to_string() const noexcept -> std::string
 {
-    std::string text = this->configuration().name + " (" +
-                       power_strip_type_to_string(this->configuration().type) + ", " +
-                       this->configuration().id;
+    const auto configuration = this->configuration();
 
-    if (this->configuration().address.empty())
+    std::string text = configuration.name + " (" + power_strip_type_to_string(configuration.type) +
+                       ", " + configuration.id;
+
+    if (configuration.address.empty())
     {
         text += ", disconnected)";
     }
     else
     {
-        text += ", available at " + this->configuration().address + ")";
+        text += ", available at " + configuration.address + ")";
     }
 
     return text;
 }
 
 auto sokketter::devices(const device_filter &filter)
-    -> const std::vector<std::shared_ptr<sokketter::power_strip>> &
+    -> std::vector<std::shared_ptr<sokketter::power_strip>>
 {
-    auto requested_test_device_number = get_requested_test_device_number();
-    if (requested_test_device_number != LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET)
+    if (const auto requested_test_device_number = get_requested_test_device_number();
+        requested_test_device_number.has_value())
     {
-        static std::vector<std::shared_ptr<sokketter::power_strip>> devices;
-
-        devices.clear();
+        std::vector<std::shared_ptr<sokketter::power_strip>> devices;
+        devices.reserve(*requested_test_device_number);
 
         SPDLOG_LOGGER_DEBUG(
-            SOKKETTER_LOGGER, "Requested debug devices: {}.", requested_test_device_number);
+            SOKKETTER_LOGGER, "Requested debug devices: {}.", *requested_test_device_number);
 
-        for (size_t device_index = 0; device_index < requested_test_device_number; ++device_index)
+        for (size_t device_index = 0; device_index < *requested_test_device_number; ++device_index)
         {
             devices.push_back(std::make_shared<test_device>(device_index));
         }
@@ -359,23 +364,22 @@ auto sokketter::devices(const device_filter &filter)
 auto sokketter::devices(
     const device_filter &filter, device_callback device_cb, status_callback status_cb) -> void
 {
-    auto requested_test_device_number = get_requested_test_device_number();
-    if (get_requested_test_device_number() != LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET)
+    if (const auto requested_test_device_number = get_requested_test_device_number();
+        requested_test_device_number.has_value())
     {
-        static std::vector<std::shared_ptr<sokketter::power_strip>> devices;
-
-        devices.clear();
+        std::vector<std::shared_ptr<sokketter::power_strip>> devices;
+        devices.reserve(*requested_test_device_number);
 
         SPDLOG_LOGGER_DEBUG(
-            SOKKETTER_LOGGER, "Requested debug devices: {}.", requested_test_device_number);
+            SOKKETTER_LOGGER, "Requested debug devices: {}.", *requested_test_device_number);
 
-        for (size_t device_index = 0; device_index < requested_test_device_number; ++device_index)
+        for (size_t device_index = 0; device_index < *requested_test_device_number; ++device_index)
         {
             devices.push_back(std::make_shared<test_device>(device_index));
         }
 
-        status_cb(enumeration_status::ENUMERATING_USB_DEVICES);
-        status_cb(enumeration_status::ENUMERATING_ETHERNET_DEVICES);
+        status_cb(enumeration_status::LOOKING_FOR_NEW_USB_DEVICES);
+        status_cb(enumeration_status::LOOKING_FOR_NEW_ETHERNET_DEVICES);
 
         device_cb(devices);
 
@@ -389,7 +393,7 @@ auto sokketter::devices(
 
 auto sokketter::device(const size_t &index) -> std::shared_ptr<sokketter::power_strip>
 {
-    if (get_requested_test_device_number() != LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET)
+    if (get_requested_test_device_number().has_value())
     {
         SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Creating debug device at index {}.", index);
         return std::make_shared<test_device>(index);
@@ -400,7 +404,7 @@ auto sokketter::device(const size_t &index) -> std::shared_ptr<sokketter::power_
 
 auto sokketter::device(const std::string &serial_number) -> std::shared_ptr<sokketter::power_strip>
 {
-    if (get_requested_test_device_number() != LIBSOKKETTER_TEST_DEVICE_NUMBER_NOT_SET)
+    if (get_requested_test_device_number().has_value())
     {
         const std::string test_device_prefix = "TEST_SERIAL_NUMBER_";
         if (serial_number.rfind(test_device_prefix, 0) == 0)
@@ -442,11 +446,14 @@ auto sokketter::enumeration_status_to_string(const enumeration_status &status) n
     case enumeration_status::UNKNOWN: {
         return "Unknown";
     }
-    case enumeration_status::ENUMERATING_USB_DEVICES: {
-        return "Enumerating USB devices";
+    case enumeration_status::LOOKING_FOR_NEW_USB_DEVICES: {
+        return "Looking for the new USB devices";
     }
-    case enumeration_status::ENUMERATING_ETHERNET_DEVICES: {
-        return "Enumerating Ethernet devices";
+    case enumeration_status::LOOKING_FOR_KNOWN_ETHERNET_DEVICES: {
+        return "Looking for the known Ethernet devices";
+    }
+    case enumeration_status::LOOKING_FOR_NEW_ETHERNET_DEVICES: {
+        return "Looking for the new Ethernet devices";
     }
     case enumeration_status::COMPLETED: {
         return "Completed";
@@ -458,6 +465,5 @@ auto sokketter::enumeration_status_to_string(const enumeration_status &status) n
 
 auto sokketter::forget_device(std::shared_ptr<power_strip> &device) -> void
 {
-    sokketter_core::instance().database().remove(device);
-    sokketter_core::instance().database().save();
+    sokketter_core::instance().remove_device(device);
 }

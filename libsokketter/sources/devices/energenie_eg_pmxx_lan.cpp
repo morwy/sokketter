@@ -67,10 +67,15 @@ auto energenie_eg_pmxx_lan::initialize(std::shared_ptr<kommpot::device_communica
     configuration.timeout_ms = HTTP_TIMEOUT_MSECS;
     communication->set_configuration(configuration);
 
-    m_serial_number = identification->mac;
+    {
+        const std::lock_guard<std::mutex> state_lock(m_state_mutex);
+        m_serial_number = identification->mac;
+    }
 
-    m_configuration.id = identification->mac;
-    m_configuration.address = identification->address;
+    update_configuration([&identification](sokketter::power_strip_configuration &configuration) {
+        configuration.id = identification->mac;
+        configuration.address = identification->address;
+    });
 
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: initialization.", this->to_string());
 
@@ -95,8 +100,10 @@ auto energenie_eg_pmxx_lan::try_authenticate() -> bool
         return false;
     }
 
+    const auto authentication_password = this->configuration().authentication.password;
+
     std::string response = "";
-    const bool is_logged_in = login(m_configuration.authentication.password, response);
+    const bool is_logged_in = login(authentication_password, response);
 
     logout();
 
@@ -133,7 +140,8 @@ auto energenie_eg_pmxx_lan::power_socket(size_t index, bool is_toggled) -> bool
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: powering socket {} {}.", this->to_string(), index,
         is_toggled ? "on" : "off");
 
-    if (m_configuration.authentication.password.empty())
+    const auto authentication_password = this->configuration().authentication.password;
+    if (authentication_password.empty())
     {
         SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "{}: no password provided for powering socket {}.",
             this->to_string(), index);
@@ -148,7 +156,7 @@ auto energenie_eg_pmxx_lan::power_socket(size_t index, bool is_toggled) -> bool
     }
 
     std::string response = "";
-    bool result = login(m_configuration.authentication.password, response);
+    bool result = login(authentication_password, response);
     if (result)
     {
         const std::string body = "cte" + std::to_string(index) + "=" + (is_toggled ? "1" : "0");
@@ -220,7 +228,8 @@ auto energenie_eg_pmxx_lan::socket_status(size_t index) -> bool
 
 auto energenie_eg_pmxx_lan::refresh_socket_states() -> bool
 {
-    if (m_configuration.authentication.password.empty())
+    const auto authentication_password = this->configuration().authentication.password;
+    if (authentication_password.empty())
     {
         SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "{}: no password provided for reading socket states.",
             this->to_string());
@@ -235,7 +244,7 @@ auto energenie_eg_pmxx_lan::refresh_socket_states() -> bool
     }
 
     std::string response = "";
-    const bool is_logged_in = login(m_configuration.authentication.password, response);
+    const bool is_logged_in = login(authentication_password, response);
 
     logout();
 

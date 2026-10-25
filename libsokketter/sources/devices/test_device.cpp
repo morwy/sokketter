@@ -8,8 +8,11 @@
  * @brief socket on/off states keyed by serial number, so that separate test_device instances
  * created for the same device share the last recorded states within a single process.
  * @attention the socket objects themselves live in the per-instance m_sockets member.
+ * @attention guarded by gs_socket_states_mutex: the GUI thread toggles sockets while the UI
+ * worker pool reads the states through socket_status().
  */
 static std::map<std::string, std::vector<bool>> gs_socket_states;
+static std::mutex gs_socket_states_mutex;
 
 test_device::test_device(const size_t &index)
     : m_index(index)
@@ -25,9 +28,13 @@ test_device::test_device(const size_t &index)
 
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: construction.", this->to_string());
 
-    if (gs_socket_states[m_serial_number].size() != m_socket_number)
     {
-        gs_socket_states[m_serial_number].resize(m_socket_number, false);
+        const std::lock_guard<std::mutex> states_lock(gs_socket_states_mutex);
+
+        if (gs_socket_states[m_serial_number].size() != m_socket_number)
+        {
+            gs_socket_states[m_serial_number].resize(m_socket_number, false);
+        }
     }
 
     m_sockets.clear();
@@ -57,6 +64,20 @@ auto test_device::is_connected() const -> bool
     return true;
 }
 
+auto test_device::configuration() const -> sokketter::power_strip_configuration
+{
+    const std::lock_guard<std::mutex> state_lock(m_state_mutex);
+
+    return m_configuration;
+}
+
+auto test_device::configure(const sokketter::power_strip_configuration &configuration) -> void
+{
+    const std::lock_guard<std::mutex> state_lock(m_state_mutex);
+
+    m_configuration = configuration;
+}
+
 auto test_device::socket(const size_t &index)
     -> const std::optional<std::reference_wrapper<sokketter::socket>>
 {
@@ -74,7 +95,13 @@ auto test_device::power_socket(size_t index, bool is_toggled) -> bool
 {
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: powering socket {} {}.", this->to_string(), index,
         is_toggled ? "on" : "off");
-    gs_socket_states[m_serial_number][index - 1] = is_toggled;
+
+    {
+        const std::lock_guard<std::mutex> states_lock(gs_socket_states_mutex);
+
+        gs_socket_states[m_serial_number][index - 1] = is_toggled;
+    }
+
     return true;
 }
 
@@ -82,5 +109,8 @@ auto test_device::socket_status(size_t index) -> bool
 {
     SPDLOG_LOGGER_DEBUG(
         SOKKETTER_LOGGER, "{}: checking socket {} status.", this->to_string(), index);
+
+    const std::lock_guard<std::mutex> states_lock(gs_socket_states_mutex);
+
     return gs_socket_states[m_serial_number][index - 1];
 }

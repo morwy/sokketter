@@ -26,6 +26,7 @@
 #include <QFutureWatcher>
 #include <QLabel>
 #include <QLineEdit>
+#include <QListWidget>
 #include <QListWidgetItem>
 #include <QMessageBox>
 #include <QPointer>
@@ -33,6 +34,36 @@
 #include <QTimer>
 #include <QUrl>
 #include <QtConcurrent>
+
+namespace {
+/**
+ * @brief Qt reports the scroll bar margin on both sides of the list; empirically double the
+ * scroll bar size must be subtracted from the list size to obtain the area the hosted item
+ * widgets can occupy.
+ */
+constexpr int SCROLLBAR_MARGIN_FACTOR = 2;
+
+/**
+ * @brief computes the area of a list widget that hosted items can occupy, compensating for
+ * its currently visible scroll bars.
+ */
+auto visible_area(const QListWidget *list_widget) -> QSize
+{
+    int visible_width = list_widget->width();
+    if (list_widget->verticalScrollBar()->isVisible())
+    {
+        visible_width -= list_widget->verticalScrollBar()->width() * SCROLLBAR_MARGIN_FACTOR;
+    }
+
+    int visible_height = list_widget->height();
+    if (list_widget->horizontalScrollBar()->isVisible())
+    {
+        visible_height -= list_widget->horizontalScrollBar()->height() * SCROLLBAR_MARGIN_FACTOR;
+    }
+
+    return QSize(visible_width, visible_height);
+}
+} // namespace
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -121,6 +152,11 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     QObject::connect(m_ui->configure_delete_label, &ClickableLabel::clicked, [this]() {
+        if (m_device == nullptr)
+        {
+            return;
+        }
+
         const auto reply = QMessageBox::warning(this, "Warning",
             "This action will remove currently selected device from the list of saved devices.\nDo "
             "you want to continue?",
@@ -182,7 +218,13 @@ MainWindow::MainWindow(QWidget *parent)
 
     sokketter::check_for_update_async();
 
-    QTimer::singleShot(25, [this]() { repopulate_device_list(); });
+    /**
+     * @brief defer the first enumeration until after the window is shown, so the enumeration
+     * status label has a laid-out place to appear in.
+     */
+    constexpr int INITIAL_REFRESH_DELAY_MSEC = 25;
+
+    QTimer::singleShot(INITIAL_REFRESH_DELAY_MSEC, [this]() { repopulate_device_list(); });
 }
 
 MainWindow::~MainWindow()
@@ -220,38 +262,113 @@ auto MainWindow::onNewPowerStripReceived(
 {
     SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Repopulating power strip list.");
 
-    while (m_ui->power_strip_list_widget->count() > 0)
+    auto *list_widget = m_ui->power_strip_list_widget;
+
+    /**
+     * @brief suppress updates for the whole update; item changes each trigger a viewport relayout
+     * and repaint, which without coalescing freezes the GUI thread when every item hosts a widget.
+     */
+    list_widget->setUpdatesEnabled(false);
+
+    const auto visible_size = visible_area(list_widget);
+    const int visible_width = visible_size.width();
+    const int visible_height = visible_size.height();
+
+    /**
+     * @brief update the list in place instead of tearing it down and rebuilding it: the full
+     * clear + recreate cycle pays its real cost in deferred polish/layout/paint events for every
+     * freshly created hosted widget, which freezes the UI thread long after this slot returned.
+     * Rows are kept for devices whose identity matches at the same position (the library delivers
+     * the list sorted by name), existing items are updated in place and only genuinely new or
+     * removed rows are created or deleted.
+     */
+    auto *placeholder_item = list_widget->count() > 0
+        ? qobject_cast<EmptyPowerStripListItem *>(list_widget->itemWidget(list_widget->item(0)))
+        : nullptr;
+
+    /**
+     * @brief an empty-list placeholder is no longer needed once real devices arrived.
+     */
+    if (placeholder_item != nullptr && !power_strips.empty())
     {
-        m_ui->power_strip_list_widget->takeItem(0);
+        delete list_widget->takeItem(0);
+        delete placeholder_item;
+        placeholder_item = nullptr;
     }
 
-    int visible_width = m_ui->power_strip_list_widget->width();
-    if (m_ui->power_strip_list_widget->verticalScrollBar()->isVisible())
+    /**
+     * @brief drop the rows that exceed the new device count (devices disappeared); a still
+     * present placeholder row is excluded from the trim and managed separately below.
+     */
+    while (list_widget->count()
+        > static_cast<int>(power_strips.size()) + (placeholder_item != nullptr ? 1 : 0))
     {
-        visible_width -= (m_ui->power_strip_list_widget->verticalScrollBar()->width() * 2);
+        auto *stale_item = list_widget->takeItem(list_widget->count() - 1);
+        if (auto *stale_widget = list_widget->itemWidget(stale_item))
+        {
+            delete stale_widget;
+        }
+        delete stale_item;
     }
 
-    int visible_height = m_ui->power_strip_list_widget->height();
-    if (m_ui->power_strip_list_widget->horizontalScrollBar()->isVisible())
+    for (int row = 0; row < static_cast<int>(power_strips.size()); ++row)
     {
-        visible_height -= (m_ui->power_strip_list_widget->horizontalScrollBar()->height() * 2);
+        const auto &power_strip = power_strips[static_cast<size_t>(row)];
+
+        auto *row_item = list_widget->item(row);
+        auto *hosted_widget = row_item != nullptr ? list_widget->itemWidget(row_item) : nullptr;
+        auto *existing_item = qobject_cast<PowerStripListItem *>(hosted_widget);
+
+        if (existing_item != nullptr
+            && existing_item->configuration().id == power_strip->configuration().id)
+        {
+            /**
+             * @brief same device at the same row: update the displayed fields and connectivity
+             * without touching the widget structure.
+             */
+            existing_item->configure(power_strip->configuration());
+            existing_item->set_state(power_strip->is_connected());
+            existing_item->setMaximumWidth(visible_width);
+
+            const auto &size_hint = existing_item->sizeHint();
+            row_item->setSizeHint(
+                QSize(std::max(size_hint.width(), visible_width), size_hint.height()));
+        }
+        else
+        {
+            /**
+             * @brief identity mismatch (or a new row): drop the old row content and create a
+             * fresh item widget.
+             */
+            if (row_item != nullptr)
+            {
+                list_widget->takeItem(row);
+                if (hosted_widget != nullptr)
+                {
+                    delete hosted_widget;
+                }
+                delete row_item;
+            }
+
+            auto *power_strip_item = new PowerStripListItem(power_strip->configuration());
+            power_strip_item->setMaximumWidth(visible_width);
+            power_strip_item->set_state(power_strip->is_connected());
+
+            auto *item = new QListWidgetItem();
+            const auto &size_hint = power_strip_item->sizeHint();
+            item->setSizeHint(
+                QSize(std::max(size_hint.width(), visible_width), size_hint.height()));
+
+            list_widget->insertItem(row, item);
+            list_widget->setItemWidget(item, power_strip_item);
+        }
     }
 
-    for (const auto &power_strip : power_strips)
-    {
-        auto *power_strip_item = new PowerStripListItem(power_strip->configuration());
-        power_strip_item->setMaximumWidth(visible_width);
-        power_strip_item->set_state(power_strip->is_connected());
-
-        auto *item = new QListWidgetItem();
-        const auto &size_hint = power_strip_item->sizeHint();
-        item->setSizeHint(QSize(std::max(size_hint.width(), visible_width), size_hint.height()));
-
-        m_ui->power_strip_list_widget->addItem(item);
-        m_ui->power_strip_list_widget->setItemWidget(item, power_strip_item);
-    }
-
-    if (power_strips.empty())
+    /**
+     * @brief an empty list must keep its placeholder; check the widget state rather than the
+     * possibly stale placeholder pointer found at the start of the update.
+     */
+    if (power_strips.empty() && list_widget->count() == 0)
     {
         auto *empty_item = new EmptyPowerStripListItem();
         empty_item->setMaximumHeight(visible_height);
@@ -261,25 +378,34 @@ auto MainWindow::onNewPowerStripReceived(
         item->setFlags(Qt::NoItemFlags);
         item->setSizeHint(QSize(visible_width, visible_height));
 
-        m_ui->power_strip_list_widget->addItem(item);
-        m_ui->power_strip_list_widget->setItemWidget(item, empty_item);
+        list_widget->addItem(item);
+        list_widget->setItemWidget(item, empty_item);
     }
 
     redraw_device_list();
+
+    list_widget->setUpdatesEnabled(true);
 }
 
 auto MainWindow::onNewStatusReceived(sokketter::enumeration_status status) -> void
 {
     SPDLOG_LOGGER_INFO(
         APP_LOGGER, "New status: {}.", sokketter::enumeration_status_to_string(status));
+
     switch (status)
     {
-    case sokketter::enumeration_status::ENUMERATING_USB_DEVICES: {
-        m_ui->power_strip_enumeration_status_label->setText("Enumerating USB devices...");
+    case sokketter::enumeration_status::LOOKING_FOR_NEW_USB_DEVICES: {
+        m_ui->power_strip_enumeration_status_label->setText("Looking for the new USB devices...");
         break;
     }
-    case sokketter::enumeration_status::ENUMERATING_ETHERNET_DEVICES: {
-        m_ui->power_strip_enumeration_status_label->setText("Enumerating Ethernet devices...");
+    case sokketter::enumeration_status::LOOKING_FOR_KNOWN_ETHERNET_DEVICES: {
+        m_ui->power_strip_enumeration_status_label->setText(
+            "Looking for the known Ethernet devices...");
+        break;
+    }
+    case sokketter::enumeration_status::LOOKING_FOR_NEW_ETHERNET_DEVICES: {
+        m_ui->power_strip_enumeration_status_label->setText(
+            "Looking for the new Ethernet devices...");
         break;
     }
     case sokketter::enumeration_status::UNKNOWN:
@@ -322,17 +448,9 @@ auto MainWindow::redraw_device_list() -> void
     {
         SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Re-drawing power strip list.");
 
-        int visible_width = m_ui->power_strip_list_widget->width();
-        if (m_ui->power_strip_list_widget->verticalScrollBar()->isVisible())
-        {
-            visible_width -= (m_ui->power_strip_list_widget->verticalScrollBar()->width() * 2);
-        }
-
-        int visible_height = m_ui->power_strip_list_widget->height();
-        if (m_ui->power_strip_list_widget->horizontalScrollBar()->isVisible())
-        {
-            visible_height -= (m_ui->power_strip_list_widget->horizontalScrollBar()->height() * 2);
-        }
+        const auto visible_size = visible_area(m_ui->power_strip_list_widget);
+        const int visible_width = visible_size.width();
+        const int visible_height = visible_size.height();
 
         const int &item_count = m_ui->power_strip_list_widget->count();
         for (int item_index = 0; item_index < item_count; ++item_index)
@@ -383,7 +501,7 @@ auto MainWindow::repopulate_socket_list() -> void
         m_ui->socket_list_widget->takeItem(0);
     }
 
-    const auto &device_configuration = m_device->configuration();
+    const auto device_configuration = m_device->configuration();
 
     m_ui->socket_list_device_label->setText(
         "of " + QString::fromStdString(device_configuration.name));
@@ -494,11 +612,7 @@ auto MainWindow::redraw_socket_list() -> void
     {
         SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Re-drawing socket list.");
 
-        int visible_width = m_ui->socket_list_widget->width();
-        if (m_ui->socket_list_widget->verticalScrollBar()->isVisible())
-        {
-            visible_width -= (m_ui->socket_list_widget->verticalScrollBar()->width() * 2);
-        }
+        const int visible_width = visible_area(m_ui->socket_list_widget).width();
 
         const int &item_count = m_ui->socket_list_widget->count();
         for (int item_index = 0; item_index < item_count; ++item_index)
@@ -582,11 +696,7 @@ auto MainWindow::redraw_configure_list() -> void
     {
         SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Re-drawing device configuration list.");
 
-        int visible_width = m_ui->configure_socket_list_widget->width();
-        if (m_ui->configure_socket_list_widget->verticalScrollBar()->isVisible())
-        {
-            visible_width -= (m_ui->configure_socket_list_widget->verticalScrollBar()->width() * 2);
-        }
+        const int visible_width = visible_area(m_ui->configure_socket_list_widget).width();
 
         const int &item_count = m_ui->configure_socket_list_widget->count();
         for (int item_index = 0; item_index < item_count; ++item_index)
@@ -728,31 +838,49 @@ auto MainWindow::populate_authentication_page(PowerStripListItem *item) -> void
         auto device = m_device;
 
         /**
-         * @brief authentication is blocking device I/O, so it runs on the worker pool to keep
-         * the UI responsive.
+         * @brief apply the new configuration (including the new password) on the GUI thread
+         * before the hand-off, so that the pool thread never mutates the shared device object,
+         * whose state a concurrent enumeration also touches. try_authenticate() reads the
+         * stored password from the device state, hence the configuration must be in place
+         * before the worker starts.
          */
-        run_device_task(
-            [device, _configuration, item]() -> bool {
-                device->configure(_configuration);
+        device->configure(_configuration);
 
-                if (!device->try_authenticate())
+        /**
+         * @brief authentication is blocking device I/O, so it runs on the worker pool to keep
+         * the UI responsive. The worker performs device I/O only; the shared device object is
+         * never mutated from the pool thread.
+         */
+        /**
+         * @brief the in-place list refresh deletes and recreates row widgets on identity
+         * mismatch, so guard the list item and only mutate it on the GUI thread, from the
+         * completion callback.
+         */
+        QPointer<PowerStripListItem> guard(item);
+
+        run_device_task(
+            [device]() -> bool {
+                return device->try_authenticate();
+            },
+            [this, device, guard, _configuration](bool success) {
+                if (success)
                 {
-                    return false;
+                    /**
+                     * Save the configuration and password in case of success, on the GUI thread
+                     * (the underlying database write is itself mutex-guarded).
+                     */
+                    device->save();
                 }
 
-                /**
-                 * Save the configuration and password in case of success.
-                 */
-                device->save();
+                if (success && guard != nullptr)
+                {
+                    /**
+                     * Inject new configuration into existing power strip list item; the widget
+                     * may have been dropped by a concurrent list refresh, hence the guard check.
+                     */
+                    guard->configure(_configuration);
+                }
 
-                /**
-                 * Inject new configuration into existing power strip list item.
-                 */
-                item->configure(_configuration);
-
-                return true;
-            },
-            [this, device](bool success) {
                 if (m_device != device)
                 {
                     return;
@@ -1035,7 +1163,13 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
         m_device = nullptr;
     }
 
-    auto *list_item = dynamic_cast<PowerStripListItem *>(widget);
+    auto *list_item = qobject_cast<PowerStripListItem *>(widget);
+    if (list_item == nullptr)
+    {
+        SPDLOG_LOGGER_ERROR(APP_LOGGER, "Clicked item is not a power strip item!");
+        return;
+    }
+
     const auto &configuration = list_item->configuration();
 
     m_device = sokketter::device(configuration.id);
@@ -1064,11 +1198,19 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
     }
     else
     {
+        auto device = m_device;
+
+        /**
+         * @brief the in-place list refresh deletes and recreates row widgets on identity
+         * mismatch, so the list item may be gone by the time the completion callback runs.
+         */
+        QPointer<PowerStripListItem> guard(list_item);
+
         run_device_task(
-            [this]() -> bool {
-                if (m_device->is_connected())
+            [device]() -> bool {
+                if (device->is_connected())
                 {
-                    return m_device->try_authenticate();
+                    return device->try_authenticate();
                 }
 
                 /**
@@ -1079,7 +1221,18 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
                  */
                 return true;
             },
-            [this, list_item](bool state) {
+            [this, device, guard](bool state) {
+                /**
+                 * The user may have selected (or deleted) another device while the task was
+                 * running; a completion for a stale selection must not navigate pages or
+                 * repopulate lists for the current one.
+                 */
+                if (m_device != device)
+                {
+                    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Ignoring stale device-click completion.");
+                    return;
+                }
+
                 if (state)
                 {
                     const int &index = m_ui->stackedWidget->indexOf(m_ui->socket_list_page);
@@ -1091,12 +1244,16 @@ auto MainWindow::onPowerStripClicked(QListWidgetItem *item) -> void
                 {
                     /**
                      * Redirect to authentication page in case if previously stored credentials
-                     * stopped working.
+                     * stopped working. The clicked row may have been dropped by a concurrent
+                     * list refresh, hence the guard check.
                      */
                     SPDLOG_LOGGER_DEBUG(APP_LOGGER,
                         "Device authentication failed. Redirecting to authentication page.");
 
-                    populate_authentication_page(list_item);
+                    if (guard != nullptr)
+                    {
+                        populate_authentication_page(guard);
+                    }
 
                     const int &index =
                         m_ui->stackedWidget->indexOf(m_ui->device_authentication_page);
@@ -1110,7 +1267,7 @@ auto MainWindow::onSocketClicked(QListWidgetItem *item) -> void
 {
     SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Detected onSocketClicked() signal.");
 
-    auto socket_item = dynamic_cast<SocketListItem *>(m_ui->socket_list_widget->itemWidget(item));
+    auto *socket_item = qobject_cast<SocketListItem *>(m_ui->socket_list_widget->itemWidget(item));
     if (socket_item == nullptr)
     {
         SPDLOG_LOGGER_ERROR(APP_LOGGER, "Failed getting a socket from the UI list!");
@@ -1255,8 +1412,6 @@ auto MainWindow::event(QEvent *event) -> bool
 
 auto MainWindow::resizeEvent(QResizeEvent *event) -> void
 {
-    SPDLOG_LOGGER_DEBUG(APP_LOGGER, "Detected resize event.");
-
     QMainWindow::resizeEvent(event);
 
     redraw_device_list();

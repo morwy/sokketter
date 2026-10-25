@@ -75,7 +75,7 @@ auto power_strip_factory::targeted_probes(
             continue;
         }
 
-        const auto &configuration = device->configuration();
+        const auto configuration = device->configuration();
 
         if (!is_allowed(configuration.type))
         {

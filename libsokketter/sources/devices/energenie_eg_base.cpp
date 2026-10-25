@@ -69,7 +69,10 @@ auto energenie_eg_base::initialize(std::shared_ptr<kommpot::device_communication
         }
     }
 
-    m_serial_number = serial_number.str();
+    {
+        const std::lock_guard<std::mutex> state_lock(m_state_mutex);
+        m_serial_number = serial_number.str();
+    }
 
     return true;
 }

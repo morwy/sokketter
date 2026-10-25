@@ -18,6 +18,7 @@
 #include <spdlog/spdlog.h>
 #include <sstream>
 #include <third-party/kommpot/libkommpot/include/libkommpot.h>
+#include <thread>
 
 #ifdef _WIN32
 #    include <spdlog/sinks/msvc_sink.h>
@@ -74,7 +75,10 @@ auto sokketter_core::initialize() -> bool
         return false;
     }
 
-    m_database.load();
+    {
+        const std::lock_guard<std::mutex> database_lock(m_database_mutex);
+        m_database.load();
+    }
 
     return true;
 }
@@ -89,15 +93,44 @@ auto sokketter_core::deinitialize() -> bool
         }
     }
 
-    m_database.save();
+    /**
+     * @brief the search thread may be blocked waiting for a kommpot completion that can no
+     * longer arrive while the core is being torn down, and a queued pending request must not run
+     * anymore, so the wait is cut short (and the pending request discarded) before joining the
+     * thread. The flag is set and the wait notified under the completion mutex, so that the
+     * search thread cannot miss the wake-up in the window between evaluating its wait predicate
+     * and actually going to sleep.
+     */
+    {
+        const std::lock_guard<std::mutex> completion_lock(m_enumeration_completion_mutex);
+        m_search_thread_abort = true;
+        m_enumeration_completion_cv.notify_all();
+    }
+
+    {
+        const std::lock_guard<std::mutex> lock(m_search_thread_mutex);
+        if (m_search_thread.joinable())
+        {
+            m_search_thread.join();
+        }
+    }
+
+    m_search_thread_abort = false;
 
     /**
-     * @brief wait for any ongoing device enumeration to finish before releasing the devices,
-     *        otherwise the enumeration thread accesses the database while it is being cleared.
+     * @brief wait for any ongoing device enumeration to finish before persisting or releasing
+     *        the database, otherwise the enumeration thread mutates the database while it is
+     *        being saved or cleared, and devices reported after the save would be lost.
      */
     kommpot::deinitialize();
 
-    m_database.release_resources();
+    {
+        const std::lock_guard<std::mutex> database_lock(m_database_mutex);
+
+        m_database.save();
+
+        m_database.release_resources();
+    }
 
     deinitialize_logger();
 
@@ -123,22 +156,51 @@ auto sokketter_core::set_settings(const sokketter::settings_structure &settings)
     }
 }
 
-auto sokketter_core::database() -> database_storage &
+auto sokketter_core::save_database() -> void
 {
-    return m_database;
+    const std::lock_guard<std::mutex> database_lock(m_database_mutex);
+
+    m_database.save();
+}
+
+auto sokketter_core::remove_device(std::shared_ptr<sokketter::power_strip> &device) -> void
+{
+    const std::lock_guard<std::mutex> database_lock(m_database_mutex);
+
+    m_database.remove(device);
+    m_database.save();
 }
 
 auto sokketter_core::devices(const sokketter::device_filter &filter)
-    -> const std::vector<std::shared_ptr<sokketter::power_strip>> &
+    -> std::vector<std::shared_ptr<sokketter::power_strip>>
 {
-    auto &database = sokketter_core::instance().database().get();
+    /**
+     * @brief mirrors the asynchronous path's snapshot discipline: the (blocking, multi-second)
+     * network I/O runs without the database mutex held, and the mutex is taken only to read a
+     * snapshot, to integrate discovered devices, and to copy the result out. Concurrent
+     * lookups therefore never queue behind a network operation, and the database mutex is never
+     * nested above a device's communication mutex while the network I/O runs.
+     */
+    std::vector<std::shared_ptr<sokketter::power_strip>> database_snapshot;
+    {
+        const std::lock_guard<std::mutex> database_lock(m_database_mutex);
+        database_snapshot = m_database.get();
+    }
 
     /**
      * @brief stored network devices answer first at their last known addresses, the regular
-     * search below is performed regardless so that new devices are always discovered.
+     * search below is performed regardless so that new devices are always discovered. The
+     * probe runs against the snapshot: it only calls into the shared device objects, without
+     * touching the database vector itself.
      */
     std::set<std::string> handled_ids;
-    bool needs_save = probe_last_known_addresses(filter, handled_ids);
+    const bool probe_changed = probe_last_known_addresses(database_snapshot, filter, handled_ids);
+
+    if (probe_changed)
+    {
+        const std::lock_guard<std::mutex> database_lock(m_database_mutex);
+        m_database.save();
+    }
 
     const auto supported_devices = power_strip_factory::supported_devices(filter);
 
@@ -148,132 +210,313 @@ auto sokketter_core::devices(const sokketter::device_filter &filter)
 
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Connected devices: {}.", communications.size());
 
-    for (auto &communication : communications)
+    /**
+     * @brief the blocking device I/O (creating the fresh devices and reattaching the stored
+     * ones) runs without the database mutex held, exactly like on the asynchronous path; the
+     * mutex below covers only appending the new devices to the database and persisting it.
+     */
+    std::vector<std::shared_ptr<sokketter::power_strip>> new_devices;
+    bool integration_changed = create_and_reattach(communications, handled_ids, new_devices);
+
+    std::vector<std::shared_ptr<sokketter::power_strip>> result;
     {
-        auto device = power_strip_factory::create(communication);
-        if (!device)
+        const std::lock_guard<std::mutex> database_lock(m_database_mutex);
+
+        auto &database = m_database.get();
+
+        for (auto &device : new_devices)
         {
-            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "Failed creating the device!");
-            continue;
+            integration_changed |= add_new_device(std::move(device));
         }
 
-        auto baseDevice = dynamic_cast<sokketter::power_strip *>(device.get());
-        if (baseDevice == nullptr)
+        if (integration_changed)
         {
-            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
-                "{}: failed casting the device to power_strip_base!", device->to_string());
-            continue;
+            m_database.save();
         }
 
         /**
-         * @brief look for saved configuration of this device.
+         * Sort the database by device name.
          */
-        auto it = std::find_if(database.begin(), database.end(),
-            [&](const std::shared_ptr<sokketter::power_strip> &item) {
-                return item->configuration().id == device->configuration().id;
+        std::sort(database.begin(), database.end(),
+            [](const std::shared_ptr<sokketter::power_strip> &a,
+                const std::shared_ptr<sokketter::power_strip> &b) {
+                return a->configuration().name < b->configuration().name;
             });
 
-        if (it != database.end())
-        {
-            /**
-             * @brief the device already answered at its last known address and was reattached
-             * there, the communication found by the search is skipped.
-             */
-            if (handled_ids.count(device->configuration().id) != 0)
-            {
-                continue;
-            }
+        SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Created devices: {}.", database.size());
 
-            auto baseIt = dynamic_cast<power_strip_base *>(it->get());
-            if (baseIt == nullptr)
-            {
-                SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
-                    "{}: failed casting the device to power_strip_base!", device->to_string());
-                continue;
-            }
-
-            const auto saved_address = (*it)->configuration().address;
-
-            baseIt->initialize(communication);
-
-            /**
-             * @brief the device was found at a different address than the last known one, persist
-             * the new address as the new last known address.
-             */
-            if ((*it)->configuration().address != saved_address)
-            {
-                needs_save = true;
-
-                SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
-                    "{}: device moved to a new address '{}', the last known address is updated.",
-                    (*it)->to_string(), (*it)->configuration().address);
-            }
-
-            SPDLOG_LOGGER_DEBUG(
-                SOKKETTER_LOGGER, "{}: device was successfully created!", device->to_string());
-        }
-        else
-        {
-            /**
-             * @brief append basic device configuration if it is a first time.
-             */
-            SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
-                "{}: new device was successfully created and added to database!",
-                device->to_string());
-
-            database.push_back(device);
-
-            sokketter_core::instance().database().save();
-        }
+        result = database;
     }
 
-    if (needs_save)
-    {
-        sokketter_core::instance().database().save();
-    }
-
-    /**
-     * Sort the database by device name.
-     */
-    std::sort(database.begin(), database.end(),
-        [](const std::shared_ptr<sokketter::power_strip> &a,
-            const std::shared_ptr<sokketter::power_strip> &b) {
-            return a->configuration().name < b->configuration().name;
-        });
-
-    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Created devices: {}.", database.size());
-
-    return database;
+    return result;
 }
 
 auto sokketter_core::devices(const sokketter::device_filter &filter,
     sokketter::device_callback device_cb, sokketter::status_callback status_cb) -> void
 {
-    m_device_cb = device_cb;
-    m_status_cb = status_cb;
-
     /**
-     * @brief stored network devices answer first at their last known addresses, the regular
-     * search is performed regardless so that new devices are always discovered.
+     * @brief the enumeration (probing last known addresses and the kommpot search) performs
+     * blocking network I/O with multi-second timeouts, so it runs on a dedicated worker thread;
+     * the calling thread (e.g. the Qt GUI thread) returns immediately and results are delivered
+     * through the callbacks bound to this request (the run context), so that a new request can
+     * never overwrite (or race with) the callbacks of a run that is still delivering results.
+     *
+     * The thread mutex is the outer lock here: no lock is ever held while acquiring
+     * m_search_thread_mutex except m_search_thread_mutex itself, which keeps a consistent lock
+     * order with the search thread (which only ever acquires the pending mutex) and
+     * deinitialize (which only ever acquires the thread mutex).
      */
-    m_handled_ids.clear();
-    if (probe_last_known_addresses(filter, m_handled_ids))
+    const std::lock_guard<std::mutex> thread_lock(m_search_thread_mutex);
+
+    std::shared_ptr<enumeration_request> request;
     {
-        m_database.save();
+        const std::lock_guard<std::mutex> pending_lock(m_enumeration_pending_mutex);
+
+        request = std::make_shared<enumeration_request>(
+            enumeration_request{filter, std::move(device_cb), std::move(status_cb)});
+
+        /**
+         * @brief a request arriving while an enumeration is running is not dropped but stored as
+         * the pending one: the latest request wins and is executed exactly once when the running
+         * enumeration completes, so that a refresh request is never silently swallowed. The
+         * search thread checks for a pending request under this same mutex right before clearing
+         * m_search_running, so that a request arriving just as an enumeration ends cannot slip
+         * through the running check and get lost.
+         */
+        if (m_search_running)
+        {
+            SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
+                "Device enumeration is already running, the request will be executed as soon as "
+                "the ongoing enumeration completes.");
+
+            m_pending_request = request;
+            m_has_pending_request = true;
+            return;
+        }
+
+        m_search_running = true;
     }
 
-    const auto supported_devices = power_strip_factory::supported_devices(filter);
+    /**
+     * @brief the previous enumeration has already finished (m_search_running was false), so
+     * joining its thread is immediate and only reclaims the thread object.
+     */
+    if (m_search_thread.joinable())
+    {
+        m_search_thread.join();
+    }
 
-    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Supported devices: {}.", supported_devices.size());
+    m_search_thread = std::thread([this, request]() {
+        std::shared_ptr<const enumeration_request> current_request = request;
 
-    kommpot::devices(supported_devices,
-        std::bind(&sokketter_core::new_devices_received, this, std::placeholders::_1),
-        std::bind(&sokketter_core::new_status_received, this, std::placeholders::_1));
+        /**
+         * @brief the search thread stays alive for the whole enumeration (run_enumeration
+         * returns only once kommpot reported completion) and executes a request that was queued
+         * meanwhile next, so that exactly one enumeration runs at a time and no request is ever
+         * lost or silently swallowed.
+         */
+        while (true)
+        {
+            run_enumeration(current_request);
+
+            const std::lock_guard<std::mutex> pending_lock(m_enumeration_pending_mutex);
+
+            /**
+             * @brief during shutdown the pending request is discarded, since its callbacks must
+             * not be called anymore while the core is being torn down.
+             */
+            if (!m_search_thread_abort && m_has_pending_request)
+            {
+                current_request = std::move(m_pending_request);
+                m_has_pending_request = false;
+                continue;
+            }
+
+            m_has_pending_request = false;
+            m_search_running = false;
+            break;
+        }
+    });
+}
+
+auto sokketter_core::run_enumeration(
+    const std::shared_ptr<const enumeration_request> &request) -> void
+{
+    using underlying = std::underlying_type_t<sokketter::power_strip_type>;
+
+    /**
+     * @brief identities re-attached via their last known address during this enumeration run;
+     * kept per-run and shared with the kommpot callbacks, so that the set of a new run cannot
+     * race with the one of a previous run whose kommpot enumeration thread may still be
+     * executing.
+     */
+    const auto handled_ids = std::make_shared<std::set<std::string>>();
+
+    if ((static_cast<underlying>(request->filter.included_types) &
+            static_cast<underlying>(sokketter::power_strip_type::USB_DEVICES)) != 0)
+    {
+        if (request->status_cb)
+        {
+            request->status_cb(sokketter::enumeration_status::LOOKING_FOR_NEW_USB_DEVICES);
+        }
+
+        sokketter::device_filter usb_filter;
+        usb_filter.included_types = sokketter::power_strip_type::USB_DEVICES;
+
+        const auto supported_usb_devices = power_strip_factory::supported_devices(usb_filter);
+
+        const auto usb_devices = kommpot::devices(supported_usb_devices);
+        new_devices_received(usb_devices, *handled_ids, request->device_cb);
+
+        /**
+         * @brief the blocking kommpot USB search reports no statuses of its own, and the
+         * asynchronous ethernet path below is the only place that forwards a COMPLETED status.
+         * When the ethernet enumeration is not part of this request, report the completion here,
+         * so that the caller stops showing the enumeration feedback instead of staying stuck on
+         * the USB lookup status.
+         */
+        const bool ethernet_enumeration_follows =
+            (static_cast<underlying>(request->filter.included_types) &
+                static_cast<underlying>(sokketter::power_strip_type::ETHERNET_DEVICES)) != 0;
+
+        if (!ethernet_enumeration_follows && request->status_cb)
+        {
+            request->status_cb(sokketter::enumeration_status::COMPLETED);
+        }
+    }
+
+    if ((static_cast<underlying>(request->filter.included_types) &
+            static_cast<underlying>(sokketter::power_strip_type::ETHERNET_DEVICES)) != 0)
+    {
+        /**
+         * @brief report that the enumeration started before the (potentially slow) last known
+         * address probe, so that the caller shows feedback immediately instead of only after
+         * the probe times out. This is sokketter's own status (not a kommpot one), emitted
+         * directly on the run's status callback.
+         */
+        if (request->status_cb)
+        {
+            request->status_cb(sokketter::enumeration_status::LOOKING_FOR_KNOWN_ETHERNET_DEVICES);
+        }
+
+        sokketter::device_filter eth_filter;
+        eth_filter.included_types = sokketter::power_strip_type::ETHERNET_DEVICES;
+
+        /**
+         * @brief stored network devices answer first at their last known addresses, the regular
+         * search is performed regardless so that new devices are always discovered.
+         *
+         * The probe performs blocking network I/O and does not modify the structure of the
+         * database, so it runs against a snapshot of the stored device pointers taken under
+         * the database mutex, instead of holding that mutex across the (multi-second) probe
+         * and stalling concurrent lookups.
+         */
+        std::vector<std::shared_ptr<sokketter::power_strip>> database_snapshot;
+        {
+            const std::lock_guard<std::mutex> database_lock(m_database_mutex);
+            database_snapshot = m_database.get();
+        }
+
+        if (probe_last_known_addresses(database_snapshot, eth_filter, *handled_ids))
+        {
+            const std::lock_guard<std::mutex> database_lock(m_database_mutex);
+            m_database.save();
+        }
+
+        /**
+         * @brief stored devices that answered at their last known addresses are already
+         * reattached and connected; report the updated database immediately so that they show
+         * as online right away, instead of only after the (slow) full ethernet search below
+         * completes. The callback receives a copy of the device pointers taken under the
+         * mutex, so that it never observes or references a vector that is being mutated.
+         */
+        if (request->device_cb)
+        {
+            std::vector<std::shared_ptr<sokketter::power_strip>> devices_copy;
+            {
+                const std::lock_guard<std::mutex> database_lock(m_database_mutex);
+                devices_copy = m_database.get();
+            }
+
+            request->device_cb(devices_copy);
+        }
+
+        const auto supported_eth_devices = power_strip_factory::supported_devices(eth_filter);
+
+        SPDLOG_LOGGER_DEBUG(
+            SOKKETTER_LOGGER, "Supported devices: {}.", supported_eth_devices.size());
+
+        if (request->status_cb)
+        {
+            request->status_cb(sokketter::enumeration_status::LOOKING_FOR_NEW_ETHERNET_DEVICES);
+        }
+
+        /**
+         * @brief claim a new completion generation before scheduling the asynchronous kommpot
+         * search, so that the wait below observes the completion of this run only, and a late
+         * completion from a previous run whose wait was abandoned cannot complete this run early.
+         */
+        uint64_t generation = 0;
+        {
+            const std::lock_guard<std::mutex> completion_lock(m_enumeration_completion_mutex);
+            generation = ++m_enumeration_generation;
+        }
+
+        kommpot::devices(supported_eth_devices,
+            [this, request, handled_ids](auto communications) {
+                new_devices_received(communications, *handled_ids, request->device_cb);
+            },
+            [this, request, generation](kommpot::enumeration_status status) {
+                new_status_received(status, request->status_cb);
+
+                if (status == kommpot::enumeration_status::COMPLETED)
+                {
+                    const std::lock_guard<std::mutex> completion_lock(
+                        m_enumeration_completion_mutex);
+                    m_completed_generation = generation;
+                    m_enumeration_completion_cv.notify_all();
+                }
+            });
+
+        /**
+         * @brief the kommpot enumeration is asynchronous and runs on kommpot's own thread, so
+         * the search thread waits here for its completion instead of ending early:
+         * m_search_running then covers the whole enumeration from start to finish.
+         *
+         * This also prevents a rerun of a debounced request from being swallowed by kommpot's
+         * overlapping-enumeration guard: kommpot only releases that guard a few instructions
+         * after delivering the completion status, while re-entering this point takes orders of
+         * magnitude longer (the completion wait wake-up plus the last known address probe, which
+         * always runs before the next kommpot search).
+         *
+         * The wait is cut short when the core is being deinitialized, since the communication
+         * layers are about to be torn down and the completion might never arrive. The timeout is
+         * a last-resort safety net, so that an enumeration that never reports completion cannot
+         * wedge every later one. A wait abandoned by the timeout leaves the kommpot enumeration
+         * running as a zombie whose eventual completion carries the abandoned run's generation
+         * and is therefore inert for any later run; the zombie's device callback still
+         * integrates safely under the database mutex.
+         */
+        std::unique_lock<std::mutex> completion_lock(m_enumeration_completion_mutex);
+        if (!m_enumeration_completion_cv.wait_for(completion_lock,
+                std::chrono::milliseconds(ENUMERATION_COMPLETION_TIMEOUT_MSECS),
+                [this, generation]() {
+                    return m_completed_generation == generation || m_search_thread_abort;
+                }))
+        {
+            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+                "The kommpot enumeration did not report completion within {} ms, abandoning the "
+                "wait.",
+                ENUMERATION_COMPLETION_TIMEOUT_MSECS);
+        }
+    }
 }
 
 auto sokketter_core::device(const size_t &index) -> std::shared_ptr<sokketter::power_strip>
 {
-    auto &database = sokketter_core::instance().database().get();
+    const std::lock_guard<std::mutex> database_lock(m_database_mutex);
+
+    auto &database = m_database.get();
 
     if (index >= database.size())
     {
@@ -290,7 +533,9 @@ auto sokketter_core::device(const size_t &index) -> std::shared_ptr<sokketter::p
 auto sokketter_core::device(const std::string &serial_number)
     -> std::shared_ptr<sokketter::power_strip>
 {
-    auto &database = sokketter_core::instance().database().get();
+    const std::lock_guard<std::mutex> database_lock(m_database_mutex);
+
+    auto &database = m_database.get();
 
     for (const auto &device : database)
     {
@@ -667,15 +912,81 @@ auto sokketter_core::logging_callback(const kommpot::callback_response_structure
 }
 
 auto sokketter_core::new_devices_received(
-    std::vector<std::shared_ptr<kommpot::device_communication>> communications) -> void
+    std::vector<std::shared_ptr<kommpot::device_communication>> communications,
+    const std::set<std::string> &handled_ids,
+    const sokketter::device_callback &device_cb) -> void
 {
-    auto &database = sokketter_core::instance().database().get();
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Connected devices: {}.", communications.size());
+
+    /**
+     * @brief this runs on an enumeration thread and performs the blocking device I/O (creating
+     * the fresh devices and reattaching the stored ones) before the database mutex is taken, so
+     * that concurrent lookups never queue behind it; the integration under the mutex below only
+     * appends the new devices, sorts the database and saves it at most once per run.
+     */
+    std::vector<std::shared_ptr<sokketter::power_strip>> new_devices;
+    bool needs_save = create_and_reattach(communications, handled_ids, new_devices);
+
+    std::vector<std::shared_ptr<sokketter::power_strip>> devices_copy;
+    {
+        const std::lock_guard<std::mutex> database_lock(m_database_mutex);
+
+        auto &database = m_database.get();
+
+        for (auto &device : new_devices)
+        {
+            needs_save |= add_new_device(std::move(device));
+        }
+
+        /**
+         * Sort the database by device name.
+         */
+        std::sort(database.begin(), database.end(),
+            [](const std::shared_ptr<sokketter::power_strip> &a,
+                const std::shared_ptr<sokketter::power_strip> &b) {
+                return a->configuration().name < b->configuration().name;
+            });
+
+        if (needs_save)
+        {
+            m_database.save();
+        }
+
+        SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Created devices: {}.", database.size());
+
+        devices_copy = database;
+    }
+
+    /**
+     * @brief the callback is invoked without the database mutex held, with its own copy of
+     * the device pointers, so that a callback that queries the database itself cannot
+     * deadlock on it.
+     */
+    if (device_cb)
+    {
+        device_cb(devices_copy);
+    }
+}
+
+auto sokketter_core::create_and_reattach(
+    const std::vector<std::shared_ptr<kommpot::device_communication>> &communications,
+    const std::set<std::string> &handled_ids,
+    std::vector<std::shared_ptr<sokketter::power_strip>> &new_devices) -> bool
+{
+    /**
+     * @brief the stored devices are reached through a snapshot taken briefly under the database
+     * mutex, so that the blocking device I/O below never runs while that mutex is held; the
+     * probe path (probe_last_known_addresses) reattaches stored devices the same way.
+     */
+    std::vector<std::shared_ptr<sokketter::power_strip>> database_snapshot;
+    {
+        const std::lock_guard<std::mutex> database_lock(m_database_mutex);
+        database_snapshot = m_database.get();
+    }
 
     bool needs_save = false;
 
-    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Connected devices: {}.", communications.size());
-
-    for (auto &communication : communications)
+    for (const auto &communication : communications)
     {
         auto device = power_strip_factory::create(communication);
         if (!device)
@@ -684,108 +995,107 @@ auto sokketter_core::new_devices_received(
             continue;
         }
 
-        auto baseDevice = dynamic_cast<sokketter::power_strip *>(device.get());
-        if (baseDevice == nullptr)
-        {
-            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
-                "{}: failed casting the device to power_strip_base!", device->to_string());
-            continue;
-        }
-
         /**
          * @brief look for saved configuration of this device.
          */
-        auto it = std::find_if(database.begin(), database.end(),
+        auto it = std::find_if(database_snapshot.begin(), database_snapshot.end(),
             [&](const std::shared_ptr<sokketter::power_strip> &item) {
                 return item && item->configuration().id == device->configuration().id;
             });
 
-        if (it != database.end())
+        if (it == database_snapshot.end())
         {
             /**
-             * @brief the device already answered at its last known address and was reattached
-             * there, the communication found by the search is skipped.
+             * @brief a first-time device: hand it to the caller, which integrates it under the
+             * database mutex and persists it at most once per run.
              */
-            if (m_handled_ids.count(device->configuration().id) != 0)
-            {
-                continue;
-            }
-
-            auto baseIt = dynamic_cast<power_strip_base *>(it->get());
-            if (baseIt == nullptr)
-            {
-                SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
-                    "{}: failed casting the device to power_strip_base!", device->to_string());
-                continue;
-            }
-
-            const auto saved_address = (*it)->configuration().address;
-
-            baseIt->initialize(communication);
-
-            /**
-             * @brief the device was found at a different address than the last known one, persist
-             * the new address as the new last known address.
-             */
-            if ((*it)->configuration().address != saved_address)
-            {
-                needs_save = true;
-
-                SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
-                    "{}: device moved to a new address '{}', the last known address is updated.",
-                    (*it)->to_string(), (*it)->configuration().address);
-            }
-
             SPDLOG_LOGGER_DEBUG(
-                SOKKETTER_LOGGER, "{}: device was successfully created!", device->to_string());
+                SOKKETTER_LOGGER, "{}: new device was successfully created!", device->to_string());
+
+            new_devices.push_back(std::move(device));
+            continue;
         }
-        else
+
+        /**
+         * @brief the device already answered at its last known address and was reattached there,
+         * the communication found by the search is skipped.
+         */
+        if (handled_ids.count(device->configuration().id) != 0)
         {
-            /**
-             * @brief append basic device configuration if it is a first time.
-             */
+            continue;
+        }
+
+        /**
+         * @brief the check is done right before initialize() so its error message matches the
+         * operation it guards; the stored device may be a type that is not a power_strip_base.
+         */
+        auto *baseIt = dynamic_cast<power_strip_base *>(it->get());
+        if (baseIt == nullptr)
+        {
+            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER,
+                "{}: failed casting the stored device to power_strip_base!", device->to_string());
+            continue;
+        }
+
+        const auto saved_address = (*it)->configuration().address;
+
+        baseIt->initialize(communication);
+
+        /**
+         * @brief the device was found at a different address than the last known one, the caller
+         * persists the new address as the new last known address.
+         */
+        if ((*it)->configuration().address != saved_address)
+        {
+            needs_save = true;
+
             SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
-                "{}: new device was successfully created and added to database!",
-                device->to_string());
-
-            database.push_back(device);
-
-            sokketter_core::instance().database().save();
+                "{}: device moved to a new address '{}', the last known address is updated.",
+                (*it)->to_string(), (*it)->configuration().address);
         }
     }
 
-    /**
-     * Sort the database by device name.
-     */
-    std::sort(database.begin(), database.end(),
-        [](const std::shared_ptr<sokketter::power_strip> &a,
-            const std::shared_ptr<sokketter::power_strip> &b) {
-            return a->configuration().name < b->configuration().name;
-        });
+    return needs_save;
+}
 
-    if (needs_save)
+auto sokketter_core::add_new_device(std::shared_ptr<sokketter::power_strip> device) -> bool
+{
+    /**
+     * @brief expects m_database_mutex to already be held by the caller (the synchronous devices()
+     * run or new_devices_received). The identity is checked against the live database rather
+     * than against the snapshot create_and_reattach worked with, so that a device integrated in
+     * the meantime by another enumeration run is not duplicated.
+     */
+    auto &database = m_database.get();
+
+    auto it = std::find_if(database.begin(), database.end(),
+        [&](const std::shared_ptr<sokketter::power_strip> &item) {
+            return item && item->configuration().id == device->configuration().id;
+        });
+    if (it != database.end())
     {
-        sokketter_core::instance().database().save();
+        return false;
     }
 
-    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Created devices: {}.", database.size());
+    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
+        "{}: new device was successfully added to database!", device->to_string());
 
-    m_device_cb(database);
+    database.push_back(std::move(device));
+    return true;
 }
 
 auto sokketter_core::probe_last_known_addresses(
+    const std::vector<std::shared_ptr<sokketter::power_strip>> &database,
     const sokketter::device_filter &filter, std::set<std::string> &handled_ids) -> bool
 {
-    auto &database = m_database.get();
-
     const auto probes = power_strip_factory::targeted_probes(database, filter);
     if (probes.empty())
     {
         return false;
     }
 
-    SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Probing {} last known address(es) of stored devices.",
-        probes.size());
+    SPDLOG_LOGGER_DEBUG(
+        SOKKETTER_LOGGER, "Probing {} last known address(es) of stored devices.", probes.size());
 
     std::vector<kommpot::device_identification> identifications;
     identifications.reserve(probes.size());
@@ -824,8 +1134,8 @@ auto sokketter_core::probe_last_known_addresses(
          * address may differ in form from the stored one, and the device may have moved to an
          * address that belongs to another stored device's probe.
          */
-        auto it = std::find_if(probes.begin(), probes.end(),
-            [&](const power_strip_factory::targeted_probe &probe) {
+        auto it = std::find_if(
+            probes.begin(), probes.end(), [&](const power_strip_factory::targeted_probe &probe) {
                 return probe.device && probe.device->configuration().id == identification->mac;
             });
         if (it == probes.end())
@@ -870,8 +1180,8 @@ auto sokketter_core::probe_last_known_addresses(
         const auto saved_address = device->configuration().address;
         if (!base_device->initialize(communication))
         {
-            SPDLOG_LOGGER_ERROR(SOKKETTER_LOGGER, "{}: failed reattaching the communication!",
-                device->to_string());
+            SPDLOG_LOGGER_ERROR(
+                SOKKETTER_LOGGER, "{}: failed reattaching the communication!", device->to_string());
             continue;
         }
 
@@ -909,7 +1219,7 @@ auto sokketter_core::probe_last_known_addresses(
             continue;
         }
 
-        const auto &id = probe.device->configuration().id;
+        const auto id = probe.device->configuration().id;
         if (handled_ids.count(id) != 0 || taken_over_ids.count(id) != 0)
         {
             continue;
@@ -924,7 +1234,35 @@ auto sokketter_core::probe_last_known_addresses(
     return needs_save;
 }
 
-auto sokketter_core::new_status_received(kommpot::enumeration_status status) -> void
+auto sokketter_core::new_status_received(
+    kommpot::enumeration_status status, const sokketter::status_callback &status_cb) -> void
 {
-    m_status_cb(static_cast<sokketter::enumeration_status>(status));
+    if (status_cb == nullptr)
+    {
+        return;
+    }
+
+    switch (status)
+    {
+    case kommpot::enumeration_status::ENUMERATING_USB_DEVICES: {
+        status_cb(sokketter::enumeration_status::LOOKING_FOR_NEW_USB_DEVICES);
+        break;
+    }
+    case kommpot::enumeration_status::ENUMERATING_ETHERNET_DEVICES: {
+        status_cb(sokketter::enumeration_status::LOOKING_FOR_NEW_ETHERNET_DEVICES);
+        break;
+    }
+    case kommpot::enumeration_status::ENUMERATING_HTTP_DEVICES: {
+        status_cb(sokketter::enumeration_status::LOOKING_FOR_NEW_ETHERNET_DEVICES);
+        break;
+    }
+    case kommpot::enumeration_status::COMPLETED: {
+        status_cb(sokketter::enumeration_status::COMPLETED);
+        break;
+    }
+    case kommpot::enumeration_status::UNKNOWN:
+    default: {
+        break;
+    }
+    }
 }
