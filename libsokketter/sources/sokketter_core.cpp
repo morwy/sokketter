@@ -1164,7 +1164,12 @@ auto sokketter_core::detach_unhandled_devices(
          */
         if (device->is_connected())
         {
-            SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER,
+            /**
+             * @brief going offline after a manual disconnect is the normal outcome of an
+             * enumeration, not an anomaly, so it is logged at debug level to keep the default
+             * logs clean.
+             */
+            SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
                 "{}: the device did not answer during the enumeration, detaching it; it stays "
                 "in the database and will be probed and searched for again.",
                 device->to_string());
