@@ -335,7 +335,7 @@ auto sokketter::power_strip::socket(const size_t &index)
     return std::nullopt;
 }
 
-auto sokketter::power_strip::to_string() const noexcept -> std::string
+auto sokketter::power_strip::to_string() const -> std::string
 {
     const auto configuration = this->configuration();
 

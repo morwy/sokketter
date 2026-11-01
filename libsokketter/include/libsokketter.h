@@ -461,10 +461,12 @@ namespace sokketter {
             -> const std::optional<std::reference_wrapper<socket>>;
 
         /**
-         * @brief creates string based on power strip parameters
-         * @return string in format "POWER_STRIP_NAME (TYPE, ID, available at ADDRESS)".
+         * @brief creates string based on power strip parameters and the live connection state.
+         * @return string in format "POWER_STRIP_NAME (TYPE, ID, available at ADDRESS)" while
+         * connected, or "POWER_STRIP_NAME (TYPE, ID, disconnected)" when not connected or when
+         * no address is known.
          */
-        [[nodiscard]] auto to_string() const noexcept -> std::string;
+        [[nodiscard]] auto to_string() const -> std::string;
 
     protected:
         power_strip_configuration m_configuration;
