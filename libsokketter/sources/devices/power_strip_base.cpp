@@ -78,6 +78,13 @@ auto power_strip_base::detach() -> void
      * @brief drops the communication so that the device reports itself as disconnected until the
      * next enumeration reattaches it. The identity and the last known address are kept, so that
      * a stored network device is probed at that address again and searched for when it comes back.
+     *
+     * @attention RAII: this is a deliberate drop, not a forgotten close(). Dropping the last
+     * shared_ptr reference runs kommpot's device_communication destructor, which (for every
+     * concrete subclass - ethernet, http, libusb and libftdi) calls close() before releasing the
+     * session, so no socket/TLS handle leaks. The session must NOT be closed explicitly here:
+     * the destructor does it, and doing it under m_state_mutex would hold that lock across
+     * blocking I/O.
      */
     m_communication = nullptr;
 }
