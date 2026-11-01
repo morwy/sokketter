@@ -436,11 +436,13 @@ auto sokketter_core::run_enumeration(
          * @brief stored network devices that did not answer at their last known addresses during
          * the (fast) probe are detached right away, so that a device disconnected manually shows
          * as offline immediately instead of only after the (slow) full ethernet search completes.
-         * A device that merely moved to a new address is detached too for now, and the full
-         * search below reattaches it and the final callback reports it back online.
+         * A device that answered the probe - even at a different or normalized address - is
+         * already recorded in @ref handled_ids by @ref probe_last_known_addresses and is left
+         * connected; a device that did not answer is detached here and, if it comes back online,
+         * reattached by the full search below.
          *
-         * @brief the callback receives a copy of the device pointers taken under the same lock as
-         * the detach sweep, so that the detached state is guaranteed to be visible in the database
+         * @attention the callback receives a copy of the device pointers taken under the same lock
+         * as the detach sweep, so that the detached state is guaranteed to be visible in the
          * snapshot delivered to the caller.
          */
         if (request->device_cb)
