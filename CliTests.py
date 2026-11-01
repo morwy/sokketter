@@ -3,8 +3,8 @@
 """
 CLI test runner script for the project.
 
-Runs the sokketter-cli test cases defined in TESTING.md (section A: parsing cases CLI-PRS-01..27
-that require no hardware, and hardware cases CLI-HW-01..28 that require real devices) directly
+Runs the sokketter-cli test cases defined in TESTING.md (section A: parsing cases CLI-PRS-01..28
+that require no hardware, and hardware cases CLI-HW-01..30 that require real devices) directly
 against a built sokketter-cli binary. Every case is executed as a scripted invocation with
 exit-code, stdout and stderr assertions; cases that are inherently physical (plugging in a
 specific device, unplugging mid-session) prompt the operator for a Pass/Fail/Skip verdict.
@@ -1108,6 +1108,19 @@ class CliTests:
             "mixed-case LOGIN with underscore aliases",
         )
 
+    def test_cli_prs_28(self) -> None:
+        """
+        @brief CLI-PRS-28: logout on a fake device that advertises PASSWORD_ONLY but stores no
+        credentials. Exit 1; logout reports the no-op as a failure.
+        """
+        result = self.__run_cli(
+            ["logout", "-i", "1"], test_device_number=1, device_password="lan-password"
+        )
+        self.__expect_exit(result, 1, "logout without stored credentials")
+        self.__expect_in(
+            result.stderr, "No credentials are stored for this device.", "logout no-op"
+        )
+
     def run_no_hardware_phase(self) -> None:
         """
         Run the whole no-hardware (parsing) phase.
@@ -1152,6 +1165,7 @@ class CliTests:
             ("CLI-PRS-25", self.test_cli_prs_25),
             ("CLI-PRS-26", self.test_cli_prs_26),
             ("CLI-PRS-27", self.test_cli_prs_27),
+            ("CLI-PRS-28", self.test_cli_prs_28),
         ]:
             self.__run_case(case_id, test_function)
 
@@ -1684,6 +1698,81 @@ class CliTests:
             powered_off_attempt, 1, "power on after logout (credentials removed)"
         )
 
+    def test_cli_hw_29(self) -> None:
+        """
+        @brief CLI-HW-29: login against an Ethernet device that is powered off / unplugged. The
+        enumeration reports it as disconnected; login must fail with the reachability diagnostic
+        instead of a credential rejection. Blocked when no disconnected Ethernet device can be
+        produced (connectivity cannot be forced by the runner).
+        """
+        disconnected = [
+            device for device in self.lan_inventory if device["address"] == "disconnected"
+        ]
+        if not disconnected:
+            raise CaseBlocked(
+                "no disconnected Ethernet device (power off / unplug one to run this case)"
+            )
+
+        device = disconnected[0]
+        password = self.__lan_password_or_block()
+
+        result = self.__run_cli(
+            [
+                "login",
+                "-n",
+                device["id"],
+                "-t",
+                "ethernet",
+                "--authentication-type",
+                "PASSWORD",
+                "--password",
+                password,
+            ],
+            test_device_number=None,
+        )
+        if "No device was found for serial" in result.stderr:
+            raise CaseBlocked("the disconnected Ethernet device is not addressable by serial")
+
+        self.__expect_exit(result, 1, "login on unreachable LAN device")
+        self.__expect_in(
+            result.stderr,
+            "Device is not reachable (is it connected?).",
+            "login on unreachable LAN device",
+        )
+
+    def test_cli_hw_30(self) -> None:
+        """
+        @brief CLI-HW-30: double logout after a successful login. The first logout removes the
+        credentials; the second reports the no-op as a failure. devices.json keeps the password
+        empty after both runs.
+        """
+        device = self.__require_first_lan()
+        password = self.__lan_password_or_block()
+
+        self.__lan_login(device["id"], password)
+
+        first_logout = self.__run_cli(
+            ["logout", "-n", device["id"], "-t", "ethernet"], test_device_number=None
+        )
+        self.__expect_exit(first_logout, 0, "first logout on authenticated LAN device")
+        self.__expect_in(first_logout.stdout, "Stored credentials removed.", "first logout")
+
+        second_logout = self.__run_cli(
+            ["logout", "-n", device["id"], "-t", "ethernet"], test_device_number=None
+        )
+        self.__expect_exit(second_logout, 1, "second logout reports a no-op as a failure")
+        self.__expect_in(
+            second_logout.stderr, "No credentials are stored for this device.", "second logout"
+        )
+
+        database = self.__read_device_database()
+        stored = [entry for entry in database if entry.get("id") == device["id"]]
+        if any(entry.get("authentication-password") for entry in stored):
+            raise CaseFailure(
+                "the password of LAN device "
+                f"{device['id']} is still persisted after the double logout"
+            )
+
     def run_hardware_phase(self) -> None:
         """
         Run the whole hardware phase.
@@ -1735,6 +1824,8 @@ class CliTests:
             ("CLI-HW-26", self.test_cli_hw_26),
             ("CLI-HW-27", self.test_cli_hw_27),
             ("CLI-HW-28", self.test_cli_hw_28),
+            ("CLI-HW-29", self.test_cli_hw_29),
+            ("CLI-HW-30", self.test_cli_hw_30),
         ]:
             self.__run_case(case_id, test_function)
 
