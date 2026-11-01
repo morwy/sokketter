@@ -1700,21 +1700,14 @@ class CliTests:
 
     def test_cli_hw_29(self) -> None:
         """
-        @brief CLI-HW-29: login against an Ethernet device that is powered off / unplugged. The
-        enumeration reports it as disconnected; login must fail with the reachability diagnostic
-        instead of a credential rejection. Blocked when no disconnected Ethernet device can be
-        produced (connectivity cannot be forced by the runner).
+        @brief CLI-HW-29: login against an Ethernet device that is powered off. The persisted
+        database entry keeps it addressable by serial; login must fail with the reachability
+        diagnostic instead of a credential rejection. Blocked when the operator cannot take
+        the device offline.
         """
-        disconnected = [
-            device for device in self.lan_inventory if device["address"] == "disconnected"
-        ]
-        if not disconnected:
-            raise CaseBlocked(
-                "no disconnected Ethernet device (power off / unplug one to run this case)"
-            )
-
-        device = disconnected[0]
+        device = self.__require_first_lan()
         password = self.__lan_password_or_block()
+        self.__prompt("POWER OFF the Ethernet device before this login attempt.")
 
         result = self.__run_cli(
             [
@@ -1731,7 +1724,7 @@ class CliTests:
             test_device_number=None,
         )
         if "No device was found for serial" in result.stderr:
-            raise CaseBlocked("the disconnected Ethernet device is not addressable by serial")
+            raise CaseBlocked("the offline Ethernet device is not addressable by serial")
 
         self.__expect_exit(result, 1, "login on unreachable LAN device")
         self.__expect_in(
@@ -1739,6 +1732,8 @@ class CliTests:
             "Device is not reachable (is it connected?).",
             "login on unreachable LAN device",
         )
+
+        self.__prompt("POWER the Ethernet device back ON before continuing.")
 
     def test_cli_hw_30(self) -> None:
         """
