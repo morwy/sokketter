@@ -433,21 +433,35 @@ auto sokketter_core::run_enumeration(
         }
 
         /**
-         * @brief stored devices that answered at their last known addresses are already
-         * reattached and connected; report the updated database immediately so that they show
-         * as online right away, instead of only after the (slow) full ethernet search below
-         * completes. The callback receives a copy of the device pointers taken under the
-         * mutex, so that it never observes or references a vector that is being mutated.
+         * @brief stored network devices that did not answer at their last known addresses during
+         * the (fast) probe are detached right away, so that a device disconnected manually shows
+         * as offline immediately instead of only after the (slow) full ethernet search completes.
+         * A device that merely moved to a new address is detached too for now, and the full
+         * search below reattaches it and the final callback reports it back online.
+         *
+         * @brief the callback receives a copy of the device pointers taken under the same lock as
+         * the detach sweep, so that the detached state is guaranteed to be visible in the database
+         * snapshot delivered to the caller.
          */
         if (request->device_cb)
         {
             std::vector<std::shared_ptr<sokketter::power_strip>> devices_copy;
             {
                 const std::lock_guard<std::mutex> database_lock(m_database_mutex);
+                detach_unhandled_devices(sokketter::power_strip_type::ETHERNET_DEVICES,
+                    *handled_ids);
                 devices_copy = m_database.get();
             }
 
             request->device_cb(devices_copy);
+        }
+        else
+        {
+            {
+                const std::lock_guard<std::mutex> database_lock(m_database_mutex);
+                detach_unhandled_devices(sokketter::power_strip_type::ETHERNET_DEVICES,
+                    *handled_ids);
+            }
         }
 
         const auto supported_eth_devices = power_strip_factory::supported_devices(eth_filter);
