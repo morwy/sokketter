@@ -38,6 +38,16 @@ auto sokketter::set_settings(const settings_structure &settings) noexcept -> voi
 
 auto sokketter::storage_path() -> std::filesystem::path
 {
+    /**
+     * @attention lets tests point the whole storage (device database, logs, update-check cache)
+     * at a temporary directory instead of the platform-specific location.
+     */
+    const char *test_path = std::getenv("LIBSOKKETTER_TEST_STORAGE_PATH");
+    if (test_path != nullptr && test_path[0] != '\0')
+    {
+        return test_path;
+    }
+
 #ifdef _WIN32
     return "C:\\ProgramData\\sokketter";
 #elif __APPLE__

@@ -1,5 +1,6 @@
 #include "test_device.h"
 
+#include <cstdlib>
 #include <map>
 #include <sokketter_core.h>
 #include <spdlog/spdlog.h>
@@ -24,6 +25,22 @@ test_device::test_device(const size_t &index)
     basic_configuration.type = sokketter::power_strip_type::TEST_DEVICE;
     basic_configuration.name = "Test Device " + std::to_string(m_index);
     basic_configuration.address = "TEST_ADDRESS_" + std::to_string(m_index);
+
+    /**
+     * @attention opt-in fake authentication: when LIBSOKKETTER_TEST_DEVICE_PASSWORD is set, the
+     * device advertises PASSWORD_ONLY authentication and try_authenticate() validates against the
+     * variable's value, so authentication flows (login/logout) can be exercised without real
+     * hardware. The variable is re-read on every construction, letting tests change the behavior
+     * between enumerations within one process.
+     */
+    const char *authentication_password = std::getenv("LIBSOKKETTER_TEST_DEVICE_PASSWORD");
+    if (authentication_password != nullptr)
+    {
+        m_authentication_password = authentication_password;
+        basic_configuration.authentication.type =
+            sokketter::power_strip_authentication_type::PASSWORD_ONLY;
+    }
+
     configure(basic_configuration);
 
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "{}: construction.", this->to_string());
@@ -76,6 +93,21 @@ auto test_device::configure(const sokketter::power_strip_configuration &configur
     const std::lock_guard<std::mutex> state_lock(m_state_mutex);
 
     m_configuration = configuration;
+}
+
+auto test_device::try_authenticate() -> bool
+{
+    /**
+     * @attention without an opt-in password the fake device behaves like the library base class
+     * and refuses authentication; with one, the password stored in the configuration must match
+     * the value the environment variable provided at construction.
+     */
+    if (!m_authentication_password)
+    {
+        return false;
+    }
+
+    return configuration().authentication.password == *m_authentication_password;
 }
 
 auto test_device::socket(const size_t &index)

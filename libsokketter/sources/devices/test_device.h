@@ -21,6 +21,8 @@ public:
 
     auto configure(const sokketter::power_strip_configuration &configuration) -> void override;
 
+    [[nodiscard]] auto try_authenticate() -> bool override;
+
     [[nodiscard]] auto socket(const size_t &index)
         -> const std::optional<std::reference_wrapper<sokketter::socket>> override;
 
@@ -31,6 +33,14 @@ private:
      * devices as well (they are read from the UI worker pool while the user may edit them).
      */
     mutable std::mutex m_state_mutex;
+
+    /**
+     * @brief opt-in fake authentication password read from the LIBSOKKETTER_TEST_DEVICE_PASSWORD
+     * environment variable at construction. When the variable is set, the device is configured
+     * with PASSWORD_ONLY authentication and try_authenticate() compares the configured password
+     * against the variable's value, letting authentication flows be exercised without hardware.
+     */
+    std::optional<std::string> m_authentication_password;
 
     size_t m_index = 0;
     std::string m_serial_number = "TEST_SERIAL_NUMBER";

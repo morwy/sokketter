@@ -8,6 +8,42 @@
 
 #include <cli11/CLI11.hpp>
 
+/**
+ * @brief the authentication types accepted by the login subcommand, as the single source of truth
+ * for the parser diagnostics, the help text, and the tests.
+ */
+inline auto supported_authentication_type_names() -> std::string
+{
+    return "PASSWORD";
+}
+
+/**
+ * @brief the "Available types are: ..." sentence appended by the authentication-type diagnostics,
+ * derived from supported_authentication_type_names().
+ */
+inline auto authentication_type_error_suffix() -> std::string
+{
+    return " Available types are: " + supported_authentication_type_names() + ".";
+}
+
+/**
+ * @brief the device types accepted by --include-device-types, as the single source of truth
+ * for the parser diagnostics, the help text, and the tests.
+ */
+inline auto supported_device_type_names() -> std::string
+{
+    return "USB, ETHERNET, LAN";
+}
+
+/**
+ * @brief the "Available types are: ..." sentence appended by the device-type diagnostics,
+ * derived from supported_device_type_names().
+ */
+inline auto device_type_error_suffix() -> std::string
+{
+    return " Available types are: " + supported_device_type_names() + ".";
+}
+
 class overridden_help_formatter : public CLI::Formatter
 {
 public:
@@ -34,8 +70,9 @@ public:
 
         help << "  Options:" << std::endl;
         help << "    -t,--include-device-types TEXT\tStates which device types to include in the "
-                "list, replacing the default USB-only selection. Comma-separated, case-insensitive. "
-                "Available types are: USB, ETHERNET, LAN. Unknown types are rejected. Default: USB. "
+                "list, replacing the default USB-only selection. Comma-separated, case-insensitive."
+             << device_type_error_suffix()
+             << " Unknown types are rejected. Default: USB. "
                 "Test devices are always listed regardless of the selected types."
              << std::endl;
         help << std::endl;
@@ -68,9 +105,53 @@ public:
              << std::endl;
         help << "    -t,--include-device-types TEXT\tRestricts which device types the device "
                 "selection may address, the same way as for the list subcommand. Comma-separated, "
-                "case-insensitive. Available types are: USB, ETHERNET, LAN. Unknown types are "
-                "rejected. Default: USB. Test devices are always addressable regardless of the "
-                "selected types."
+                "case-insensitive."
+             << device_type_error_suffix()
+             << " Unknown types are rejected. Default: USB. Test devices are always addressable "
+                "regardless of the selected types."
+             << std::endl;
+        help << std::endl;
+
+        help << "  login\t\tAuthenticates the device with the provided credentials and stores "
+                "them on success."
+             << std::endl;
+        help << std::endl;
+
+        help << "  Options:" << std::endl;
+        help << "    -i,--device-at-index UINT\t\tSame as for the power subcommand. "
+                "Excludes --device-with-serial option."
+             << std::endl;
+        help << "    -n,--device-with-serial TEXT\tSame as for the power subcommand. "
+                "Excludes --device-at-index option."
+             << std::endl;
+        help << "    -t,--include-device-types TEXT\tSame as for the power subcommand."
+             << std::endl;
+        help << "    --authentication-type TEXT\tStates the authentication mechanism of the "
+                "device. Case-insensitive. Available types are: "
+             << supported_authentication_type_names() << ". Required."
+             << std::endl;
+        help << "    --password TEXT\t\tThe password used for the PASSWORD authentication "
+                "type. Required for that type."
+             << std::endl;
+        help << "    Note:\t\t\t\tA password given on the command line is visible to other "
+                "local users via the process list and is kept in the shell history. Prefer a "
+                "dedicated mechanism where that matters."
+             << std::endl;
+        help << std::endl;
+
+        help << "  logout\t\tRemoves the stored authentication credentials of the "
+                "device."
+             << std::endl;
+        help << std::endl;
+
+        help << "  Options:" << std::endl;
+        help << "    -i,--device-at-index UINT\t\tSame as for the power subcommand. "
+                "Excludes --device-with-serial option."
+             << std::endl;
+        help << "    -n,--device-with-serial TEXT\tSame as for the power subcommand. "
+                "Excludes --device-at-index option."
+             << std::endl;
+        help << "    -t,--include-device-types TEXT\tSame as for the power subcommand."
              << std::endl;
         help << std::endl;
 
@@ -83,6 +164,10 @@ public:
         help << "  sokketter-cli list" << std::endl;
         help << "  sokketter-cli power on --sockets 1 --device-at-index 1" << std::endl;
         help << "  sokketter-cli power status --device-with-serial 01:02:03:04:05" << std::endl;
+        help << "  sokketter-cli login --device-at-index 1 --authentication-type PASSWORD "
+                "--password secret"
+             << std::endl;
+        help << "  sokketter-cli logout --device-with-serial 01:02:03:04:05" << std::endl;
         help << std::endl;
 
         return help.str();

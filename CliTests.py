@@ -3,8 +3,8 @@
 """
 CLI test runner script for the project.
 
-Runs the sokketter-cli test cases defined in TESTING.md (section A: parsing cases CLI-PRS-01..20
-that require no hardware, and hardware cases CLI-HW-01..26 that require real devices) directly
+Runs the sokketter-cli test cases defined in TESTING.md (section A: parsing cases CLI-PRS-01..28
+that require no hardware, and hardware cases CLI-HW-01..30 that require real devices) directly
 against a built sokketter-cli binary. Every case is executed as a scripted invocation with
 exit-code, stdout and stderr assertions; cases that are inherently physical (plugging in a
 specific device, unplugging mid-session) prompt the operator for a Pass/Fail/Skip verdict.
@@ -130,7 +130,11 @@ class CliTests:
     """
 
     def __init__(
-        self, folder: str, storage_path: str | None, assume_hardware: bool
+        self,
+        folder: str,
+        storage_path: str | None,
+        assume_hardware: bool,
+        lan_password: str | None = None,
     ) -> None:
         """
         Initialize the CLI tests class.
@@ -149,6 +153,10 @@ class CliTests:
 
         self.assume_hardware = assume_hardware
         self.logger.info("Assume hardware ready: %s", self.assume_hardware)
+
+        self.lan_password = lan_password
+        if lan_password is None:
+            self.logger.info("LAN device password: not provided via --lan-password.")
 
         self.results: list[tuple[str, TestStatus]] = []
         self.phase_results: dict[str, list[tuple[str, TestStatus]]] = {}
@@ -218,32 +226,71 @@ class CliTests:
         else:
             self.logger.info("No device database file to remove: %s", database_file)
 
-    def __build_environment(self, test_device_number: int | None) -> dict[str, str]:
+    def __build_environment(
+        self, test_device_number: int | None, device_password: str | None = None
+    ) -> dict[str, str]:
         """
         Build the subprocess environment for a CLI invocation.
 
         @attention test_device_number forces an artificial device bus via the
         LIBSOKKETTER_TEST_DEVICE_NUMBER variable; passing None leaves real devices enumerable.
+        @attention device_password opts the fake devices into authentication by setting
+        LIBSOKKETTER_TEST_DEVICE_PASSWORD (they then advertise PASSWORD_ONLY and validate against
+        that value); it is meaningless for real devices and therefore only applied together with
+        a forced device bus.
         @attention the update check is always skipped to keep the run deterministic and offline.
         """
         environment = os.environ.copy()
         environment["LIBSOKKETTER_TEST_SKIP_UPDATE_CHECK"] = "1"
 
+        if self.storage_path:
+            environment["LIBSOKKETTER_TEST_STORAGE_PATH"] = self.storage_path
+        else:
+            environment.pop("LIBSOKKETTER_TEST_STORAGE_PATH", None)
+
         if test_device_number is not None:
             environment["LIBSOKKETTER_TEST_DEVICE_NUMBER"] = str(test_device_number)
+
+            if device_password is not None:
+                environment["LIBSOKKETTER_TEST_DEVICE_PASSWORD"] = device_password
+            else:
+                environment.pop("LIBSOKKETTER_TEST_DEVICE_PASSWORD", None)
         else:
             environment.pop("LIBSOKKETTER_TEST_DEVICE_NUMBER", None)
+            environment.pop("LIBSOKKETTER_TEST_DEVICE_PASSWORD", None)
 
         return environment
 
+    @staticmethod
+    def __mask_passwords(tokens: list[str]) -> list[str]:
+        """
+        @brief redact the value of --password so a customer-supplied device password never lands
+        in stdout or cli_tests.log (AGENTS.md: never log secrets); covers both the space-separated
+        and the --password=<value> form CLI11 accepts, and keeps the command readable.
+        """
+        masked: list[str] = []
+        previous = ""
+        for token in tokens:
+            if previous == "--password":
+                masked.append("<redacted>")
+            elif token.startswith("--password="):
+                masked.append("--password=<redacted>")
+            else:
+                masked.append(token)
+            previous = token
+        return masked
+
     def __run_cli(
-        self, arguments: list[str], test_device_number: int | None = 0
+        self,
+        arguments: list[str],
+        test_device_number: int | None = 0,
+        device_password: str | None = None,
     ) -> subprocess.CompletedProcess:
         """
         Run the sokketter-cli binary with the given arguments and capture its output.
         """
         command = [self.cli_binary] + arguments
-        self.logger.info("Executing: %s", " ".join(command))
+        self.logger.info("Executing: %s", " ".join(self.__mask_passwords(command)))
 
         result = subprocess.run(
             command,
@@ -252,7 +299,7 @@ class CliTests:
             text=True,
             encoding="utf-8",
             errors="replace",
-            env=self.__build_environment(test_device_number),
+            env=self.__build_environment(test_device_number, device_password),
             timeout=120,
         )
 
@@ -451,18 +498,82 @@ class CliTests:
 
             print("Please answer P, F or S.")
 
+    def __lan_password_or_block(self) -> str:
+        """
+        Return the EG-PMxx-LAN device password supplied via --lan-password, or ask the operator
+        for it interactively; an empty/absent answer blocks the calling case (a password-authenticated
+        device cannot be operated without one).
+        """
+        if self.lan_password:
+            return self.lan_password
+
+        try:
+            entered = input("\nPassword of the EG-PMxx-LAN device: ").strip()
+        except EOFError:
+            entered = ""
+
+        if not entered:
+            raise CaseBlocked(
+                "no LAN device password available (provide it with --lan-password)"
+            )
+
+        return entered
+
+    def __lan_login(self, serial: str, password: str) -> subprocess.CompletedProcess:
+        """
+        Run the CLI login subcommand against the LAN device addressed by serial, restricted to the
+        ethernet bus with -t, and assert it reported a successful authentication.
+        """
+        result = self.__run_cli(
+            [
+                "login",
+                "-n",
+                serial,
+                "-t",
+                "ethernet",
+                "--authentication-type",
+                "PASSWORD",
+                "--password",
+                password,
+            ],
+            test_device_number=None,
+        )
+        self.__expect_exit(result, 0, f"LAN login {serial}")
+        self.__expect_in(result.stdout, "Authenticated successfully.", f"LAN login {serial}")
+        return result
+
     def __run_socket_cycle(
-        self, serial: str, expected_socket_count: int, cli_type: str | None = None
+        self,
+        serial: str,
+        expected_socket_count: int,
+        cli_type: str | None = None,
+        login_password: str | None = None,
     ) -> list[str]:
         """
         Drive the addressed power strip fully through the CLI: switch all of its sockets off,
         then all on, then toggle each of its sockets 1..N individually. When cli_type is given
         (e.g. "ethernet" for an EG-PMxx-LAN device), every command is restricted to that device
-        type via -t. Returns the list of problems observed (empty when every operation matched
-        the expectations).
+        type via -t. When login_password is given, the device is first authenticated with the
+        login subcommand so the library persists the credentials every subsequent power operation
+        relies on. Returns the list of problems observed (empty when every operation matched the
+        expectations).
         """
         problems: list[str] = []
         selection = ["-t", cli_type] if cli_type else []
+
+        if login_password is not None:
+            login = self.__run_cli(
+                ["login", "-n", serial]
+                + selection
+                + ["--authentication-type", "PASSWORD", "--password", login_password],
+                test_device_number=None,
+            )
+            if login.returncode != 0 or "Authenticated successfully." not in login.stdout:
+                problems.append(
+                    f"'login -n {serial}': exit {login.returncode}; "
+                    f"stderr: {login.stderr!r}"
+                )
+                return problems
 
         status = self.__run_cli(
             ["power", "status", "-n", serial] + selection, test_device_number=None
@@ -571,6 +682,7 @@ class CliTests:
         expected_sockets: int,
         inventory: list[dict[str, str]] | None = None,
         cli_type: str | None = None,
+        login_password: str | None = None,
     ) -> TestStatus:
         """
         Automate a device-specific TESTING.md case: locate the detected device of device_type in
@@ -578,7 +690,9 @@ class CliTests:
         device), address it by serial, switch all of its sockets off then on, toggle each of its
         sockets 1..N, and finally ask the operator to confirm that the correct power strip
         reacted and that every operation visibly worked. The case fails only after operator
-        feedback (or is skipped when no feedback can be obtained).
+        feedback (or is skipped when no feedback can be obtained). When login_password is given,
+        the device is authenticated before the cycle (password-authenticated network devices need
+        it for the power operations to succeed).
         """
         source = inventory if inventory is not None else self.usb_inventory
         devices = [device for device in source if device["type"] == device_type]
@@ -593,7 +707,9 @@ class CliTests:
             "individually. Observe which power strip physically reacts."
         )
 
-        problems = self.__run_socket_cycle(device["id"], expected_sockets, cli_type)
+        problems = self.__run_socket_cycle(
+            device["id"], expected_sockets, cli_type, login_password
+        )
         verdict = self.__device_cycle_verdict(case_id, device, problems)
 
         if verdict == "fail":
@@ -660,7 +776,7 @@ class CliTests:
 
         if self.last_result is not None:
             detail += (
-                f"\nreceived: {self.cli_binary} {' '.join(self.last_command)}"
+                f"\nreceived: {self.cli_binary} {' '.join(self.__mask_passwords(self.last_command))}"
                 f"\n  exit code: {self.last_result.returncode}"
                 f"\n  stdout:\n{self.last_result.stdout}"
                 f"  stderr:\n{self.last_result.stderr}"
@@ -916,6 +1032,114 @@ class CliTests:
                 " ".join(arguments),
             )
 
+    def test_cli_prs_21(self) -> None:
+        """
+        @brief CLI-PRS-21: "login" / "logout" with no device flag. Exit 1; the device option group
+        is required on both authentication subcommands.
+        """
+        for arguments in (
+            ["login", "--authentication-type", "PASSWORD", "--password", "x"],
+            ["logout"],
+        ):
+            result = self.__run_cli(arguments)
+            self.__expect_exit(result, 1, " ".join(arguments))
+            self.__expect_in(
+                result.stderr,
+                "[Option Group: --device-at-index or --device-with-serial] is required.",
+                " ".join(arguments),
+            )
+
+    def test_cli_prs_22(self) -> None:
+        """
+        @brief CLI-PRS-22: "login -i 1 --password x" (no --authentication-type). Exit 1; the
+        authentication type is required and the password alone is not enough.
+        """
+        result = self.__run_cli(["login", "-i", "1", "--password", "secret"])
+        self.__expect_exit(result, 1, "login without authentication type")
+        self.__expect_in(
+            result.stderr,
+            "The --authentication-type option is required for the login subcommand.",
+            "login without authentication type",
+        )
+
+    def test_cli_prs_23(self) -> None:
+        """
+        @brief CLI-PRS-23: "login -i 1 --authentication-type certificate --password x". Exit 1;
+        unknown authentication type.
+        """
+        result = self.__run_cli(
+            ["login", "-i", "1", "--authentication-type", "certificate", "--password", "secret"]
+        )
+        self.__expect_exit(result, 1, "unknown authentication type")
+        self.__expect_in(
+            result.stderr,
+            "Unknown authentication type: certificate. Available types are: PASSWORD.",
+            "unknown authentication type",
+        )
+
+    def test_cli_prs_24(self) -> None:
+        """
+        @brief CLI-PRS-24: "login -i 1 --authentication-type PASSWORD" (no --password). Exit 1;
+        the PASSWORD type needs a password.
+        """
+        result = self.__run_cli(["login", "-i", "1", "--authentication-type", "PASSWORD"])
+        self.__expect_exit(result, 1, "PASSWORD type without password")
+        self.__expect_in(
+            result.stderr,
+            "The --password option is required for the PASSWORD authentication type.",
+            "PASSWORD type without password",
+        )
+
+    def test_cli_prs_25(self) -> None:
+        """
+        @brief CLI-PRS-25: "login --help" / "logout --help". Exit 0; help takes precedence and
+        prints non-empty text.
+        """
+        for subcommand in ("login", "logout"):
+            result = self.__run_cli([subcommand, "--help"])
+            self.__expect_exit(result, 0, f"{subcommand} --help")
+            if not result.stdout.strip():
+                raise CaseFailure(f"{subcommand} --help: help output is empty")
+
+    def test_cli_prs_26(self) -> None:
+        """
+        @brief CLI-PRS-26: "logout -i 1 --password x". Exit 1; logout has no authentication
+        options, so --password is rejected as unexpected.
+        """
+        result = self.__run_cli(["logout", "-i", "1", "--password", "secret"])
+        self.__expect_exit(result, 1, "logout rejects --password")
+        self.__expect_in(
+            result.stderr, "--password", "logout rejects --password"
+        )
+
+    def test_cli_prs_27(self) -> None:
+        """
+        @brief CLI-PRS-27: mixed-case LOGIN plus underscored/spelling-variant option aliases parse
+        identically to the canonical forms (reach the same validation error).
+        """
+        result = self.__run_cli(
+            ["LOGIN", "--device_at_index", "1", "--authentication_type", "certificate"]
+        )
+        self.__expect_exit(result, 1, "mixed-case LOGIN with underscore aliases")
+        self.__expect_in(
+            result.stderr,
+            "Unknown authentication type: certificate.",
+            "mixed-case LOGIN with underscore aliases",
+        )
+
+    def test_cli_prs_28(self) -> None:
+        """
+        @brief CLI-PRS-28: logout on a fake device that advertises PASSWORD_ONLY but stores no
+        credentials. Exit 1; logout reports the no-op as a failure.
+        """
+        result = self.__run_cli(
+            ["logout", "-i", "1"], test_device_number=1, device_password="lan-password"
+        )
+        self.__expect_exit(result, 1, "logout without stored credentials")
+        self.__expect_in(
+            result.stderr, "No credentials are stored for this device.", "logout no-op"
+        )
+
     def run_no_hardware_phase(self) -> None:
         """
         Run the whole no-hardware (parsing) phase.
@@ -953,6 +1177,14 @@ class CliTests:
             ("CLI-PRS-18", self.test_cli_prs_18),
             ("CLI-PRS-19", self.test_cli_prs_19),
             ("CLI-PRS-20", self.test_cli_prs_20),
+            ("CLI-PRS-21", self.test_cli_prs_21),
+            ("CLI-PRS-22", self.test_cli_prs_22),
+            ("CLI-PRS-23", self.test_cli_prs_23),
+            ("CLI-PRS-24", self.test_cli_prs_24),
+            ("CLI-PRS-25", self.test_cli_prs_25),
+            ("CLI-PRS-26", self.test_cli_prs_26),
+            ("CLI-PRS-27", self.test_cli_prs_27),
+            ("CLI-PRS-28", self.test_cli_prs_28),
         ]:
             self.__run_case(case_id, test_function)
 
@@ -1335,10 +1567,18 @@ class CliTests:
         @brief CLI-HW-23: Energenie EG-PMxx-LAN: the detected LAN device is addressed by serial,
         then driven automatically (all 4 sockets off, all on, each of the 4 sockets toggled
         individually with status read-back under an ethernet selection) and the operator confirms
-        the correct strip physically reacted.
+        the correct strip physically reacted. The device is first authenticated with the login
+        subcommand so the power operations use the stored credentials; a password-authenticated
+        device cannot be operated at all without a password, so the case is blocked when none was
+        supplied via --lan-password and none is entered interactively.
         """
         return self.__device_socket_cycle_case(
-            "CLI-HW-23", LAN_TYPE, 4, inventory=self.lan_inventory, cli_type="ethernet"
+            "CLI-HW-23",
+            LAN_TYPE,
+            4,
+            inventory=self.lan_inventory,
+            cli_type="ethernet",
+            login_password=self.__lan_password_or_block(),
         )
 
     def test_cli_hw_24(self) -> TestStatus:
@@ -1357,6 +1597,205 @@ class CliTests:
             "On Linux, run without the udev rules installed, then install them and run again.",
             "Without rules: access denied / enumeration fails; with rules: works.",
         )
+
+    def test_cli_hw_25(self) -> None:
+        """
+        @brief CLI-HW-25: EG-PMxx-LAN login with a wrong password. Exit 1; stderr
+        "Authentication failed: the device rejected the credentials."; the wrong password is never
+        persisted to devices.json.
+        """
+        device = self.__require_first_lan()
+        password = self.__lan_password_or_block()
+
+        result = self.__run_cli(
+            [
+                "login",
+                "-n",
+                device["id"],
+                "-t",
+                "ethernet",
+                "--authentication-type",
+                "PASSWORD",
+                "--password",
+                password + "-definitely-wrong",
+            ],
+            test_device_number=None,
+        )
+        self.__expect_exit(result, 1, "LAN wrong password login")
+        self.__expect_in(
+            result.stderr,
+            "Authentication failed: the device rejected the credentials.",
+            "LAN wrong password login",
+        )
+
+        database = self.__read_device_database()
+        if any(password + "-definitely-wrong" in json.dumps(entry) for entry in database):
+            raise CaseFailure(
+                "the rejected wrong password was persisted to devices.json"
+            )
+
+    def test_cli_hw_26(self) -> None:
+        """
+        @brief CLI-HW-26: EG-PMxx-LAN login with the correct password. Exit 0; stdout
+        "Authenticated successfully."; the password is persisted in devices.json.
+        """
+        device = self.__require_first_lan()
+        password = self.__lan_password_or_block()
+
+        self.__lan_login(device["id"], password)
+
+        database = self.__read_device_database()
+        stored = [entry for entry in database if entry.get("id") == device["id"]]
+        if not stored:
+            raise CaseFailure(
+                f"the LAN device {device['id']} is missing from devices.json after login"
+            )
+        if not any(
+            entry.get("authentication-password") == password for entry in stored
+        ):
+            raise CaseFailure(
+                f"the authenticated password of LAN device {device['id']} was not persisted "
+                "in devices.json"
+            )
+
+    def test_cli_hw_27(self) -> None:
+        """
+        @brief CLI-HW-27: login/logout on a USB device (no authentication mechanism). Exit 1;
+        login reports the authentication-mechanism mismatch, logout reports that the device does
+        not require authentication.
+        """
+        device = self.__require_first_usb()
+
+        for subcommand in ("login", "logout"):
+            arguments = [subcommand, "-n", device["id"]]
+            if subcommand == "login":
+                arguments += ["--authentication-type", "PASSWORD", "--password", "anything"]
+
+            result = self.__run_cli(arguments, test_device_number=None)
+            self.__expect_exit(result, 1, f"{subcommand} on unauthenticated USB device")
+            self.__expect_in(
+                result.stderr,
+                "The device's authentication mechanism (None) does not match "
+                "--authentication-type PASSWORD."
+                if subcommand == "login"
+                else "Device does not require authentication.",
+                f"{subcommand} on unauthenticated USB device",
+            )
+
+    def test_cli_hw_28(self) -> None:
+        """
+        @brief CLI-HW-28: EG-PMxx-LAN credential persistence across CLI invocations: after a
+        successful login, a power operation succeeds using the stored credentials; after logout,
+        the same operation fails again. Exit codes 0/1 in that order.
+        """
+        device = self.__require_first_lan()
+        password = self.__lan_password_or_block()
+
+        self.__lan_login(device["id"], password)
+
+        powered_on = self.__run_cli(
+            ["power", "on", "-n", device["id"], "-t", "ethernet"], test_device_number=None
+        )
+        self.__expect_exit(powered_on, 0, "power on with stored credentials")
+        if self.__count_occurrences(powered_on.stdout, "turned on.") != 4:
+            raise CaseFailure(
+                f"expected 4 'turned on.' lines, received: {powered_on.stdout!r}"
+            )
+
+        logout = self.__run_cli(
+            ["logout", "-n", device["id"], "-t", "ethernet"], test_device_number=None
+        )
+        self.__expect_exit(logout, 0, "LAN logout")
+        self.__expect_in(logout.stdout, "Stored credentials removed.", "LAN logout")
+
+        database = self.__read_device_database()
+        stored = [entry for entry in database if entry.get("id") == device["id"]]
+        if any(entry.get("authentication-password") for entry in stored):
+            raise CaseFailure(
+                "the password of LAN device "
+                f"{device['id']} is still persisted after logout"
+            )
+
+        powered_off_attempt = self.__run_cli(
+            ["power", "on", "-n", device["id"], "-t", "ethernet"], test_device_number=None
+        )
+        self.__expect_exit(
+            powered_off_attempt, 1, "power on after logout (credentials removed)"
+        )
+
+    def test_cli_hw_29(self) -> None:
+        """
+        @brief CLI-HW-29: login against an Ethernet device that is powered off. The persisted
+        database entry keeps it addressable by serial; login must fail with the reachability
+        diagnostic instead of a credential rejection. Blocked when the operator cannot take
+        the device offline.
+        """
+        device = self.__require_first_lan()
+        password = self.__lan_password_or_block()
+        self.__prompt("POWER OFF the Ethernet device before this login attempt.")
+
+        result = self.__run_cli(
+            [
+                "login",
+                "-n",
+                device["id"],
+                "-t",
+                "ethernet",
+                "--authentication-type",
+                "PASSWORD",
+                "--password",
+                password,
+            ],
+            test_device_number=None,
+        )
+        if "No device was found for serial" in result.stderr:
+            raise CaseBlocked("the offline Ethernet device is not addressable by serial")
+        if "Authenticated successfully." in result.stdout:
+            raise CaseBlocked(
+                "the Ethernet device was still reachable (offline state not confirmed)"
+            )
+
+        self.__expect_exit(result, 1, "login on unreachable LAN device")
+        self.__expect_in(
+            result.stderr,
+            "Device is not reachable (is it connected?).",
+            "login on unreachable LAN device",
+        )
+
+        self.__prompt("POWER the Ethernet device back ON before continuing.")
+
+    def test_cli_hw_30(self) -> None:
+        """
+        @brief CLI-HW-30: double logout after a successful login. The first logout removes the
+        credentials; the second reports the no-op as a failure. devices.json keeps the password
+        empty after both runs.
+        """
+        device = self.__require_first_lan()
+        password = self.__lan_password_or_block()
+
+        self.__lan_login(device["id"], password)
+
+        first_logout = self.__run_cli(
+            ["logout", "-n", device["id"], "-t", "ethernet"], test_device_number=None
+        )
+        self.__expect_exit(first_logout, 0, "first logout on authenticated LAN device")
+        self.__expect_in(first_logout.stdout, "Stored credentials removed.", "first logout")
+
+        second_logout = self.__run_cli(
+            ["logout", "-n", device["id"], "-t", "ethernet"], test_device_number=None
+        )
+        self.__expect_exit(second_logout, 1, "second logout reports a no-op as a failure")
+        self.__expect_in(
+            second_logout.stderr, "No credentials are stored for this device.", "second logout"
+        )
+
+        database = self.__read_device_database()
+        stored = [entry for entry in database if entry.get("id") == device["id"]]
+        if any(entry.get("authentication-password") for entry in stored):
+            raise CaseFailure(
+                "the password of LAN device "
+                f"{device['id']} is still persisted after the double logout"
+            )
 
     def run_hardware_phase(self) -> None:
         """
@@ -1405,6 +1844,12 @@ class CliTests:
             ("CLI-HW-22", self.test_cli_hw_22),
             ("CLI-HW-23", self.test_cli_hw_23),
             ("CLI-HW-24", self.test_cli_hw_24),
+            ("CLI-HW-25", self.test_cli_hw_25),
+            ("CLI-HW-26", self.test_cli_hw_26),
+            ("CLI-HW-27", self.test_cli_hw_27),
+            ("CLI-HW-28", self.test_cli_hw_28),
+            ("CLI-HW-29", self.test_cli_hw_29),
+            ("CLI-HW-30", self.test_cli_hw_30),
         ]:
             self.__run_case(case_id, test_function)
 
@@ -1601,6 +2046,15 @@ if __name__ == "__main__":
         help="Skip the interactive prompts asking to disconnect/connect the hardware.",
     )
 
+    parser.add_argument(
+        "--lan-password",
+        type=str,
+        default=None,
+        metavar="PASSWORD",
+        help="Password of the EG-PMxx-LAN device, used by the authentication cases "
+        "(CLI-HW-23 and CLI-HW-25..30). If omitted it is requested interactively.",
+    )
+
     args = parser.parse_args()
 
     cli_folder = args.folder
@@ -1618,7 +2072,9 @@ if __name__ == "__main__":
         sys.exit(1)
 
     try:
-        CliTests(cli_folder, args.storage_path, args.assume_hardware).run()
+        CliTests(
+            cli_folder, args.storage_path, args.assume_hardware, args.lan_password
+        ).run()
     except FileNotFoundError as error:
         entry_logger.error("%s", error)
         sys.exit(1)
