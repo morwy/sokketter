@@ -157,9 +157,8 @@ namespace {
 
             if (token.empty())
             {
-                std::cerr << "Empty device type in --include-device-types. Available types are: "
-                             "USB, ETHERNET, LAN."
-                          << std::endl;
+                std::cerr << "Empty device type in --include-device-types."
+                          << device_type_error_suffix() << std::endl;
                 return false;
             }
 
@@ -175,8 +174,8 @@ namespace {
             }
             else
             {
-                std::cerr << "Unknown device type: " << token
-                          << ". Available types are: USB, ETHERNET, LAN." << std::endl;
+                std::cerr << "Unknown device type: " << token << "." << device_type_error_suffix()
+                          << std::endl;
                 return false;
             }
         }
@@ -187,16 +186,14 @@ namespace {
          */
         if (!raw_value.empty() && raw_value.back() == ',')
         {
-            std::cerr << "Empty device type in --include-device-types. Available types are: "
-                         "USB, ETHERNET, LAN."
-                      << std::endl;
+            std::cerr << "Empty device type in --include-device-types."
+                      << device_type_error_suffix() << std::endl;
             return false;
         }
 
         if (selected_types == sokketter::power_strip_type::UNKNOWN)
         {
-            std::cerr << "No device types were specified. Available types are: USB, ETHERNET, "
-                         "LAN."
+            std::cerr << "No device types were specified." << device_type_error_suffix()
                       << std::endl;
             return false;
         }

@@ -26,6 +26,24 @@ inline auto authentication_type_error_suffix() -> std::string
     return " Available types are: " + supported_authentication_type_names() + ".";
 }
 
+/**
+ * @brief the device types accepted by --include-device-types, as the single source of truth
+ * for the parser diagnostics, the help text, and the tests.
+ */
+inline auto supported_device_type_names() -> std::string
+{
+    return "USB, ETHERNET, LAN";
+}
+
+/**
+ * @brief the "Available types are: ..." sentence appended by the device-type diagnostics,
+ * derived from supported_device_type_names().
+ */
+inline auto device_type_error_suffix() -> std::string
+{
+    return " Available types are: " + supported_device_type_names() + ".";
+}
+
 class overridden_help_formatter : public CLI::Formatter
 {
 public:
@@ -52,8 +70,9 @@ public:
 
         help << "  Options:" << std::endl;
         help << "    -t,--include-device-types TEXT\tStates which device types to include in the "
-                "list, replacing the default USB-only selection. Comma-separated, case-insensitive. "
-                "Available types are: USB, ETHERNET, LAN. Unknown types are rejected. Default: USB. "
+                "list, replacing the default USB-only selection. Comma-separated, case-insensitive."
+             << device_type_error_suffix()
+             << " Unknown types are rejected. Default: USB. "
                 "Test devices are always listed regardless of the selected types."
              << std::endl;
         help << std::endl;
@@ -86,9 +105,10 @@ public:
              << std::endl;
         help << "    -t,--include-device-types TEXT\tRestricts which device types the device "
                 "selection may address, the same way as for the list subcommand. Comma-separated, "
-                "case-insensitive. Available types are: USB, ETHERNET, LAN. Unknown types are "
-                "rejected. Default: USB. Test devices are always addressable regardless of the "
-                "selected types."
+                "case-insensitive."
+             << device_type_error_suffix()
+             << " Unknown types are rejected. Default: USB. Test devices are always addressable "
+                "regardless of the selected types."
              << std::endl;
         help << std::endl;
 
