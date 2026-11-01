@@ -337,6 +337,16 @@ namespace {
     }
 
     /**
+     * @brief named alternative to the positional bool in resolve_device: whether the
+     * --include-device-types selection restricts the devices the subcommand may address.
+     */
+    enum class restrict_selection
+    {
+        no,
+        yes
+    };
+
+    /**
      * @brief resolves the device addressed by exactly one of the device-addressing options,
      * printing the standard diagnostics and returning nullptr when no device answers.
      *
@@ -356,7 +366,7 @@ namespace {
      */
     auto resolve_device(const device_access_options &options, const size_t &device_index,
         const std::string &device_serial, const sokketter::device_filter &filter,
-        bool types_restricted) -> std::shared_ptr<sokketter::power_strip>
+        restrict_selection types_restricted) -> std::shared_ptr<sokketter::power_strip>
     {
         std::shared_ptr<sokketter::power_strip> device;
 
@@ -392,7 +402,7 @@ namespace {
             sokketter::devices(filter);
             device = sokketter::device(device_serial);
 
-            if (device != nullptr && types_restricted &&
+            if (device != nullptr && types_restricted == restrict_selection::yes &&
                 device->configuration().type != sokketter::power_strip_type::TEST_DEVICE &&
                 !type_matches(device->configuration().type, filter.included_types))
             {
@@ -695,7 +705,8 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
         }
 
         const auto device = resolve_device(power_device_options, device_index, device_serial,
-            filter, option_power_device_types->count() > 0);
+            filter, option_power_device_types->count() > 0 ? restrict_selection::yes
+                                                            : restrict_selection::no);
 
         if (device == nullptr)
         {
@@ -898,7 +909,8 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
         }
 
         const auto device = resolve_device(login_device_options, device_index, device_serial,
-            filter, option_login_device_types->count() > 0);
+            filter, option_login_device_types->count() > 0 ? restrict_selection::yes
+                                                            : restrict_selection::no);
 
         if (device == nullptr)
         {
@@ -993,7 +1005,8 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
         }
 
         const auto device = resolve_device(logout_device_options, device_index, device_serial,
-            filter, option_logout_device_types->count() > 0);
+            filter, option_logout_device_types->count() > 0 ? restrict_selection::yes
+                                                             : restrict_selection::no);
 
         if (device == nullptr)
         {
