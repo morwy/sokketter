@@ -2046,7 +2046,7 @@ if __name__ == "__main__":
         default=None,
         metavar="PASSWORD",
         help="Password of the EG-PMxx-LAN device, used by the authentication cases "
-        "(CLI-HW-23 and CLI-HW-25..28). If omitted it is requested interactively.",
+        "(CLI-HW-23 and CLI-HW-25..30). If omitted it is requested interactively.",
     )
 
     args = parser.parse_args()
