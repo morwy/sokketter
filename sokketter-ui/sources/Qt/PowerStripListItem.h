@@ -33,12 +33,6 @@ public:
      */
     auto set_state(const bool is_on) const -> void;
 
-    /**
-     * @brief renders the "TYPE, available at ADDRESS" label from the stored configuration, showing
-     * the address only while the device is connected.
-     */
-    auto update_type_n_address_label(bool is_on) const -> void;
-
 private:
     Ui::PowerStripListItem *m_ui;
     sokketter::power_strip_configuration m_configuration;
@@ -47,6 +41,12 @@ private:
      * @brief last connectivity state rendered by set_state; empty until the first call.
      */
     mutable std::optional<bool> m_state = std::nullopt;
+
+    /**
+     * @brief renders the "TYPE, available at ADDRESS" label from the stored configuration, showing
+     * the address only while the device is connected; a rendering detail invoked by set_state().
+     */
+    auto update_type_n_address_label(bool is_on) const -> void;
 
     auto event(QEvent *event) -> bool override;
     auto setThemeAccordingToMode() -> void;
