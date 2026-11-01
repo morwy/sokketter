@@ -235,6 +235,14 @@ auto sokketter_core::devices(const sokketter::device_filter &filter)
         }
 
         /**
+         * @brief stored devices of the searched types that did not answer during this
+         * enumeration run (e.g. unplugged or powered off manually) are detached so that they
+         * stop reporting themselves as connected. Their identity and last known address are kept,
+         * so the next run probes them there again and re-searches for them when they come back.
+         */
+        detach_unhandled_devices(filter.included_types, handled_ids);
+
+        /**
          * Sort the database by device name.
          */
         std::sort(database.begin(), database.end(),
@@ -366,7 +374,8 @@ auto sokketter_core::run_enumeration(
         const auto supported_usb_devices = power_strip_factory::supported_devices(usb_filter);
 
         const auto usb_devices = kommpot::devices(supported_usb_devices);
-        new_devices_received(usb_devices, *handled_ids, request->device_cb);
+        new_devices_received(usb_devices, *handled_ids, usb_filter.included_types,
+            request->device_cb);
 
         /**
          * @brief the blocking kommpot USB search reports no statuses of its own, and the
@@ -464,7 +473,8 @@ auto sokketter_core::run_enumeration(
 
         kommpot::devices(supported_eth_devices,
             [this, request, handled_ids](auto communications) {
-                new_devices_received(communications, *handled_ids, request->device_cb);
+                new_devices_received(communications, *handled_ids,
+                    sokketter::power_strip_type::ETHERNET_DEVICES, request->device_cb);
             },
             [this, request, generation](kommpot::enumeration_status status) {
                 new_status_received(status, request->status_cb);
@@ -913,7 +923,7 @@ auto sokketter_core::logging_callback(const kommpot::callback_response_structure
 
 auto sokketter_core::new_devices_received(
     std::vector<std::shared_ptr<kommpot::device_communication>> communications,
-    const std::set<std::string> &handled_ids,
+    std::set<std::string> &handled_ids, sokketter::power_strip_type searched_types,
     const sokketter::device_callback &device_cb) -> void
 {
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Connected devices: {}.", communications.size());
@@ -952,6 +962,14 @@ auto sokketter_core::new_devices_received(
             m_database.save();
         }
 
+        /**
+         * @brief stored devices of the searched types that did not answer during this
+         * enumeration run (e.g. unplugged or powered off manually) are detached so that they
+         * stop reporting themselves as connected. Their identity and last known address are kept,
+         * so the next run probes them there again and re-searches for them when they come back.
+         */
+        detach_unhandled_devices(searched_types, handled_ids);
+
         SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Created devices: {}.", database.size());
 
         devices_copy = database;
@@ -970,7 +988,7 @@ auto sokketter_core::new_devices_received(
 
 auto sokketter_core::create_and_reattach(
     const std::vector<std::shared_ptr<kommpot::device_communication>> &communications,
-    const std::set<std::string> &handled_ids,
+    std::set<std::string> &handled_ids,
     std::vector<std::shared_ptr<sokketter::power_strip>> &new_devices) -> bool
 {
     /**
@@ -1012,6 +1030,12 @@ auto sokketter_core::create_and_reattach(
             SPDLOG_LOGGER_DEBUG(
                 SOKKETTER_LOGGER, "{}: new device was successfully created!", device->to_string());
 
+            /**
+             * @brief the device answered during this run, so it is handled: the detach sweep
+             * must not disconnect the freshly added device.
+             */
+            handled_ids.insert(device->configuration().id);
+
             new_devices.push_back(std::move(device));
             continue;
         }
@@ -1040,6 +1064,12 @@ auto sokketter_core::create_and_reattach(
         const auto saved_address = (*it)->configuration().address;
 
         baseIt->initialize(communication);
+
+        /**
+         * @brief the stored device answered through this search, so it is handled for the
+         * detach sweep of the run.
+         */
+        handled_ids.insert(device->configuration().id);
 
         /**
          * @brief the device was found at a different address than the last known one, the caller
@@ -1082,6 +1112,53 @@ auto sokketter_core::add_new_device(std::shared_ptr<sokketter::power_strip> devi
 
     database.push_back(std::move(device));
     return true;
+}
+
+auto sokketter_core::detach_unhandled_devices(
+    sokketter::power_strip_type searched_types, const std::set<std::string> &handled_ids) -> bool
+{
+    using underlying = std::underlying_type_t<sokketter::power_strip_type>;
+
+    auto &database = m_database.get();
+
+    bool detached_any = false;
+    for (auto &device : database)
+    {
+        if (!device)
+        {
+            continue;
+        }
+
+        const auto configuration = device->configuration();
+        if ((static_cast<underlying>(configuration.type) &
+                static_cast<underlying>(searched_types)) == 0)
+        {
+            continue;
+        }
+
+        if (handled_ids.count(configuration.id) != 0)
+        {
+            continue;
+        }
+
+        /**
+         * @brief the device still reports itself as connected although it did not answer
+         * during this enumeration run: it was disconnected manually (unplugged or powered off),
+         * so detach it and keep its identity and last known address for the next run.
+         */
+        if (device->is_connected())
+        {
+            SPDLOG_LOGGER_WARN(SOKKETTER_LOGGER,
+                "{}: the device did not answer during the enumeration, detaching it; it stays "
+                "in the database and will be probed and searched for again.",
+                device->to_string());
+
+            device->detach();
+            detached_any = true;
+        }
+    }
+
+    return detached_any;
 }
 
 auto sokketter_core::probe_last_known_addresses(

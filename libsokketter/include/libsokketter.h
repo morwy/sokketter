@@ -425,6 +425,15 @@ namespace sokketter {
         [[nodiscard]] virtual auto is_connected() const -> bool;
 
         /**
+         * @brief detaches the device from its communication, marking it as disconnected.
+         * @attention the identity and the last known address are kept, so that a later
+         * enumeration probes the device there first and searches for it again.
+         * @attention safe to call concurrently with a background enumeration on the built-in
+         * device classes, which guard their connection state internally.
+         */
+        virtual auto detach() -> void;
+
+        /**
          * @brief gets list of sockets controlled by the power strip.
          * @return vector of socket objects.
          * @attention the socket vector is only mutated while the device is constructed or

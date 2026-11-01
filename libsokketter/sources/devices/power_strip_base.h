@@ -25,6 +25,8 @@ public:
 
     [[nodiscard]] auto is_connected() const -> bool override;
 
+    auto detach() -> void override;
+
     [[nodiscard]] auto configuration() const -> sokketter::power_strip_configuration override;
 
     auto configure(const sokketter::power_strip_configuration &configuration) -> void override;

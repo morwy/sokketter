@@ -313,6 +313,12 @@ auto sokketter::power_strip::is_connected() const -> bool
     return false;
 }
 
+auto sokketter::power_strip::detach() -> void
+{
+    //  @attention no-op by default: the built-in device classes override this and clear their
+    //  communication state under their state mutex.
+}
+
 auto sokketter::power_strip::sockets() -> std::vector<sokketter::socket> &
 {
     return m_sockets;

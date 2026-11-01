@@ -70,6 +70,18 @@ auto power_strip_base::is_connected() const -> bool
     return m_communication != nullptr;
 }
 
+auto power_strip_base::detach() -> void
+{
+    const std::lock_guard<std::mutex> state_lock(m_state_mutex);
+
+    /**
+     * @brief drops the communication so that the device reports itself as disconnected until the
+     * next enumeration reattaches it. The identity and the last known address are kept, so that
+     * a stored network device is probed at that address again and searched for when it comes back.
+     */
+    m_communication = nullptr;
+}
+
 auto power_strip_base::configuration() const -> sokketter::power_strip_configuration
 {
     const std::lock_guard<std::mutex> state_lock(m_state_mutex);

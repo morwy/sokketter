@@ -242,8 +242,9 @@ private:
      * collected in new_devices for the caller to integrate under the database mutex.
      *
      * @param communications the communications found by the enumeration.
-     * @param handled_ids the identities re-attached via their last known address during this
-     * enumeration run.
+     * @param handled_ids in/out: the identities re-attached via their last known address during
+     * this enumeration run; the identities of the stored devices reattached here are added, so
+     * that a later detach sweep knows the device answered in this run.
      * @param new_devices receives the freshly created devices that are not yet in the database.
      * @return true when a reattached stored device adopted a new address, meaning the database
      * must be saved, false otherwise.
@@ -253,7 +254,7 @@ private:
      */
     auto create_and_reattach(
         const std::vector<std::shared_ptr<kommpot::device_communication>> &communications,
-        const std::set<std::string> &handled_ids,
+        std::set<std::string> &handled_ids,
         std::vector<std::shared_ptr<sokketter::power_strip>> &new_devices) -> bool;
 
     /**
@@ -268,19 +269,40 @@ private:
     auto add_new_device(std::shared_ptr<sokketter::power_strip> device) -> bool;
 
     /**
+     * @brief detaches the stored devices of the searched types that did not answer during this
+     * enumeration run: a device that was disconnected manually (unplugged or powered off) keeps
+     * its identity and last known address but reports itself as disconnected until the next run
+     * reattaches it.
+     *
+     * @param searched_types the type mask the enumeration just performed; only stored devices of
+     * these types are considered, so a partial enumeration cannot disconnect the devices of the
+     * types it did not search for.
+     * @param handled_ids the identities that answered during this enumeration run.
+     * @return true when at least one device was detached, false otherwise.
+     * @attention expects m_database_mutex to already be held by the caller; performs no I/O and
+     * only touches each device's state through its own detach(), guarded by the device state
+     * mutex.
+     */
+    auto detach_unhandled_devices(
+        sokketter::power_strip_type searched_types, const std::set<std::string> &handled_ids) -> bool;
+
+    /**
      * @brief processes the communications reported by an enumeration.
      *
      * @param communications the communications found by the enumeration.
-     * @param handled_ids the identities re-attached via their last known address during this
-     * enumeration run, used to skip the duplicate communication of the regular search. Owned by
-     * the enumeration run (not by the object), so that the set of a finished run cannot race
-     * with the one of a new run.
+     * @param handled_ids in/out: the identities re-attached via their last known address during
+     * this enumeration run; the identities of the stored devices reattached through
+     * create_and_reattach are added, so that the detach sweep below does not disconnect a device
+     * that answered in this run.
+     * @param searched_types the type mask this enumeration searched for; used by the detach sweep
+     * to disconnect the stored devices of these types that did not answer.
      * @param device_cb the callback bound to the enumeration run that received the
      * communications, notified with the updated database.
      */
     auto new_devices_received(
         std::vector<std::shared_ptr<kommpot::device_communication>> communications,
-        const std::set<std::string> &handled_ids,
+        std::set<std::string> &handled_ids,
+        sokketter::power_strip_type searched_types,
         const sokketter::device_callback &device_cb) -> void;
 
     /**
