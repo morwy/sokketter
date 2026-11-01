@@ -1010,6 +1010,12 @@ auto cli_parser::parse_and_process(int argc, char *argv[]) -> int
             configuration.authentication.type ==
                 sokketter::power_strip_authentication_type::UNKNOWN)
         {
+            /**
+             * @attention deliberate: a device advertising no mechanism, or one whose mechanism
+             * the library could not identify, has nothing this subcommand can revoke; a password
+             * left behind in its stored record is legacy data and stays out of reach until the
+             * device re-advertises authentication.
+             */
             std::cerr << "Device does not require authentication." << std::endl;
             return EXIT_FAILURE;
         }
