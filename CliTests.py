@@ -1736,6 +1736,10 @@ class CliTests:
         )
         if "No device was found for serial" in result.stderr:
             raise CaseBlocked("the offline Ethernet device is not addressable by serial")
+        if "Authenticated successfully." in result.stdout:
+            raise CaseBlocked(
+                "the Ethernet device was still reachable (offline state not confirmed)"
+            )
 
         self.__expect_exit(result, 1, "login on unreachable LAN device")
         self.__expect_in(
