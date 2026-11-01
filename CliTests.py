@@ -265,12 +265,20 @@ class CliTests:
     def __mask_passwords(tokens: list[str]) -> list[str]:
         """
         @brief redact the value of --password so a customer-supplied device password never lands
-        in stdout or cli_tests.log (AGENTS.md: never log secrets); the command stays readable.
+        in stdout or cli_tests.log (AGENTS.md: never log secrets); covers both the space-separated
+        and the --password=<value> form CLI11 accepts, and keeps the command readable.
         """
-        return [
-            "<redacted>" if index > 0 and tokens[index - 1] == "--password" else token
-            for index, token in enumerate(tokens)
-        ]
+        masked: list[str] = []
+        previous = ""
+        for token in tokens:
+            if previous == "--password":
+                masked.append("<redacted>")
+            elif token.startswith("--password="):
+                masked.append("--password=<redacted>")
+            else:
+                masked.append(token)
+            previous = token
+        return masked
 
     def __run_cli(
         self,
