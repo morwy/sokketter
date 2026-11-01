@@ -211,43 +211,18 @@ auto sokketter_core::devices(const sokketter::device_filter &filter)
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Connected devices: {}.", communications.size());
 
     /**
-     * @brief the blocking device I/O (creating the fresh devices and reattaching the stored
-     * ones) runs without the database mutex held, exactly like on the asynchronous path; the
-     * mutex below covers only appending the new devices to the database and persisting it.
+     * @brief the integration of discovered devices (create_and_reattach, appending under the
+     * database mutex, persisting, the detach sweep and the sorted copy-out) is identical to the
+     * asynchronous path's contract, so this blocking overload delegates to
+     * @ref new_devices_received rather than hand-rolling a second copy of that chore that would
+     * have to be kept in lockstep. The callback here is not delivered concurrently, so a simple
+     * capture of the result vector is enough.
      */
-    std::vector<std::shared_ptr<sokketter::power_strip>> new_devices;
-    bool integration_changed = create_and_reattach(communications, handled_ids, new_devices);
-
     std::vector<std::shared_ptr<sokketter::power_strip>> result;
-    {
-        const std::lock_guard<std::mutex> database_lock(m_database_mutex);
-
-        auto &database = m_database.get();
-
-        for (auto &device : new_devices)
-        {
-            integration_changed |= add_new_device(std::move(device));
-        }
-
-        if (integration_changed)
-        {
-            m_database.save();
-        }
-
-        /**
-         * Sort the database by device name.
-         */
-        std::sort(database.begin(), database.end(),
-            [](const std::shared_ptr<sokketter::power_strip> &a,
-                const std::shared_ptr<sokketter::power_strip> &b) {
-                return a->configuration().name < b->configuration().name;
-            });
-
-        SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Created devices: {}.", database.size());
-
-        result = database;
-    }
-
+    new_devices_received(communications, handled_ids, filter.included_types,
+        [&result](std::vector<std::shared_ptr<sokketter::power_strip>> &devices_copy) {
+            result = std::move(devices_copy);
+        });
     return result;
 }
 
@@ -366,7 +341,8 @@ auto sokketter_core::run_enumeration(
         const auto supported_usb_devices = power_strip_factory::supported_devices(usb_filter);
 
         const auto usb_devices = kommpot::devices(supported_usb_devices);
-        new_devices_received(usb_devices, *handled_ids, request->device_cb);
+        new_devices_received(usb_devices, *handled_ids, usb_filter.included_types,
+            request->device_cb);
 
         /**
          * @brief the blocking kommpot USB search reports no statuses of its own, and the
@@ -424,20 +400,27 @@ auto sokketter_core::run_enumeration(
         }
 
         /**
-         * @brief stored devices that answered at their last known addresses are already
-         * reattached and connected; report the updated database immediately so that they show
-         * as online right away, instead of only after the (slow) full ethernet search below
-         * completes. The callback receives a copy of the device pointers taken under the
-         * mutex, so that it never observes or references a vector that is being mutated.
+         * @brief stored network devices that did not answer at their last known addresses during
+         * the (fast) probe are detached right away, so that a device disconnected manually shows
+         * as offline immediately instead of only after the (slow) full ethernet search completes.
+         * A device that answered the probe - even at a different or normalized address - is
+         * already recorded in @ref handled_ids by @ref probe_last_known_addresses and is left
+         * connected; a device that did not answer is detached here and, if it comes back online,
+         * reattached by the full search below.
+         *
+         * @attention the callback receives a copy of the device pointers taken under the same lock
+         * as the detach sweep, so that the detached state is guaranteed to be visible in the
+         * snapshot delivered to the caller.
          */
+        std::vector<std::shared_ptr<sokketter::power_strip>> devices_copy;
+        {
+            const std::lock_guard<std::mutex> database_lock(m_database_mutex);
+            detach_unhandled_devices(sokketter::power_strip_type::ETHERNET_DEVICES, *handled_ids);
+            devices_copy = m_database.get();
+        }
+
         if (request->device_cb)
         {
-            std::vector<std::shared_ptr<sokketter::power_strip>> devices_copy;
-            {
-                const std::lock_guard<std::mutex> database_lock(m_database_mutex);
-                devices_copy = m_database.get();
-            }
-
             request->device_cb(devices_copy);
         }
 
@@ -464,7 +447,8 @@ auto sokketter_core::run_enumeration(
 
         kommpot::devices(supported_eth_devices,
             [this, request, handled_ids](auto communications) {
-                new_devices_received(communications, *handled_ids, request->device_cb);
+                new_devices_received(communications, *handled_ids,
+                    sokketter::power_strip_type::ETHERNET_DEVICES, request->device_cb);
             },
             [this, request, generation](kommpot::enumeration_status status) {
                 new_status_received(status, request->status_cb);
@@ -913,7 +897,7 @@ auto sokketter_core::logging_callback(const kommpot::callback_response_structure
 
 auto sokketter_core::new_devices_received(
     std::vector<std::shared_ptr<kommpot::device_communication>> communications,
-    const std::set<std::string> &handled_ids,
+    std::set<std::string> &handled_ids, sokketter::power_strip_type searched_types,
     const sokketter::device_callback &device_cb) -> void
 {
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Connected devices: {}.", communications.size());
@@ -952,6 +936,14 @@ auto sokketter_core::new_devices_received(
             m_database.save();
         }
 
+        /**
+         * @brief stored devices of the searched types that did not answer during this
+         * enumeration run (e.g. unplugged or powered off manually) are detached so that they
+         * stop reporting themselves as connected. Their identity and last known address are kept,
+         * so the next run probes them there again and re-searches for them when they come back.
+         */
+        detach_unhandled_devices(searched_types, handled_ids);
+
         SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Created devices: {}.", database.size());
 
         devices_copy = database;
@@ -970,7 +962,7 @@ auto sokketter_core::new_devices_received(
 
 auto sokketter_core::create_and_reattach(
     const std::vector<std::shared_ptr<kommpot::device_communication>> &communications,
-    const std::set<std::string> &handled_ids,
+    std::set<std::string> &handled_ids,
     std::vector<std::shared_ptr<sokketter::power_strip>> &new_devices) -> bool
 {
     /**
@@ -1012,6 +1004,12 @@ auto sokketter_core::create_and_reattach(
             SPDLOG_LOGGER_DEBUG(
                 SOKKETTER_LOGGER, "{}: new device was successfully created!", device->to_string());
 
+            /**
+             * @brief the device answered during this run, so it is handled: the detach sweep
+             * must not disconnect the freshly added device.
+             */
+            handled_ids.insert(device->configuration().id);
+
             new_devices.push_back(std::move(device));
             continue;
         }
@@ -1040,6 +1038,12 @@ auto sokketter_core::create_and_reattach(
         const auto saved_address = (*it)->configuration().address;
 
         baseIt->initialize(communication);
+
+        /**
+         * @brief the stored device answered through this search, so it is handled for the
+         * detach sweep of the run.
+         */
+        handled_ids.insert(device->configuration().id);
 
         /**
          * @brief the device was found at a different address than the last known one, the caller
@@ -1082,6 +1086,54 @@ auto sokketter_core::add_new_device(std::shared_ptr<sokketter::power_strip> devi
 
     database.push_back(std::move(device));
     return true;
+}
+
+auto sokketter_core::detach_unhandled_devices(
+    sokketter::power_strip_type searched_types, const std::set<std::string> &handled_ids) -> void
+{
+    using underlying = std::underlying_type_t<sokketter::power_strip_type>;
+
+    auto &database = m_database.get();
+
+    for (auto &device : database)
+    {
+        if (!device)
+        {
+            continue;
+        }
+
+        const auto configuration = device->configuration();
+        if ((static_cast<underlying>(configuration.type) &
+                static_cast<underlying>(searched_types)) == 0)
+        {
+            continue;
+        }
+
+        if (handled_ids.count(configuration.id) != 0)
+        {
+            continue;
+        }
+
+        /**
+         * @brief the device still reports itself as connected although it did not answer
+         * during this enumeration run: it was disconnected manually (unplugged or powered off),
+         * so detach it and keep its identity and last known address for the next run.
+         */
+        if (device->is_connected())
+        {
+            /**
+             * @brief going offline after a manual disconnect is the normal outcome of an
+             * enumeration, not an anomaly, so it is logged at debug level to keep the default
+             * logs clean.
+             */
+            SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER,
+                "{}: the device did not answer during the enumeration, detaching it; it stays "
+                "in the database and will be probed and searched for again.",
+                device->to_string());
+
+            device->detach();
+        }
+    }
 }
 
 auto sokketter_core::probe_last_known_addresses(

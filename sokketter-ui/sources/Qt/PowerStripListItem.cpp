@@ -32,14 +32,8 @@ auto PowerStripListItem::configure(const sokketter::power_strip_configuration &c
 
     m_ui->name_label->setText(QString::fromStdString(configuration.name));
 
-    auto type_n_address =
-        QString::fromStdString(sokketter::power_strip_type_to_string(configuration.type));
-    if (!configuration.address.empty())
-    {
-        type_n_address += ", available at " + QString::fromStdString(configuration.address);
-    }
-
-    m_ui->type_n_address_label->setText(type_n_address);
+    m_ui->type_n_address_label->setText(
+        QString::fromStdString(sokketter::power_strip_type_to_string(configuration.type)));
 
     if (!configuration.description.empty())
     {
@@ -59,6 +53,13 @@ auto PowerStripListItem::configuration() const -> const sokketter::power_strip_c
 
 void PowerStripListItem::set_state(const bool is_on) const
 {
+    /**
+     * @brief the address text is always refreshed, independently of whether the connectivity
+     * indicator had to be restyled, so that a stored last-known address is never shown for a
+     * device that went offline.
+     */
+    update_type_n_address_label(is_on);
+
     if (m_state.has_value() && m_state.value() == is_on)
     {
         return;
@@ -68,6 +69,19 @@ void PowerStripListItem::set_state(const bool is_on) const
 
     m_ui->status_label->setState(is_on);
     m_ui->status_label->setToolTip(is_on ? tr("connected") : tr("disconnected"));
+}
+
+auto PowerStripListItem::update_type_n_address_label(bool is_on) const -> void
+{
+    auto type_n_address =
+        QString::fromStdString(sokketter::power_strip_type_to_string(m_configuration.type));
+
+    if (is_on && !m_configuration.address.empty())
+    {
+        type_n_address += ", available at " + QString::fromStdString(m_configuration.address);
+    }
+
+    m_ui->type_n_address_label->setText(type_n_address);
 }
 
 auto PowerStripListItem::event(QEvent *event) -> bool

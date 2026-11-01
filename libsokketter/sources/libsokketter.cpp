@@ -313,6 +313,12 @@ auto sokketter::power_strip::is_connected() const -> bool
     return false;
 }
 
+auto sokketter::power_strip::detach() -> void
+{
+    //  @attention no-op by default: the built-in device classes override this and clear their
+    //  communication state under their state mutex.
+}
+
 auto sokketter::power_strip::sockets() -> std::vector<sokketter::socket> &
 {
     return m_sockets;
@@ -329,14 +335,19 @@ auto sokketter::power_strip::socket(const size_t &index)
     return std::nullopt;
 }
 
-auto sokketter::power_strip::to_string() const noexcept -> std::string
+auto sokketter::power_strip::to_string() const -> std::string
 {
     const auto configuration = this->configuration();
 
     std::string text = configuration.name + " (" + power_strip_type_to_string(configuration.type) +
                        ", " + configuration.id;
 
-    if (configuration.address.empty())
+    /**
+     * @brief report the live connection state rather than the mere presence of an address: a
+     * device that went offline keeps its last known address (so the next enumeration probes it
+     * there first and searches again) but must not read as "available at ...".
+     */
+    if (!is_connected() || configuration.address.empty())
     {
         text += ", disconnected)";
     }
