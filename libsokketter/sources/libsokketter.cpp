@@ -342,7 +342,12 @@ auto sokketter::power_strip::to_string() const noexcept -> std::string
     std::string text = configuration.name + " (" + power_strip_type_to_string(configuration.type) +
                        ", " + configuration.id;
 
-    if (configuration.address.empty())
+    /**
+     * @brief report the live connection state rather than the mere presence of an address: a
+     * device that went offline keeps its last known address (so the next enumeration probes it
+     * there first and searches again) but must not read as "available at ...".
+     */
+    if (!is_connected() || configuration.address.empty())
     {
         text += ", disconnected)";
     }
