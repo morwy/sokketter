@@ -445,25 +445,16 @@ auto sokketter_core::run_enumeration(
          * as the detach sweep, so that the detached state is guaranteed to be visible in the
          * snapshot delivered to the caller.
          */
+        std::vector<std::shared_ptr<sokketter::power_strip>> devices_copy;
+        {
+            const std::lock_guard<std::mutex> database_lock(m_database_mutex);
+            detach_unhandled_devices(sokketter::power_strip_type::ETHERNET_DEVICES, *handled_ids);
+            devices_copy = m_database.get();
+        }
+
         if (request->device_cb)
         {
-            std::vector<std::shared_ptr<sokketter::power_strip>> devices_copy;
-            {
-                const std::lock_guard<std::mutex> database_lock(m_database_mutex);
-                detach_unhandled_devices(sokketter::power_strip_type::ETHERNET_DEVICES,
-                    *handled_ids);
-                devices_copy = m_database.get();
-            }
-
             request->device_cb(devices_copy);
-        }
-        else
-        {
-            {
-                const std::lock_guard<std::mutex> database_lock(m_database_mutex);
-                detach_unhandled_devices(sokketter::power_strip_type::ETHERNET_DEVICES,
-                    *handled_ids);
-            }
         }
 
         const auto supported_eth_devices = power_strip_factory::supported_devices(eth_filter);
