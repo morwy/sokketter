@@ -278,13 +278,14 @@ private:
      * these types are considered, so a partial enumeration cannot disconnect the devices of the
      * types it did not search for.
      * @param handled_ids the identities that answered during this enumeration run.
-     * @return true when at least one device was detached, false otherwise.
      * @attention expects m_database_mutex to already be held by the caller; performs no I/O and
      * only touches each device's state through its own detach(), guarded by the device state
-     * mutex.
+     * mutex. Detaching never changes what is persisted (identity and address stay), so this
+     * returns nothing and the caller must not treat it like the save-signalling helpers.
      */
     auto detach_unhandled_devices(
-        sokketter::power_strip_type searched_types, const std::set<std::string> &handled_ids) -> bool;
+        sokketter::power_strip_type searched_types, const std::set<std::string> &handled_ids)
+        -> void;
 
     /**
      * @brief processes the communications reported by an enumeration.

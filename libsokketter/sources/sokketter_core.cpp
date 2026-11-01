@@ -1122,13 +1122,12 @@ auto sokketter_core::add_new_device(std::shared_ptr<sokketter::power_strip> devi
 }
 
 auto sokketter_core::detach_unhandled_devices(
-    sokketter::power_strip_type searched_types, const std::set<std::string> &handled_ids) -> bool
+    sokketter::power_strip_type searched_types, const std::set<std::string> &handled_ids) -> void
 {
     using underlying = std::underlying_type_t<sokketter::power_strip_type>;
 
     auto &database = m_database.get();
 
-    bool detached_any = false;
     for (auto &device : database)
     {
         if (!device)
@@ -1166,11 +1165,8 @@ auto sokketter_core::detach_unhandled_devices(
                 device->to_string());
 
             device->detach();
-            detached_any = true;
         }
     }
-
-    return detached_any;
 }
 
 auto sokketter_core::probe_last_known_addresses(
