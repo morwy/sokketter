@@ -261,6 +261,17 @@ class CliTests:
 
         return environment
 
+    @staticmethod
+    def __mask_passwords(tokens: list[str]) -> list[str]:
+        """
+        @brief redact the value of --password so a customer-supplied device password never lands
+        in stdout or cli_tests.log (AGENTS.md: never log secrets); the command stays readable.
+        """
+        return [
+            "<redacted>" if index > 0 and tokens[index - 1] == "--password" else token
+            for index, token in enumerate(tokens)
+        ]
+
     def __run_cli(
         self,
         arguments: list[str],
@@ -271,7 +282,7 @@ class CliTests:
         Run the sokketter-cli binary with the given arguments and capture its output.
         """
         command = [self.cli_binary] + arguments
-        self.logger.info("Executing: %s", " ".join(command))
+        self.logger.info("Executing: %s", " ".join(self.__mask_passwords(command)))
 
         result = subprocess.run(
             command,
@@ -757,7 +768,7 @@ class CliTests:
 
         if self.last_result is not None:
             detail += (
-                f"\nreceived: {self.cli_binary} {' '.join(self.last_command)}"
+                f"\nreceived: {self.cli_binary} {' '.join(self.__mask_passwords(self.last_command))}"
                 f"\n  exit code: {self.last_result.returncode}"
                 f"\n  stdout:\n{self.last_result.stdout}"
                 f"  stderr:\n{self.last_result.stderr}"
