@@ -211,51 +211,18 @@ auto sokketter_core::devices(const sokketter::device_filter &filter)
     SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Connected devices: {}.", communications.size());
 
     /**
-     * @brief the blocking device I/O (creating the fresh devices and reattaching the stored
-     * ones) runs without the database mutex held, exactly like on the asynchronous path; the
-     * mutex below covers only appending the new devices to the database and persisting it.
+     * @brief the integration of discovered devices (create_and_reattach, appending under the
+     * database mutex, persisting, the detach sweep and the sorted copy-out) is identical to the
+     * asynchronous path's contract, so this blocking overload delegates to
+     * @ref new_devices_received rather than hand-rolling a second copy of that chore that would
+     * have to be kept in lockstep. The callback here is not delivered concurrently, so a simple
+     * capture of the result vector is enough.
      */
-    std::vector<std::shared_ptr<sokketter::power_strip>> new_devices;
-    bool integration_changed = create_and_reattach(communications, handled_ids, new_devices);
-
     std::vector<std::shared_ptr<sokketter::power_strip>> result;
-    {
-        const std::lock_guard<std::mutex> database_lock(m_database_mutex);
-
-        auto &database = m_database.get();
-
-        for (auto &device : new_devices)
-        {
-            integration_changed |= add_new_device(std::move(device));
-        }
-
-        if (integration_changed)
-        {
-            m_database.save();
-        }
-
-        /**
-         * @brief stored devices of the searched types that did not answer during this
-         * enumeration run (e.g. unplugged or powered off manually) are detached so that they
-         * stop reporting themselves as connected. Their identity and last known address are kept,
-         * so the next run probes them there again and re-searches for them when they come back.
-         */
-        detach_unhandled_devices(filter.included_types, handled_ids);
-
-        /**
-         * Sort the database by device name.
-         */
-        std::sort(database.begin(), database.end(),
-            [](const std::shared_ptr<sokketter::power_strip> &a,
-                const std::shared_ptr<sokketter::power_strip> &b) {
-                return a->configuration().name < b->configuration().name;
-            });
-
-        SPDLOG_LOGGER_DEBUG(SOKKETTER_LOGGER, "Created devices: {}.", database.size());
-
-        result = database;
-    }
-
+    new_devices_received(communications, handled_ids, filter.included_types,
+        [&result](std::vector<std::shared_ptr<sokketter::power_strip>> &devices_copy) {
+            result = std::move(devices_copy);
+        });
     return result;
 }
 
