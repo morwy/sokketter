@@ -1567,9 +1567,10 @@ class CliTests:
         @brief CLI-HW-23: Energenie EG-PMxx-LAN: the detected LAN device is addressed by serial,
         then driven automatically (all 4 sockets off, all on, each of the 4 sockets toggled
         individually with status read-back under an ethernet selection) and the operator confirms
-        the correct strip physically reacted. When --lan-password was provided, the device is
-        first authenticated with the login subcommand so the power operations use the stored
-        credentials.
+        the correct strip physically reacted. The device is first authenticated with the login
+        subcommand so the power operations use the stored credentials; a password-authenticated
+        device cannot be operated at all without a password, so the case is blocked when none was
+        supplied via --lan-password and none is entered interactively.
         """
         return self.__device_socket_cycle_case(
             "CLI-HW-23",
@@ -1577,7 +1578,7 @@ class CliTests:
             4,
             inventory=self.lan_inventory,
             cli_type="ethernet",
-            login_password=self.lan_password,
+            login_password=self.__lan_password_or_block(),
         )
 
     def test_cli_hw_24(self) -> TestStatus:
@@ -1600,7 +1601,8 @@ class CliTests:
     def test_cli_hw_25(self) -> None:
         """
         @brief CLI-HW-25: EG-PMxx-LAN login with a wrong password. Exit 1; stderr
-        "Authentication failed."; the wrong password is never persisted to devices.json.
+        "Authentication failed: the device rejected the credentials."; the wrong password is never
+        persisted to devices.json.
         """
         device = self.__require_first_lan()
         password = self.__lan_password_or_block()
@@ -1620,7 +1622,11 @@ class CliTests:
             test_device_number=None,
         )
         self.__expect_exit(result, 1, "LAN wrong password login")
-        self.__expect_in(result.stderr, "Authentication failed.", "LAN wrong password login")
+        self.__expect_in(
+            result.stderr,
+            "Authentication failed: the device rejected the credentials.",
+            "LAN wrong password login",
+        )
 
         database = self.__read_device_database()
         if any(password + "-definitely-wrong" in json.dumps(entry) for entry in database):
