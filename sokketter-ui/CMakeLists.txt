@@ -35,16 +35,16 @@ include_directories(${CMAKE_CURRENT_LIST_DIR}/../third-party/SlidingStackedWidge
 string(TIMESTAMP BUILD_YEAR "%Y")
 
 set(SOKKETTER_COMPANY "Paul Ergård")
-set(SOKKETTER_DESCRIPTION "sokketter-ui")
+set(SOKKETTER_DESCRIPTION "sokketter")
 
-set(SOKKETTER_NAME "sokketter-ui")
+set(SOKKETTER_NAME "sokketter")
 
 set(SOKKETTER_COPYRIGHT "${BUILD_YEAR} Paul Ergård")
 
 if(PLATFORM_OS_WINDOWS)
-set(SOKKETTER_EXECUTABLE "sokketter-ui.exe")
+set(SOKKETTER_EXECUTABLE "sokketter.exe")
 else()
-set(SOKKETTER_EXECUTABLE "sokketter-ui")
+set(SOKKETTER_EXECUTABLE "sokketter")
 endif()
 
 # FILEFLAGSMASK value for version.rc, i.e. VS_FFI_FILEFLAGSMASK from winver.h (mask of valid FILEFLAGS bits).
