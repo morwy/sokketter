@@ -107,6 +107,8 @@ else()
     add_executable(${PROJECT_NAME} ${PROJECT_FOLDER_FILES})
 endif()
 
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${SOKKETTER_EXECUTABLE}")
+
 if(PLATFORM_OS_MACOS)
     #
     # MacOS: state that application has an icon.
