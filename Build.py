@@ -1268,7 +1268,7 @@ class Build:
             os.chmod(folder, 0o755)
 
         shutil.copy(
-            os.path.join(self.temp_binary_output_dir, "bin", "  sokketter"),
+            os.path.join(self.temp_binary_output_dir, "bin", "sokketter"),
             os.path.join(usr_bin_folder, "sokketter"),
         )
         os.chmod(os.path.join(usr_bin_folder, "sokketter"), 0o755)
