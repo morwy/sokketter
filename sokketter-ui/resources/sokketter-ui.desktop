@@ -1,9 +1,9 @@
 [Desktop Entry]
 Version=1.0
-Name=sokketter-ui
+Name=sokketter
 Comment=A simple UI application for controlling the connected power strips and sockets.
-Exec=sokketter-ui %u
-Icon=sokketter-ui-icon
+Exec=sokketter %u
+Icon=sokketter-icon
 Terminal=false
 Type=Application
 Categories=Utility;
@@ -11,4 +11,4 @@ Categories=Utility;
 # Optional fields
 X-AppImage-Version=1.0
 X-AppImage-Arch=x86_64
-X-AppImage-Name=sokketter-ui
+X-AppImage-Name=sokketter
