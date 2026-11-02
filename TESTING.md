@@ -11,7 +11,7 @@ described in [README.md](README.md) and [AGENTS.md](AGENTS.md).
 | Component       | Description                          | Key sources                                                                  |
 | --------------- | ------------------------------------ | ---------------------------------------------------------------------------- |
 | `sokketter-cli` | CLI11 command-line front end.        | [sokketter-cli/sources/cli_parser.cpp](sokketter-cli/sources/cli_parser.cpp) |
-| `sokketter-ui`  | Qt6 Widgets GUI.                     | [sokketter-ui/sources/mainwindow.cpp](sokketter-ui/sources/mainwindow.cpp)   |
+| `sokketter`  | Qt6 Widgets GUI.                     | [sokketter-ui/sources/mainwindow.cpp](sokketter-ui/sources/mainwindow.cpp)   |
 
 ### Supported devices
 
@@ -140,7 +140,7 @@ that require at least one real device to be online.
 | CLI-HW-29 | EG-PMxx-LAN: `login -n <serial> --authentication-type PASSWORD --password x` while the device is powered off / unplugged. | Exit `1`; stderr `Device is not reachable (is it connected?).` (reachability reported instead of a credential rejection).            | ⬜               | ⬜             | ⬜             |
 | CLI-HW-30 | EG-PMxx-LAN: after a successful `login`, `logout -n <serial>` twice in a row. | First run exit `0` with `Stored credentials removed.`; second run exit `1` with `No credentials are stored for this device.`; `devices.json` keeps `authentication-password` empty. | ⬜               | ⬜             | ⬜             |
 
-## B. Graphical interface (`sokketter-ui`)
+## B. Graphical interface (`sokketter`)
 
 The cases are split into two groups: **functional** (`UI-FUN-*`) — everything that runs with **no
 device present** (window chrome, empty list, Settings, About, theme); and **hardware** (`UI-HW-*`) —
