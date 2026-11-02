@@ -130,7 +130,7 @@ jobs:
         echo "results-output-dir=${{ github.workspace }}${{ env.path-separator }}results" >> "$GITHUB_OUTPUT"
         echo "archive-name=libsokketter-$CURRENT_VERSION-$OS-$OS_VERSION-$OS_ARCHITECTURE" >> "$GITHUB_OUTPUT"
         echo "sokketter-cli-name=sokketter-cli-$CURRENT_VERSION-$OS-$OS_VERSION-$OS_ARCHITECTURE" >> "$GITHUB_OUTPUT"
-        echo "sokketter-ui-name=sokketter-ui-$CURRENT_VERSION-$OS-$OS_VERSION-$OS_ARCHITECTURE" >> "$GITHUB_OUTPUT"
+        echo "sokketter-ui-name=sokketter-$CURRENT_VERSION-$OS-$OS_VERSION-$OS_ARCHITECTURE" >> "$GITHUB_OUTPUT"
 
     - name: Install dependencies (Ubuntu-only)
       if: ${{ startsWith(matrix.os, 'ubuntu') }}
@@ -166,7 +166,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ${{ steps.strings.outputs.sokketter-ui-name }}
-        path: ${{ steps.strings.outputs.results-output-dir }}${{ env.path-separator }}sokketter-ui
+        path: ${{ steps.strings.outputs.results-output-dir }}${{ env.path-separator }}sokketter
         if-no-files-found: error
     
   create-release-entry:
