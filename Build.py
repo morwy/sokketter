@@ -699,7 +699,7 @@ class Build:
                 set bounds of container window to {{100, 100, 760, 532}}
 
                 -- Centered horizontally, roughly around the middle of the window
-                set position of item "sokketter-ui.app" to {{185, 195}}
+                set position of item "sokketter.app" to {{185, 195}}
                 set position of item "Applications" to {{475, 195}}
 
                 close
@@ -785,12 +785,12 @@ class Build:
         output = pathlib.Path(output_path).resolve()
 
         # Detach any leftover volume from a previous failed run before starting.
-        stale_mount_point = pathlib.Path("/Volumes/sokketter-ui")
+        stale_mount_point = pathlib.Path("/Volumes/sokketter")
         if stale_mount_point.exists():
             self.__detach_volume(stale_mount_point)
 
         with tempfile.TemporaryDirectory() as tmp:
-            staging = pathlib.Path(tmp) / "sokketter-ui"
+            staging = pathlib.Path(tmp) / "sokketter"
             staging.mkdir()
 
             # Prevent Spotlight from indexing the mounted volume; mdworker locking
@@ -820,7 +820,7 @@ class Build:
                     "hdiutil",
                     "create",
                     "-volname",
-                    "sokketter-ui",
+                    "sokketter",
                     "-srcfolder",
                     str(staging),
                     "-ov",
@@ -849,7 +849,7 @@ class Build:
             # Find mounted volume
             mount_point = None
             for line in result.stdout.splitlines():
-                if "/Volumes/sokketter-ui" in line:
+                if "/Volumes/sokketter" in line:
                     mount_point = pathlib.Path(line.split("\t")[-1])
                     break
 
@@ -1137,7 +1137,7 @@ class Build:
         are declared explicitly by __get_linux_qt_deb_depends.
         """
         scratch_dir = os.path.join(
-            self.temp_binary_output_dir, "sokketter-ui-shlibdeps"
+            self.temp_binary_output_dir, "sokketter-shlibdeps"
         )
         if os.path.exists(scratch_dir):
             shutil.rmtree(scratch_dir)
@@ -1149,11 +1149,11 @@ class Build:
             file=os.path.join(debian_dir, "control"), mode="w", encoding="utf-8"
         ) as file:
             file.write(
-                "Source: sokketter-ui\n"
+                "Source: sokketter\n"
                 "Priority: optional\n"
                 "Maintainer: Paul Ergard <64430090+morwy@users.noreply.github.com>\n"
                 "\n"
-                "Package: sokketter-ui\n"
+                "Package: sokketter\n"
                 "Architecture: any\n"
                 "Depends: ${shlibs:Depends}\n"
                 "Description: UI application for controlling connected power strips and sockets.\n"
@@ -1237,7 +1237,7 @@ class Build:
         """
         self.logger.info("Starting the packaging of Linux UI Debian package.")
 
-        package_name = "sokketter-ui"
+        package_name = "sokketter"
         package_version = self.version
         package_architecture = self.__get_debian_architecture()
         deb_root_folder = os.path.join(
@@ -1268,15 +1268,15 @@ class Build:
             os.chmod(folder, 0o755)
 
         shutil.copy(
-            os.path.join(self.temp_binary_output_dir, "bin", "sokketter-ui"),
-            os.path.join(usr_bin_folder, "sokketter-ui"),
+            os.path.join(self.temp_binary_output_dir, "bin", "  sokketter"),
+            os.path.join(usr_bin_folder, "sokketter"),
         )
-        os.chmod(os.path.join(usr_bin_folder, "sokketter-ui"), 0o755)
+        os.chmod(os.path.join(usr_bin_folder, "sokketter"), 0o755)
 
-        desktop_file_path = os.path.join(applications_folder, "sokketter-ui.desktop")
+        desktop_file_path = os.path.join(applications_folder, "sokketter.desktop")
         shutil.copy(
             os.path.join(
-                self.workspace, "sokketter-ui", "resources", "sokketter-ui.desktop"
+                self.workspace, "sokketter-ui", "resources", "sokketter.desktop"
             ),
             desktop_file_path,
         )
@@ -1287,7 +1287,7 @@ class Build:
         with open(file=desktop_file_path, mode="w", encoding="utf-8") as file:
             for line in desktop_file_lines:
                 if line.startswith("Exec="):
-                    file.write("Exec=/usr/bin/sokketter-ui %u\n")
+                    file.write("Exec=/usr/bin/sokketter %u\n")
                 elif line.startswith("X-AppImage-Version="):
                     file.write(f"X-AppImage-Version={self.version}\n")
                 elif line.startswith("X-AppImage-Arch="):
@@ -1303,9 +1303,9 @@ class Build:
                 "icons",
                 "socket-icon-256x256.png",
             ),
-            os.path.join(icons_folder, "sokketter-ui-icon.png"),
+            os.path.join(icons_folder, "sokketter-icon.png"),
         )
-        os.chmod(os.path.join(icons_folder, "sokketter-ui-icon.png"), 0o644)
+        os.chmod(os.path.join(icons_folder, "sokketter-icon.png"), 0o644)
 
         shutil.copy(
             os.path.join(self.workspace, "udev-rules", "101-sokketter.rules"),
@@ -1314,7 +1314,7 @@ class Build:
         os.chmod(os.path.join(udev_rules_folder, "101-sokketter.rules"), 0o644)
 
         package_depends = self.__compute_linux_deb_depends(
-            os.path.join(usr_bin_folder, "sokketter-ui")
+            os.path.join(usr_bin_folder, "sokketter")
         )
         package_dependencies = self.__get_linux_qt_deb_depends()
         if package_depends:
@@ -1341,7 +1341,7 @@ Priority: optional
 Architecture: {package_architecture}
 Maintainer: Paul Ergard <64430090+morwy@users.noreply.github.com>
 {depends_line}Description: UI application for controlling connected power strips and sockets.
- sokketter-ui provides a Qt-based desktop interface for supported USB and Ethernet power strips.
+ sokketter provides a Qt-based desktop interface for supported USB and Ethernet power strips.
 """
         with open(
             file=os.path.join(debian_folder, "control"), mode="w", encoding="utf-8"
@@ -1399,7 +1399,7 @@ exit 0
             f"{self.architecture.value}.deb"
         )
         deb_output_path = os.path.join(
-            self.results_output_dir, "sokketter-ui", deb_filename
+            self.results_output_dir, "sokketter", deb_filename
         )
         packing_command = [
             "dpkg-deb",
@@ -1428,7 +1428,7 @@ exit 0
 
     def __package_linux_app_image(self, sokketter_ui_folder, sokketter_ui_zip_folder):
         sokketter_app_image_folder = os.path.join(
-            self.temp_binary_output_dir, "sokketter-ui.AppImage"
+            self.temp_binary_output_dir, "sokketter.AppImage"
         )
         os.makedirs(sokketter_app_image_folder, exist_ok=True)
 
@@ -1436,13 +1436,13 @@ exit 0
         os.makedirs(usr_bin_folder, exist_ok=True)
 
         shutil.copy(
-            os.path.join(self.temp_binary_output_dir, "bin", "sokketter-ui"),
+            os.path.join(self.temp_binary_output_dir, "bin", "sokketter"),
             usr_bin_folder,
         )
 
         shutil.copy(
             os.path.join(
-                self.workspace, "sokketter-ui", "resources", "sokketter-ui.desktop"
+                self.workspace, "sokketter-ui", "resources", "sokketter.desktop"
             ),
             sokketter_app_image_folder,
         )
@@ -1455,11 +1455,11 @@ exit 0
                 "icons",
                 "socket-icon-256x256.png",
             ),
-            os.path.join(sokketter_app_image_folder, "sokketter-ui-icon.png"),
+            os.path.join(sokketter_app_image_folder, "sokketter-icon.png"),
         )
 
         desktop_file_path = os.path.join(
-            sokketter_app_image_folder, "sokketter-ui.desktop"
+            sokketter_app_image_folder, "sokketter.desktop"
         )
         with open(file=desktop_file_path, mode="r", encoding="utf-8") as file:
             desktop_file_lines = file.readlines()
@@ -1487,9 +1487,9 @@ exit 0
 
         packing_command = [
             linuxdeployqt_path,
-            os.path.join(usr_bin_folder, "sokketter-ui"),
+            os.path.join(usr_bin_folder, "sokketter"),
             "-appimage",
-            f"-executable={os.path.join(usr_bin_folder, 'sokketter-ui')}",
+            f"-executable={os.path.join(usr_bin_folder, 'sokketter')}",
             "-verbose=2",
             "-unsupported-allow-new-glibc",
             "-qmake=" + self.__resolve_qt_tool("qmake"),
@@ -1499,20 +1499,20 @@ exit 0
         )
 
         appimage_pattern = os.path.join(
-            sokketter_ui_zip_folder, "sokketter-ui-*.AppImage"
+            sokketter_ui_zip_folder, "sokketter-*.AppImage"
         )
         appimage_files = glob.glob(appimage_pattern)
 
         for appimage_file in appimage_files:
             new_appimage_path = os.path.join(
-                sokketter_ui_zip_folder, "sokketter-ui.AppImage"
+                sokketter_ui_zip_folder, "sokketter.AppImage"
             )
             os.rename(appimage_file, new_appimage_path)
             self.logger.info("Renamed %s to %s", appimage_file, new_appimage_path)
             break
 
         zip_name = shutil.make_archive(
-            base_name=f"sokketter-ui-{self.version}-{self.system.value}-{self.os_version}-{self.architecture.value}",
+            base_name=f"sokketter-{self.version}-{self.system.value}-{self.os_version}-{self.architecture.value}",
             format="zip",
             root_dir=sokketter_ui_zip_folder,
         )
@@ -1600,7 +1600,7 @@ AppUpdatesURL=https://github.com/morwy/sokketter/releases
 DefaultDirName={{autopf}}\\sokketter
 DefaultGroupName=sokketter
 DisableProgramGroupPage=yes
-UninstallDisplayIcon={{app}}\\sokketter-ui.exe
+UninstallDisplayIcon={{app}}\\sokketter.exe
 LicenseFile={license_path}
 SetupIconFile={icon_path}
 OutputDir={output_folder}
@@ -1623,14 +1623,14 @@ Name: "desktopicon"; Description: "{{cm:CreateDesktopIcon}}"; GroupDescription: 
 Source: "{source_folder}\\*"; DestDir: "{{app}}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{{autoprograms}}\\sokketter"; Filename: "{{app}}\\sokketter-ui.exe"
-Name: "{{autodesktop}}\\sokketter"; Filename: "{{app}}\\sokketter-ui.exe"; Tasks: desktopicon
+Name: "{{autoprograms}}\\sokketter"; Filename: "{{app}}\\sokketter.exe"
+Name: "{{autodesktop}}\\sokketter"; Filename: "{{app}}\\sokketter.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{{app}}\\sokketter-ui.exe"; Description: "{{cm:LaunchProgram,sokketter}}"; Flags: nowait postinstall skipifsilent
+Filename: "{{app}}\\sokketter.exe"; Description: "{{cm:LaunchProgram,sokketter}}"; Flags: nowait postinstall skipifsilent
 """
 
-        script_path = os.path.join(self.temp_build_output_dir, "sokketter-ui.iss")
+        script_path = os.path.join(self.temp_build_output_dir, "sokketter.iss")
         with open(file=script_path, mode="w", encoding="utf-8") as file:
             file.write(script_contents)
 
@@ -1648,7 +1648,7 @@ Filename: "{{app}}\\sokketter-ui.exe"; Description: "{{cm:LaunchProgram,sokkette
         self.logger.info("Validating Windows UI installation package: %s", installer_path)
 
         validation_folder = os.path.join(
-            self.temp_build_output_dir, "sokketter-ui-installer-validation"
+            self.temp_build_output_dir, "sokketter-installer-validation"
         )
         if os.path.exists(validation_folder):
             shutil.rmtree(validation_folder, ignore_errors=True)
@@ -1671,7 +1671,7 @@ Filename: "{{app}}\\sokketter-ui.exe"; Description: "{{cm:LaunchProgram,sokkette
                 ]
             )
 
-            installed_executable = os.path.join(install_folder, "sokketter-ui.exe")
+            installed_executable = os.path.join(install_folder, "sokketter.exe")
             if not os.path.isfile(installed_executable):
                 raise FileNotFoundError(
                     f"Installation package did not deploy the UI executable: {installed_executable}"
@@ -1713,7 +1713,7 @@ Filename: "{{app}}\\sokketter-ui.exe"; Description: "{{cm:LaunchProgram,sokkette
         self.logger.info("Starting the packaging of Windows UI installation package.")
 
         output_base_name = (
-            f"sokketter-ui-{self.version}-{self.system.value}-{self.os_version}-"
+            f"sokketter-{self.version}-{self.system.value}-{self.os_version}-"
             f"{self.architecture.value}-setup"
         )
 
@@ -1741,14 +1741,14 @@ Filename: "{{app}}\\sokketter-ui.exe"; Description: "{{cm:LaunchProgram,sokkette
         """
         self.logger.info("Starting the packaging of UI files.")
 
-        sokketter_ui_folder = os.path.join(self.results_output_dir, "sokketter-ui")
+        sokketter_ui_folder = os.path.join(self.results_output_dir, "sokketter")
         if os.path.exists(sokketter_ui_folder):
             shutil.rmtree(sokketter_ui_folder)
 
         os.makedirs(sokketter_ui_folder)
 
         sokketter_ui_zip_folder = os.path.join(
-            self.temp_binary_output_dir, "sokketter-ui-zipped"
+            self.temp_binary_output_dir, "sokketter-zipped"
         )
         if os.path.exists(sokketter_ui_zip_folder):
             shutil.rmtree(sokketter_ui_zip_folder)
@@ -1757,18 +1757,18 @@ Filename: "{{app}}\\sokketter-ui.exe"; Description: "{{cm:LaunchProgram,sokkette
 
         if self.system == System.WINDOWS:
             shutil.copy(
-                os.path.join(self.temp_binary_output_dir, "bin", "sokketter-ui.exe"),
+                os.path.join(self.temp_binary_output_dir, "bin", "sokketter.exe"),
                 sokketter_ui_zip_folder,
             )
             packing_command = [
                 self.__resolve_qt_tool("windeployqt"),
-                os.path.join(sokketter_ui_zip_folder, "sokketter-ui.exe"),
+                os.path.join(sokketter_ui_zip_folder, "sokketter.exe"),
                 sokketter_ui_zip_folder,
             ]
             self.__execute_command(packing_command)
 
             zip_name = shutil.make_archive(
-                base_name=f"sokketter-ui-{self.version}-{self.system.value}-{self.os_version}-{self.architecture.value}",
+                base_name=f"sokketter-{self.version}-{self.system.value}-{self.os_version}-{self.architecture.value}",
                 format="zip",
                 root_dir=sokketter_ui_zip_folder,
             )
@@ -1783,7 +1783,7 @@ Filename: "{{app}}\\sokketter-ui.exe"; Description: "{{cm:LaunchProgram,sokkette
             )
 
         elif self.system == System.MACOS:
-            filename = "sokketter-ui.app"
+            filename = "sokketter.app"
             app_filepath = os.path.join(sokketter_ui_zip_folder, filename)
 
             shutil.copytree(
@@ -1812,7 +1812,7 @@ Filename: "{{app}}\\sokketter-ui.exe"; Description: "{{cm:LaunchProgram,sokkette
 
             zip_name = os.path.join(
                 self.workspace,
-                f"sokketter-ui-{self.version}-{self.system.value}-{self.os_version}-{self.architecture.value}.zip",
+                f"sokketter-{self.version}-{self.system.value}-{self.os_version}-{self.architecture.value}.zip",
             )
 
             packing_command = [
@@ -1833,7 +1833,7 @@ Filename: "{{app}}\\sokketter-ui.exe"; Description: "{{cm:LaunchProgram,sokkette
 
             dmg_filename = os.path.join(
                 sokketter_ui_folder,
-                f"sokketter-ui-{self.version}-{self.system.value}-{self.os_version}-{self.architecture.value}.dmg",
+                f"sokketter-{self.version}-{self.system.value}-{self.os_version}-{self.architecture.value}.dmg",
             )
 
             self.__create_dmg(app_path=app_filepath, output_path=dmg_filename)
