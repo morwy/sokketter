@@ -676,6 +676,15 @@ class Build:
                 time.sleep(retry_delay_seconds)
 
     def __configure_finder(self, mount_point: pathlib.Path):
+        window_left = 100
+        window_top = 100
+        window_width = 660
+        window_height = 432
+        icon_center_y = window_height // 2
+        icon_vertical_offset = 76
+        app_column_x = 185
+        applications_column_x = 475
+
         script = f"""
         tell application "Finder"
             tell disk "{mount_point.name}"
@@ -692,15 +701,13 @@ class Build:
                     set shows item info to false
                     set shows icon preview to true
                 end tell
-
                 set background picture of icon view options of container window to file ".background:background.tiff"
 
-                -- 660 x 400 window
-                set bounds of container window to {{100, 100, 760, 532}}
+                set bounds of container window to {{{window_left}, {window_top}, {window_left + window_width}, {window_top + window_height}}}
 
-                -- Centered horizontally, roughly around the middle of the window
-                set position of item "sokketter.app" to {{185, 195}}
-                set position of item "Applications" to {{475, 195}}
+                set position of item "sokketter.app" to {{{app_column_x}, {icon_center_y - icon_vertical_offset}}}
+                set position of item "sokketter-cli" to {{{app_column_x}, {icon_center_y + icon_vertical_offset}}}
+                set position of item "Applications" to {{{applications_column_x}, {icon_center_y}}}
 
                 close
                 open
