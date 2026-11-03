@@ -676,6 +676,15 @@ class Build:
                 time.sleep(retry_delay_seconds)
 
     def __configure_finder(self, mount_point: pathlib.Path):
+        window_left = 100
+        window_top = 100
+        window_width = 660
+        window_height = 432
+        icon_center_y = window_height // 2 - 16
+        icon_vertical_offset = 76
+        app_column_x = 185
+        applications_column_x = 475
+
         script = f"""
         tell application "Finder"
             tell disk "{mount_point.name}"
@@ -692,15 +701,13 @@ class Build:
                     set shows item info to false
                     set shows icon preview to true
                 end tell
-
                 set background picture of icon view options of container window to file ".background:background.tiff"
 
-                -- 660 x 400 window
-                set bounds of container window to {{100, 100, 760, 532}}
+                set bounds of container window to {{{window_left}, {window_top}, {window_left + window_width}, {window_top + window_height}}}
 
-                -- Centered horizontally, roughly around the middle of the window
-                set position of item "sokketter.app" to {{185, 195}}
-                set position of item "Applications" to {{475, 195}}
+                set position of item "sokketter.app" to {{{app_column_x}, {icon_center_y - icon_vertical_offset}}}
+                set position of item "sokketter-cli" to {{{app_column_x}, {icon_center_y + icon_vertical_offset}}}
+                set position of item "Applications" to {{{applications_column_x}, {icon_center_y}}}
 
                 close
                 open
@@ -780,7 +787,7 @@ class Build:
 
         raise RuntimeError("Unreachable")
 
-    def __create_dmg(self, app_path: str, output_path: str):
+    def __create_dmg(self, app_path: str, cli_path: str, output_path: str):
         app = pathlib.Path(app_path).resolve()
         output = pathlib.Path(output_path).resolve()
 
@@ -800,6 +807,7 @@ class Build:
 
             # Copy application
             shutil.copytree(app, staging / app.name)
+            shutil.copy(cli_path, staging / pathlib.Path(cli_path).name)
 
             # Applications symlink
             (staging / "Applications").symlink_to("/Applications")
@@ -1103,16 +1111,7 @@ class Build:
 
         os.makedirs(sokketter_cli_zip_folder)
 
-        if self.system == System.WINDOWS:
-            shutil.copy(
-                os.path.join(self.temp_binary_output_dir, "bin", "sokketter-cli.exe"),
-                sokketter_cli_zip_folder,
-            )
-        else:
-            shutil.copy(
-                os.path.join(self.temp_binary_output_dir, "bin", "sokketter-cli"),
-                sokketter_cli_zip_folder,
-            )
+        shutil.copy(self.__get_cli_executable_path(), sokketter_cli_zip_folder)
 
         zip_name = shutil.make_archive(
             base_name=f"sokketter-cli-{self.version}-{self.system.value}-{self.os_version}-{self.architecture.value}",
@@ -1127,9 +1126,20 @@ class Build:
 
         self.logger.info("CLI files packaged successfully.")
 
-    def __compute_linux_deb_depends(self, binary_path: str) -> str:
+    def __get_cli_executable_path(self) -> str:
         """
-        Derive a versioned Depends field from the built binary.
+        Get the built CLI executable path.
+        """
+        executable_name = (
+            "sokketter-cli.exe"
+            if self.system == System.WINDOWS
+            else "sokketter-cli"
+        )
+        return os.path.join(self.temp_binary_output_dir, "bin", executable_name)
+
+    def __compute_linux_deb_depends(self, binary_paths: list[str]) -> str:
+        """
+        Derive a versioned Depends field from the built binaries.
 
         dpkg-shlibdeps resolves minimum versions for linked libraries owned by installed
         distribution packages. Qt is supplied by an external package at install time,
@@ -1159,9 +1169,13 @@ class Build:
                 "Description: UI application for controlling connected power strips and sockets.\n"
             )
 
+        command = ["dpkg-shlibdeps", "-O", "--ignore-missing-info"]
+        for binary_path in binary_paths:
+            command.extend(["-e", binary_path])
+
         try:
             result = subprocess.run(
-                ["dpkg-shlibdeps", "-O", "--ignore-missing-info", "-e", binary_path],
+                command,
                 check=True,
                 capture_output=True,
                 text=True,
@@ -1272,6 +1286,11 @@ class Build:
             os.path.join(usr_bin_folder, "sokketter"),
         )
         os.chmod(os.path.join(usr_bin_folder, "sokketter"), 0o755)
+        shutil.copy(
+            self.__get_cli_executable_path(),
+            os.path.join(usr_bin_folder, "sokketter-cli"),
+        )
+        os.chmod(os.path.join(usr_bin_folder, "sokketter-cli"), 0o755)
 
         desktop_file_path = os.path.join(applications_folder, "sokketter.desktop")
         shutil.copy(
@@ -1314,7 +1333,10 @@ class Build:
         os.chmod(os.path.join(udev_rules_folder, "101-sokketter.rules"), 0o644)
 
         package_depends = self.__compute_linux_deb_depends(
-            os.path.join(usr_bin_folder, "sokketter")
+            [
+                os.path.join(usr_bin_folder, "sokketter"),
+                os.path.join(usr_bin_folder, "sokketter-cli"),
+            ]
         )
         package_dependencies = self.__get_linux_qt_deb_depends()
         if package_depends:
@@ -1340,8 +1362,8 @@ Section: utils
 Priority: optional
 Architecture: {package_architecture}
 Maintainer: Paul Ergard <64430090+morwy@users.noreply.github.com>
-{depends_line}Description: UI application for controlling connected power strips and sockets.
- sokketter provides a Qt-based desktop interface for supported USB and Ethernet power strips.
+{depends_line}Description: Application for controlling connected power strips and sockets.
+ sokketter provides a Qt-based desktop interface and command-line utility for supported devices.
 """
         with open(
             file=os.path.join(debian_folder, "control"), mode="w", encoding="utf-8"
@@ -1423,7 +1445,19 @@ exit 0
 
         self.logger.info("Validating Linux UI Debian package: %s", deb_path)
         self.__execute_command(["dpkg-deb", "--info", deb_path])
-        self.__execute_command(["dpkg-deb", "--contents", deb_path])
+        contents = subprocess.run(
+            ["dpkg-deb", "--contents", deb_path],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        if not any(
+            fields and fields[-1] == "./usr/bin/sokketter-cli"
+            for fields in (line.split() for line in contents.stdout.splitlines())
+        ):
+            raise FileNotFoundError(
+                "Debian package did not include /usr/bin/sokketter-cli."
+            )
         self.logger.info("Linux UI Debian package validation completed successfully.")
 
     def __package_linux_app_image(self, sokketter_ui_folder, sokketter_ui_zip_folder):
@@ -1439,6 +1473,9 @@ exit 0
             os.path.join(self.temp_binary_output_dir, "bin", "sokketter"),
             usr_bin_folder,
         )
+        cli_executable_path = os.path.join(usr_bin_folder, "sokketter-cli")
+        shutil.copy(self.__get_cli_executable_path(), cli_executable_path)
+        os.chmod(cli_executable_path, 0o755)
 
         shutil.copy(
             os.path.join(
@@ -1490,6 +1527,7 @@ exit 0
             os.path.join(usr_bin_folder, "sokketter"),
             "-appimage",
             f"-executable={os.path.join(usr_bin_folder, 'sokketter')}",
+            f"-executable={cli_executable_path}",
             "-verbose=2",
             "-unsupported-allow-new-glibc",
             "-qmake=" + self.__resolve_qt_tool("qmake"),
@@ -1677,6 +1715,15 @@ Filename: "{{app}}\\sokketter.exe"; Description: "{{cm:LaunchProgram,sokketter}}
                     f"Installation package did not deploy the UI executable: {installed_executable}"
                 )
 
+            installed_cli_executable = os.path.join(
+                install_folder, "sokketter-cli.exe"
+            )
+            if not os.path.isfile(installed_cli_executable):
+                raise FileNotFoundError(
+                    "Installation package did not deploy the CLI executable: "
+                    f"{installed_cli_executable}"
+                )
+
             if not os.path.isfile(os.path.join(install_folder, "Qt6Core.dll")):
                 raise FileNotFoundError(
                     "Installation package did not deploy the Qt6 runtime libraries."
@@ -1760,6 +1807,7 @@ Filename: "{{app}}\\sokketter.exe"; Description: "{{cm:LaunchProgram,sokketter}}
                 os.path.join(self.temp_binary_output_dir, "bin", "sokketter.exe"),
                 sokketter_ui_zip_folder,
             )
+            shutil.copy(self.__get_cli_executable_path(), sokketter_ui_zip_folder)
             packing_command = [
                 self.__resolve_qt_tool("windeployqt"),
                 os.path.join(sokketter_ui_zip_folder, "sokketter.exe"),
@@ -1784,13 +1832,20 @@ Filename: "{{app}}\\sokketter.exe"; Description: "{{cm:LaunchProgram,sokketter}}
 
         elif self.system == System.MACOS:
             filename = "sokketter.app"
-            app_filepath = os.path.join(sokketter_ui_zip_folder, filename)
+            macos_package_folder = os.path.join(sokketter_ui_zip_folder, "sokketter")
+            os.makedirs(macos_package_folder)
+            app_filepath = os.path.join(macos_package_folder, filename)
+            cli_filepath = os.path.join(
+                macos_package_folder,
+                pathlib.Path(self.__get_cli_executable_path()).name,
+            )
 
             shutil.copytree(
                 src=os.path.join(self.temp_binary_output_dir, "bin", filename),
                 dst=app_filepath,
                 symlinks=True,
             )
+            shutil.copy(self.__get_cli_executable_path(), cli_filepath)
 
             packing_command = [
                 self.__resolve_qt_tool("macdeployqt"),
@@ -1809,6 +1864,16 @@ Filename: "{{app}}\\sokketter.exe"; Description: "{{cm:LaunchProgram,sokketter}}
                 app_filepath,
             ]
             self.__execute_command(packing_command)
+            self.__execute_command(
+                [
+                    "codesign",
+                    "--force",
+                    "--sign",
+                    "-",
+                    "--timestamp=none",
+                    cli_filepath,
+                ]
+            )
 
             zip_name = os.path.join(
                 self.workspace,
@@ -1821,7 +1886,7 @@ Filename: "{{app}}\\sokketter.exe"; Description: "{{cm:LaunchProgram,sokketter}}
                 "-k",
                 "--keepParent",
                 "--sequesterRsrc",
-                app_filepath,
+                macos_package_folder,
                 zip_name,
             ]
             self.__execute_command(packing_command)
@@ -1836,9 +1901,14 @@ Filename: "{{app}}\\sokketter.exe"; Description: "{{cm:LaunchProgram,sokketter}}
                 f"sokketter-{self.version}-{self.system.value}-{self.os_version}-{self.architecture.value}.dmg",
             )
 
-            self.__create_dmg(app_path=app_filepath, output_path=dmg_filename)
+            self.__create_dmg(
+                app_path=app_filepath,
+                cli_path=cli_filepath,
+                output_path=dmg_filename,
+            )
 
         elif self.system == System.LINUX:
+            shutil.copy(self.__get_cli_executable_path(), sokketter_ui_zip_folder)
             self.__package_linux_app_image(sokketter_ui_folder, sokketter_ui_zip_folder)
             self.__package_linux_ui_deb()
 
