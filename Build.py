@@ -680,7 +680,7 @@ class Build:
         window_top = 100
         window_width = 660
         window_height = 432
-        icon_center_y = window_height // 2
+        icon_center_y = window_height // 2 - 16
         icon_vertical_offset = 76
         app_column_x = 185
         applications_column_x = 475
